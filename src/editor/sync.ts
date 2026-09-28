@@ -151,6 +151,29 @@ function positionOf(doc: PMNode, index: number): number {
 }
 
 /**
+ * Changes one top-level node into `fresh` with the smallest steps: attributes in place, and only
+ * the changed stretch of its content, so a cursor elsewhere in the block keeps its place.
+ */
+function updateNode(tr: Transform, from: number, node: PMNode, fresh: PMNode) {
+  if (fresh.type !== node.type) {
+    tr.replaceWith(from, from + node.nodeSize, fresh);
+    return;
+  }
+  if (!fresh.sameMarkup(node)) tr.setNodeMarkup(from, undefined, fresh.attrs, fresh.marks);
+  const start = node.content.findDiffStart(fresh.content);
+  if (start === null) return;
+  const end = node.content.findDiffEnd(fresh.content);
+  if (!end) return;
+  let { a, b } = end;
+  const overlap = start - Math.min(a, b);
+  if (overlap > 0) {
+    a += overlap;
+    b += overlap;
+  }
+  tr.replace(from + 1 + start, from + 1 + a, fresh.slice(start, b));
+}
+
+/**
  * Makes the doc's top-level nodes match `target`, touching only nodes that change: kept nodes stay
  * the same objects, so a cursor inside them maps through unchanged.
  */
@@ -170,10 +193,7 @@ export function applyTarget(tr: Transform, schema: Schema, target: readonly Targ
       tr.insert(positionOf(tr.doc, index), fresh ?? node);
       return;
     }
-    if (fresh && !fresh.eq(node)) {
-      const from = positionOf(doc, index);
-      tr.replaceWith(from, from + node.nodeSize, fresh);
-    }
+    if (fresh && !fresh.eq(node)) updateNode(tr, positionOf(doc, index), node, fresh);
   });
   const kept = Math.min(target.length, tr.doc.childCount);
   if (tr.doc.childCount > kept) {

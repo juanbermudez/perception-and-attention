@@ -5,7 +5,7 @@
 //
 // The store boots on the first call, so the guide is untouched until someone makes a doc.
 
-import { blockToMarkdown, describeView, exportDocument, markdownToBlocks } from "../model/markdown";
+import { blockToMarkdown, describeView, exportDocument, markdownToBlocks, parseDocument } from "../model/markdown";
 import { validateQuestion } from "../model/quiz";
 import { resolveRef } from "../model/refs";
 import { stayingIds } from "../model/sequence";
@@ -279,6 +279,7 @@ export function createDocsApi(options: DocsApiOptions) {
   let opened: Store | null = null;
   let unavailable = false;
   const listeners = new Set<(change: StoreChange) => void>();
+  const openListeners = new Set<(store: Store) => void>();
 
   async function store(): Promise<Store> {
     if (opened) return opened;
@@ -291,6 +292,7 @@ export function createDocsApi(options: DocsApiOptions) {
     opened.onChange((change) => {
       for (const listener of listeners) listener(change);
     });
+    for (const listener of openListeners) listener(opened);
     return opened;
   }
 
@@ -679,6 +681,21 @@ export function createDocsApi(options: DocsApiOptions) {
     return banner ? { store: opened.mode, reason: opened.reason, banner } : { store: opened.mode, reason: opened.reason };
   }
 
+  /** Runs once the store has opened (for example to mirror the activity log into it); does not open it. */
+  function onOpen(listener: (store: Store) => void): () => void {
+    if (opened) listener(opened);
+    openListeners.add(listener);
+    return () => openListeners.delete(listener);
+  }
+
+  /** A markdown file as a new doc: a file this guide exported keeps its title, others take the file name. */
+  function importDoc(text: string, fileName: string, actor: Actor = "user"): Result<DocCreated> {
+    if (typeof text !== "string") return Promise.resolve(fail("bad_input", "The file is not text."));
+    const parsed = parseDocument(text);
+    const title = parsed.title ?? (fileName.replace(/\.(md|markdown|txt)$/i, "").trim() || "Imported notes");
+    return createArtifact("doc", title.slice(0, LIMITS.titleChars), "", true, actor, parsed.blocks);
+  }
+
   /** Change events for the UI. Attaches when the store opens; does not open it. */
   function onChange(listener: (change: StoreChange) => void): () => void {
     listeners.add(listener);
@@ -690,6 +707,8 @@ export function createDocsApi(options: DocsApiOptions) {
     editBlocks,
     load,
     saveBlocks,
+    importDoc,
+    onOpen,
     outlineDocs,
     outlineArtifact,
     read,

@@ -175,7 +175,11 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     switch (input.action) {
       case "create":
         out.undo = { label: "Undo", run: () => void docs.doc({ action: "delete", ref }, "user") };
-        out.windows = windows?.list();
+        // The docs API asked the page to open it; wait for the window so the list includes it.
+        if (windows && input.open !== false) {
+          await windows.open(ref);
+          out.windows = windows.list();
+        }
         break;
       case "delete":
         out.undo = { label: "Undo", run: () => void docs.doc({ action: "restore", ref }, "user") };

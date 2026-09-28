@@ -12,7 +12,8 @@ export * from "./src/editor/sync";
 export { createDocSchema } from "./src/editor/schema";
 export { markdownToBlocks, blocksToMarkdown, parseDocument, exportDocument } from "./src/model/markdown";
 export { openEngine } from "./src/store/engine";
-export { Transform } from "@tiptap/pm/transform";`;
+export { Transform } from "@tiptap/pm/transform";
+export { EditorState, TextSelection } from "@tiptap/pm/state";`;
 const result = await build({
   stdin: { contents: source, resolveDir: process.cwd(), loader: "ts" },
   bundle: true,
@@ -330,6 +331,37 @@ test("an agent edit replaces only its block; the user's unsaved block and cursor
   const ops = planSave(base, docBlocks(apply.doc), dirty);
   store.engine.applyBlockOps(store.id, ops, "user");
   assert.deepEqual(texts(store.stored()), ["p:One!", "p:Two", "p:Inserted", "p:Three, edited"]);
+});
+
+test("a cursor in a block the agent edits keeps its place (only the changed text is replaced)", () => {
+  const text = "One two tpyo three";
+  const blocks = withIds(markdownToBlocks(`${text}\n\nNext`));
+  const doc = blocksToDoc(schema, blocks);
+  for (const offset of [2, text.length]) {
+    const state = m.EditorState.create({ doc, selection: m.TextSelection.create(doc, 1 + offset) });
+    const tr = state.tr;
+    applyTarget(
+      tr,
+      schema,
+      [
+        { id: blocks[0].id, block: { ...blocks[0], text: "One two typo three" } },
+        { id: blocks[1].id, keep: true },
+      ],
+      () => "fresh",
+    );
+    const next = state.apply(tr);
+    assert.equal(next.doc.child(0).textContent, "One two typo three");
+    assert.equal(next.selection.from, 1 + offset, `cursor at ${offset}`);
+  }
+  // A to-do ticked elsewhere changes only its attributes.
+  const todo = withIds(markdownToBlocks("- [ ] task"));
+  const todoDoc = blocksToDoc(schema, todo);
+  const state = m.EditorState.create({ doc: todoDoc, selection: m.TextSelection.create(todoDoc, 3) });
+  const tr = state.tr;
+  applyTarget(tr, schema, [{ id: todo[0].id, block: { ...todo[0], data: { checked: true } } }], () => "fresh");
+  const next = state.apply(tr);
+  assert.equal(next.doc.child(0).attrs.checked, true);
+  assert.equal(next.selection.from, 3);
 });
 
 test("the editor's own save is not treated as someone else's change", () => {

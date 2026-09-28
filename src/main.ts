@@ -10,6 +10,7 @@ import { createState } from "./state";
 import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { createPresence } from "./ui/agent-presence";
+import { createDocsUi, type DocsUi } from "./ui/docs-ui";
 import { byId } from "./ui/dom";
 import { createExplorer } from "./ui/explorer";
 import { setupKeyboard } from "./ui/keyboard";
@@ -79,11 +80,46 @@ for (const type of ["pointerdown", "wheel", "keydown"] as const)
     },
     { capture: true, passive: true },
   );
-const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on, view, tour });
-const agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
+// Docs and quizzes (Stages 3–4). The store boots on first use (the Notes button, an agent's doc tool,
+// or windows saved on an earlier visit), so the guide is unchanged for visitors who never make a doc.
+let docsUi: DocsUi | undefined;
+let agent: ReturnType<typeof startAgentSurface> | undefined;
+const docs = createDocsApi({
+  store: browserStore,
+  currentView: () => view?.capture() ?? null,
+  isLocked: (blockId) => docsUi?.isLocked(blockId) ?? false,
+  open: (ref) => docsUi?.open(ref),
+  download: (file, text, ref) => docsUi?.download(file, text, ref) ?? false,
+});
+docs.onOpen((store) => activity.connect(store));
+docsUi = createDocsUi({
+  docs,
+  stage: byId("scene-title").closest<HTMLElement>(".brain-stage")!,
+  notesButton: byId<HTMLButtonElement>("notes-button"),
+  view,
+  explorer,
+  activity,
+  agentActive: () => agent?.runner.running ?? false,
+  storage: browserStorage(),
+});
+docsUi.restoreWindows();
+
+const api = createGuideApi({
+  explorer,
+  about,
+  activity,
+  playing: () => state.playing,
+  agentControl: () => agentControl.on,
+  view,
+  tour,
+  docs,
+  windows: docsUi.port,
+  docsPresent: docsUi.present,
+});
+agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
 explorer.onEvent((event) => {
   // Agent navigation is logged once, as its tool call (or its tour); autoplay is not a user action.
-  if (!event.auto && !agent.runner.running && !tour.driving) activity.append({ by: "user", kind: event.kind, ref: event.ref });
+  if (!event.auto && !agent?.runner.running && !tour.driving) activity.append({ by: "user", kind: event.kind, ref: event.ref });
 });
 agentControl.onChange((on) => {
   activity.append({ by: "user", kind: "agent_control", on });
@@ -122,6 +158,5 @@ Object.defineProperty(window, "explorerDebug", {
   },
 });
 
-// Docs and quizzes (Stage 3 core). The store boots on first use, so the guide is unchanged
-// until a doc is made. The `doc`/`edit_blocks` tools and the windows wrap this API later.
-Object.defineProperty(window, "docsDebug", { value: createDocsApi({ store: browserStore }) });
+// The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
+Object.defineProperty(window, "docsDebug", { value: docs });

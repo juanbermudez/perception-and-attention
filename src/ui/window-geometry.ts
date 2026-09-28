@@ -22,8 +22,8 @@ export interface StageSize {
 /** At least this much of a window stays inside the stage, so it can always be dragged back. */
 export const MIN_VISIBLE = 48;
 export const MARGIN = 16;
-/** Room for the topic dock along the top of the stage. */
-export const TOP_INSET = 80;
+/** Room for the topic dock along the top of the stage (up to 70 px tall on narrow stages, 16 px from the top). */
+export const TOP_INSET = 96;
 export const MIN_SIZE = { w: 260, h: 180 };
 /** Below this viewport width windows become bottom sheets, one at a time. */
 export const MOBILE_WIDTH = 720;

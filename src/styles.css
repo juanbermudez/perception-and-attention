@@ -1890,3 +1890,924 @@ dialog::backdrop {
   width: 13px;
   height: 13px;
 }
+
+/* ---------- Docs: floating windows (spec §8) ---------- */
+
+/* A sibling of the orbit surface: the layer ignores the pointer, windows and the tray take it. */
+.windows-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+.doc-window {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  pointer-events: auto;
+  box-shadow: 0 18px 48px #00000073;
+  -webkit-user-select: text;
+  user-select: text;
+  animation: window-in 0.18s ease-out;
+}
+@keyframes window-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+.doc-window.focused {
+  box-shadow: 0 22px 56px #0000008c;
+}
+.window-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.window-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  height: 36px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.doc-window.dragging .window-head {
+  cursor: grabbing;
+}
+.window-kind {
+  display: grid;
+  place-items: center;
+  color: var(--quiet);
+}
+.window-kind svg {
+  width: 14px;
+  height: 14px;
+}
+.window-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.doc-window.focused .window-title {
+  color: var(--ink);
+}
+.window-status {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--quiet);
+  font-variant-numeric: tabular-nums;
+}
+.window-actions {
+  display: flex;
+  gap: 1px;
+  flex: none;
+}
+.window-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--quiet);
+  border-radius: var(--inner-radius);
+  transition:
+    background 0.16s ease-out,
+    color 0.16s ease-out;
+}
+.window-button:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+.window-button svg {
+  width: 14px;
+  height: 14px;
+}
+.window-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.window-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 55%, #ffffff26 55% 62%, transparent 62% 72%, #ffffff26 72% 79%, transparent 79%);
+}
+.window-tray {
+  position: absolute;
+  z-index: 1000;
+  left: var(--space-4);
+  bottom: calc(var(--space-4) + var(--narration-space, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 32px);
+  pointer-events: auto;
+}
+.tray-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  border: 1px solid var(--frame);
+  border-radius: 999px;
+  background: var(--surface);
+  transition:
+    color 0.16s ease-out,
+    border-color 0.16s ease-out;
+}
+.tray-chip:hover {
+  color: var(--ink);
+  border-color: #3a3a3a;
+}
+.tray-chip svg {
+  width: 13px;
+  height: 13px;
+}
+.tray-chip span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Phones: one bottom sheet at a time, no dragging or resizing. */
+.windows-layer.sheets .doc-window {
+  top: 88px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 0;
+  border-radius: var(--outer-radius) var(--outer-radius) 0 0;
+}
+.windows-layer.sheets .doc-column {
+  padding: var(--space-4) var(--space-4) 40px 28px;
+}
+.windows-layer.sheets .window-head {
+  cursor: default;
+}
+.windows-layer.sheets .window-grip {
+  display: none;
+}
+.windows-layer.sheets .window-tray {
+  left: var(--space-3);
+  bottom: var(--space-3);
+}
+
+/* ---------- Docs: the doc pane and editor (spec §9.3) ---------- */
+
+.doc-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.doc-banner,
+.doc-ready,
+.notes-banner {
+  margin: 0;
+  padding: 7px var(--space-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  background: #ffffff08;
+  border-bottom: 1px solid var(--line);
+}
+.doc-banner b,
+.notes-banner b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.doc-ready {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.doc-ready-button {
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: 4px;
+  background: var(--hover);
+}
+.doc-ready-button:hover {
+  background: #ffffff17;
+}
+.doc-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+  overscroll-behavior: contain;
+}
+.doc-column {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-5) 28px 48px 34px;
+}
+.doc-title {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  border: 0;
+  outline: 0;
+  background: none;
+}
+.doc-title::placeholder {
+  color: var(--quiet);
+}
+.doc-meta {
+  margin: var(--space-1) 0 var(--space-4);
+  font-size: 11px;
+  color: var(--quiet);
+}
+.doc-editor {
+  position: relative;
+}
+.doc-body:focus-visible {
+  outline: 0;
+}
+.doc-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #dcdcdc;
+  outline: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  caret-color: var(--ink);
+}
+.doc-body > * {
+  position: relative;
+  margin: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.12s ease-out;
+}
+.doc-body > *:hover {
+  background: var(--hover);
+}
+.doc-body > * + * {
+  margin-top: 2px;
+}
+.doc-body h1,
+.doc-body h2,
+.doc-body h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.doc-body h1 {
+  margin-top: 18px;
+  font-size: 21px;
+  line-height: 1.35;
+}
+.doc-body h2 {
+  margin-top: 14px;
+  font-size: 17.5px;
+  line-height: 1.4;
+}
+.doc-body h3 {
+  margin-top: 10px;
+  font-size: 15.5px;
+  line-height: 1.45;
+}
+.doc-body > :first-child {
+  margin-top: 0;
+}
+.doc-body strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.doc-body code {
+  padding: 1px 4px;
+  font: 12.5px var(--mono);
+  border-radius: 4px;
+  background: #ffffff0f;
+}
+.doc-body a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: #ffffff4d;
+  text-underline-offset: 3px;
+}
+.doc-body .region-mention {
+  cursor: pointer;
+}
+/* Lists are flat blocks with an indent; the marker is drawn beside the text. */
+.blk-bullet,
+.blk-number,
+.blk-todo {
+  padding-left: calc(28px + var(--indent-step, 22px) * var(--indent, 0));
+}
+.blk[data-indent="1"] {
+  --indent: 1;
+}
+.blk[data-indent="2"] {
+  --indent: 2;
+}
+.blk[data-indent="3"] {
+  --indent: 3;
+}
+.blk-bullet::before,
+.blk-number::before {
+  position: absolute;
+  left: calc(8px + var(--indent-step, 22px) * var(--indent, 0));
+  color: var(--quiet);
+  font-variant-numeric: tabular-nums;
+}
+.blk-bullet::before {
+  content: "•";
+}
+.blk-bullet[data-indent="1"]::before,
+.blk-bullet[data-indent="3"]::before {
+  content: "◦";
+}
+.blk-number::before {
+  content: attr(data-n);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+.blk-todo {
+  display: flex;
+  align-items: flex-start;
+  padding-left: calc(4px + var(--indent-step, 22px) * var(--indent, 0));
+}
+.todo-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+.todo-box input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.todo-text {
+  flex: 1;
+  min-width: 0;
+}
+.blk-todo[data-checked="true"] .todo-text {
+  color: var(--quiet);
+  text-decoration: line-through;
+  text-decoration-color: #ffffff40;
+}
+.blk-quote {
+  padding-left: 16px;
+  color: var(--muted);
+}
+.blk-quote::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 1px;
+  background: #ffffff2e;
+}
+.blk-callout {
+  padding: 8px 12px 8px 14px;
+  font-size: 14px;
+  border-left: 2px solid var(--path-color);
+  border-radius: 0 6px 6px 0;
+  background: var(--card);
+  background: #ffffff08;
+}
+.blk-callout[data-tone="tip"] {
+  border-left-color: #8fc2a0;
+}
+.blk-callout[data-tone="warning"] {
+  border-left-color: #d9b56a;
+}
+.blk-code,
+.table-source {
+  padding: 10px 12px;
+  font: 12.5px / 1.55 var(--mono);
+  color: #d0d0d0;
+  white-space: pre;
+  overflow-x: auto;
+  background: var(--card);
+  background: #ffffff0a;
+}
+.blk-code code,
+.table-source code {
+  padding: 0;
+  font: inherit;
+  background: none;
+}
+.blk-code[data-lang]::after {
+  content: attr(data-lang);
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font: 10px var(--mono);
+  color: var(--quiet);
+}
+.blk-divider {
+  padding: 10px 4px;
+}
+.blk-divider hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.blk-divider.ProseMirror-selectednode hr {
+  border-top-color: var(--muted);
+}
+.blk-table {
+  padding: 4px;
+}
+.table-preview table {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+.table-preview th,
+.table-preview td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.table-preview th {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* The rendered table shows until the cursor is in the block; then its markdown source does. */
+.blk-table:not(.is-current) .table-source {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.blk-table.is-current .table-preview {
+  display: none;
+}
+.table-empty {
+  margin: 0;
+  color: var(--quiet);
+}
+.blk-view,
+.blk-question {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff05;
+  cursor: default;
+}
+.blk-view.ProseMirror-selectednode,
+.blk-question.ProseMirror-selectednode,
+.doc-body > .ProseMirror-selectednode {
+  outline: 1px solid #ffffff40;
+  outline-offset: 1px;
+}
+.view-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  border-radius: 6px;
+  background: var(--hover);
+}
+.view-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.view-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.view-label,
+.question-kind {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+.view-caption {
+  color: var(--ink);
+}
+.view-show {
+  flex: none;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: var(--inner-radius);
+  background: var(--hover);
+  transition: background 0.16s ease-out;
+}
+.view-show:hover {
+  background: #ffffff1a;
+}
+.blk-question {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.question-prompt {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+.question-choices {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.question-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--quiet);
+}
+.doc-body > .is-empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  color: var(--quiet);
+  pointer-events: none;
+}
+.doc-body > .blk-todo.is-empty::before {
+  left: calc(32px + var(--indent-step, 22px) * var(--indent, 0));
+}
+.doc-body > .blk-bullet.is-empty::before,
+.doc-body > .blk-number.is-empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  left: calc(28px + var(--indent-step, 22px) * var(--indent, 0));
+}
+/* Agent edits: a short accent wash, and a gutter dot until the user visits the block. */
+.doc-body > .agent-flash {
+  animation: agent-wash 1.2s ease-out;
+}
+@keyframes agent-wash {
+  from {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+.doc-body > .agent-edited::after {
+  content: "";
+  position: absolute;
+  left: -13px;
+  top: 0.8em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.doc-body > .blk-quote.agent-edited::after {
+  width: 5px;
+  bottom: auto;
+}
+.block-handle {
+  position: absolute;
+  left: -30px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--quiet);
+  border-radius: 4px;
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.7;
+}
+.block-handle:hover {
+  color: var(--ink);
+  background: var(--hover);
+  opacity: 1;
+}
+.block-handle svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  stroke: none;
+}
+.dragging-block,
+.dragging-block * {
+  cursor: grabbing;
+}
+.drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.editor-menu {
+  position: absolute;
+  z-index: 5;
+  min-width: 200px;
+  max-width: 260px;
+  max-height: 300px;
+  padding: var(--space-1);
+  overflow-y: auto;
+  font-size: 12.5px;
+  border: 1px solid #ffffff14;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px #0000008c;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  text-align: left;
+  color: var(--muted);
+  border-radius: 5px;
+}
+.menu-item:hover,
+.menu-item:focus-visible,
+.menu-item[aria-selected="true"] {
+  color: var(--ink);
+  background: #ffffff12;
+  outline: 0;
+}
+.menu-item[aria-checked="true"] {
+  color: var(--ink);
+}
+.menu-item[aria-checked="true"]::after {
+  content: "✓";
+  font-size: 11px;
+  color: var(--muted);
+}
+.menu-item kbd {
+  min-width: 0;
+  height: 18px;
+  font-size: 10px;
+  color: var(--quiet);
+}
+.menu-item.danger:hover,
+.menu-item.danger:focus-visible {
+  color: #f0a3a3;
+}
+.menu-label,
+.menu-empty {
+  margin: 0;
+  padding: 6px 8px 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+.menu-empty {
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
+}
+.editor-menu hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.link-popover {
+  display: flex;
+  gap: 4px;
+  min-width: 280px;
+  max-width: 320px;
+}
+.link-popover input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  border: 0;
+  border-radius: 5px;
+  outline: 0;
+  background: #ffffff0a;
+}
+.link-popover .menu-item {
+  width: auto;
+  color: var(--ink);
+}
+
+/* ---------- Docs: the Notes list in the dock ---------- */
+
+.notes-panel {
+  position: absolute;
+  z-index: 9;
+  width: min(320px, calc(100% - 24px));
+  animation: window-in 0.16s ease-out;
+}
+.notes-surface {
+  display: flex;
+  flex-direction: column;
+  max-height: min(460px, 70svh);
+  overflow: hidden;
+}
+.notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.notes-head h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.notes-new {
+  padding: 5px 9px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: var(--inner-radius);
+  background: var(--hover);
+}
+.notes-new:hover {
+  background: #ffffff17;
+}
+.notes-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.note-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.note-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 34px 0 8px;
+  text-align: left;
+  border-radius: var(--inner-radius);
+}
+.note-row:hover,
+.note-row:focus-visible {
+  background: var(--hover);
+}
+.note-row svg {
+  width: 14px;
+  height: 14px;
+  color: var(--quiet);
+}
+.note-title {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.note-meta {
+  font-size: 10.5px;
+  color: var(--quiet);
+  white-space: nowrap;
+}
+.note-delete {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--quiet);
+  border-radius: 4px;
+  opacity: 0;
+}
+.note-item:hover .note-delete,
+.note-delete:focus-visible {
+  opacity: 1;
+}
+.note-delete:hover {
+  color: #f0a3a3;
+  background: var(--hover);
+}
+.note-delete svg {
+  width: 14px;
+  height: 14px;
+}
+.notes-empty {
+  padding: var(--space-3);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--quiet);
+}
+.notes-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  color: var(--quiet);
+  border-top: 1px solid var(--line);
+}
+.notes-import {
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: #ffffff33;
+}
+.notes-import:hover {
+  color: var(--ink);
+}
+.notes-import:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.notes-import input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.brain-stage.drop-ready::after {
+  content: "Drop a Markdown file to import it as a doc";
+  position: absolute;
+  inset: var(--space-3);
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px dashed #ffffff40;
+  border-radius: var(--outer-radius);
+  background: #0b0b0bb3;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-window,
+  .notes-panel {
+    animation: none;
+  }
+  .doc-body > .agent-flash {
+    animation-duration: 0.01s;
+  }
+  .doc-body > * {
+    transition: none;
+  }
+}
