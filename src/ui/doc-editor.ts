@@ -43,6 +43,8 @@ export interface DocEditorHost {
   /** Blocks the user changed and saved, for the activity log. */
   onSaved?(ids: string[]): void;
   onStatus?(status: "saving" | "saved" | "error", message?: string): void;
+  /** Escape with a block already selected. */
+  onEscape?(): void;
   notify?(message: string): void;
 }
 
@@ -447,7 +449,11 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
         Escape: () => {
           if (slashState().open) return false;
           const { selection } = this.editor.state;
-          if (selection instanceof NodeSelection) return false;
+          // ProseMirror swallows Escape, so a second one is passed on (the window minimizes).
+          if (selection instanceof NodeSelection) {
+            host.onEscape?.();
+            return true;
+          }
           const block = topBlock(this.editor.state);
           if (!block) return false;
           return dispatch(this.editor.state.tr.setSelection(NodeSelection.create(this.editor.state.doc, block.pos)));

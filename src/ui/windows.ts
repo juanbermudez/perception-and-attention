@@ -292,7 +292,10 @@ export function createWindowManager({
 
   function returnFocus(window: Managed) {
     if (!window.node.contains(document.activeElement)) return;
-    const opener = window.opener instanceof HTMLElement && window.opener.isConnected && !window.node.contains(window.opener) ? window.opener : null;
+    const opener =
+      window.opener instanceof HTMLElement && window.opener !== document.body && window.opener.isConnected && !window.node.contains(window.opener)
+        ? window.opener
+        : null;
     (opener ?? document.getElementById("notes-button"))?.focus({ preventScroll: true });
   }
 

@@ -126,7 +126,16 @@ Notes for review:
 - Hostile markdown cases.
 - Enforcement of every limit.
 
-**Status**: In Progress — core done; tool wrappers pending.
+**Status**: Complete in code (core on `webmcp/stage3`, tool layer on `webmcp/stage4`); the browser checks in the ChatGPT desktop browser are still pending.
+
+**Done on `webmcp/stage4` (tool layer)**
+- Tools `doc` and `edit_blocks` (zod schemas; flat objects with `superRefine`, so every tool schema stays `type: object`), and the docs parts of `outline` (`guide` gains `docs { ref, count }`; `docs`, `doc:*`, `quiz:*`, `block:*`), `read` (`brief`, `full`, `markdown`, `results`; `block:*` reads one block with its doc) and `search` (`scope: docs | all`; one scorer, guide and doc hits merged by score). `go(doc:*|quiz:*|block:*)` opens the window and scrolls to the block.
+- `api/docs-tools.ts` is the docs half of GuideApi; without `docs` wired, every doc ref returns `not_available` as before. Toast Undo: `doc` create → delete, delete → restore, rename → old title; a whole `edit_blocks` batch → `undoOps` (delete inserts, restore deletes, move back, whole-block updates to the earlier content).
+- `get_context` gains `windows`, `editing` (`block:*` while the cursor is in a doc) and `store` (only once the store has opened).
+- Activity: the in-memory ring stays the source for `get_context`; `activity.connect(store)` mirrors every entry into the store once it opens (earlier entries of the visit first). Cursors still restart after a reload. User doc edits (`edited`, coalesced per block), window changes (`window_*`), `created`, `renamed`, `deleted` and `imported` are logged.
+- `search(all)` and `outline(guide)` never boot the store for a visitor who has never used docs (`docsPresent`: store open, or a localStorage flag set when a doc exists).
+- The docs API parses refs with `model/refs.ts`; `download(file, text, ref)` gains the ref; new `load`, `saveBlocks` (store ops as the user, split into ≤50-op batches), `importDoc`, `onOpen`.
+- The store accepts an editor-chosen id on insert (5 base36 characters, used when free).
 
 **Done on `webmcp/stage3`**
 - Spike: sqlite-wasm with `opfs-sahpool` works from the single-file build (results in spec §2 and §14). The build grew by 829 KiB (5,648 → 6,477 KiB).
@@ -134,7 +143,7 @@ Notes for review:
 - `main.ts` exposes `window.docsDebug` (the docs API). The store boots on its first call, so the guide is unchanged until a doc is made.
 - Tests: `tests/store.test.mjs`, `tests/markdown.test.mjs`, `tests/docs-api.test.mjs` (45 tests; acceptance prompt 7 runs headlessly).
 
-**For the integrator**
+**For the integrator** (all done on `webmcp/stage4`, except the browser checks in the ChatGPT desktop browser; the author's checks in Claude's browser pane passed)
 - Tool wrappers: `doc` → `docs.doc(input)`; `edit_blocks` → `docs.editBlocks(input)`; `outline(docs)` → `docs.outlineDocs()`; `outline(doc:*|quiz:*)` → `docs.outlineArtifact(ref)`; `read(doc:*|quiz:*, detail)` → `docs.read(ref, detail)`; `search(scope: docs)` scores `docs.searchRows()` with `model/search.ts`; `go(block:*)` and `window` use `docs.locate(ref)`. Every method returns `{ error: { code, message, ... } }` instead of throwing.
 - Wire the hooks in `createDocsApi`: `currentView` (Stage 2 view API, for `view: "current"`), `isLocked` and `open` (Stage 4), `download`.
 - `get_context.store` comes from `docs.status()`, which never boots the store.
@@ -165,7 +174,28 @@ Notes for review:
 - Converting a ProseMirror document to block diffs, run headless with prosemirror-model.
 - Export/import fixtures.
 
-**Status**: Not Started
+**Status**: Complete in code (branch `webmcp/stage4`); acceptance prompt 5 in the ChatGPT desktop browser is still pending with the spike (spec §2). Tiptap worked, so the textarea fallback was not needed.
+
+**Done**
+- `ui/window-geometry.ts` (pure): sizes, slots, constrain (48 px and the header stay inside), cascade, tile and stack, nearest slot. `TOP_INSET` is 96 px so windows clear the dock at every width.
+- `ui/windows.ts`: the `#windows` layer after `#orbit-surface` (pointer events on windows never reach OrbitControls), header drag with pointer capture, corner resize, focus raises, at most 8 open (the least recently focused minimizes), tray chips at the bottom left, bottom sheets under 720 px (one at a time), `role="dialog"` with `aria-modal="false"` and a labelled title, Esc minimizes, Alt+Shift+arrows move 16 px, focus returns to the opener (else the Notes button). Layout is saved through `docs.saveWindows` and restored on idle, only when docs were used before.
+- Tool `window`: open (doc, quiz or block ref; `at`, `size`), close, minimize, restore, focus (default: the focused window), place, arrange (`tile` | `stack`).
+- `ui/doc-editor.ts` (`BlockEditor`): Tiptap core over the flat schema in `editor/schema.ts` (one top-level node per block, `id` on every node, lists as flat items with `indent`); input rules (`#`, `##`, `###`, `-`, `1.`, `[]`, `>`, three backticks, `---`, and inline `**`, `*`, `` ` ``, `~~`); `/` menu; block handle (drag to reorder, Turn into, Duplicate, Copy link, Delete); Tab/Shift+Tab indent; ⌘⇧↑/↓ move; Esc selects the block, a second Esc minimizes; ⌘B, ⌘I, ⌘E, ⌘⇧S, ⌘K (link to a URL or a region id); markdown paste and copy; `.md` drops insert blocks. Numbered lists count like the export does.
+- Sync (`editor/sync.ts`, pure): changed node ids per transaction, saved 400 ms after typing stops as the user without a rev; store changes by others are applied as the smallest step (attributes in place, only the changed stretch of text), so the cursor keeps its place. Agent edits get a 1.2 s wash and a gutter dot until the user visits the block. `isLocked`: unsaved blocks, and the block the user typed in within 5 s while it has the cursor.
+- `ui/docs-ui.ts`: doc windows (title field mapped to `artifacts.title`, "Edited 2 min ago · Assistant", memory-mode banner, save state), view blocks with Show (applies the `ViewPatch` through the view API, toast Undo back to the previous view), `/` → 3D view and `view: "current"` through `viewApi.capture()`, region links as `.region-mention` with the guide's hover preview (`explorer.watchRegionHover`) and click to open the region, `.md` download (a user gesture saves; an agent's call shows **Download ready** in the window), import by dropping `.md` files on the stage or with Import in the Notes list.
+- Entry point: a **Notes** button in the dock's actions, styled like About, with a small list (new note, open, delete with Undo, import).
+- Tests: `tests/windows.test.mjs` (geometry and slots), `tests/doc-editor.test.mjs` (inline markdown ↔ marks, blocks ↔ nodes for every type, ProseMirror doc changes → block ops applied to the real store, store changes → editor with the cursor kept, export/import through the editor), `tests/docs-tools.test.mjs` (schema fixtures for `doc`, `edit_blocks` and `window`; `stale_rev` rejects the whole batch; `locked_by_user`; Undo of a batch; acceptance prompts 5 and 7 headless; `window` and `go`; search never boots the store before a doc exists; the activity mirror). 152 tests in all (34 new).
+- Size: `dist/index.html` 6,815 → 7,199 KiB (+384 KiB; Tiptap and ProseMirror are about 285 KiB of it).
+- Checked in Claude's browser pane (Chromium): create by tool, window restore after reload, typing saves, `locked_by_user` while typing, an agent edit 5 s later keeps the cursor, `/` menu, input rules, Tab indent, drag reorder, Turn into, ⌘K region link with hover preview, Show on a view block, minimize to the tray, Download ready, import round trip, mobile sheet, and a fresh origin that never boots the store.
+
+Notes for review:
+- Two Stage 1 assertions in `tests/agent-tools.test.mjs` changed: the tool list (10 tools) and the unknown-tool example (`doc` → `nope`, since `doc` now exists). Stage 5 adds `quiz` to the same list.
+- Quizzes open in the doc editor with read-only question previews. Stage 5 hooks: `DocsUiDeps.renderQuestion` (inline quiz cards) and `createWindow` in `ui/docs-ui.ts` (branch on `kind === "quiz"` for the card).
+- Docs are not in the URL hash (`#/doc/k3f9`, spec §12): the hash stays the explorer's place, and open windows come back from the store instead.
+- The inline writer backslash-escapes `*`, `` ` ``, `[`, `]`, `\` and edge `_`/`~` in text the user edits, so it reads back the same; untouched blocks keep their stored text.
+- A doc created from markdown that starts with `# <same title>` shows the title twice (field and h1 block); the docs API keeps that block, as its tests expect.
+- Windows can still cover callout labels (spec §8 known limit).
+
 
 ## Stage 5: Quizzes
 

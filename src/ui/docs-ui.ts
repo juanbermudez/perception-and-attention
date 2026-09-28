@@ -13,7 +13,7 @@ import type { ViewOutcome } from "../api/view-api";
 import type { RegionId } from "../content/types";
 import { resolveRef } from "../model/refs";
 import type { Artifact, Block, BlockData } from "../store/types";
-import { type BlockEditor, createDocEditor } from "./doc-editor";
+import { type BlockEditor, createDocEditor, type DocEditorHost } from "./doc-editor";
 import { toast } from "./dom";
 import type { Explorer } from "./explorer";
 import type { Layout, SizeName, Slot } from "./window-geometry";
@@ -35,6 +35,8 @@ export interface DocsUiDeps {
   /** True while an agent's tool runs, so its window changes are not logged as the user's. */
   agentActive: () => boolean;
   storage: SettingStorage | null;
+  /** Stage 5: question blocks as inline quiz cards (otherwise a read-only preview). */
+  renderQuestion?: DocEditorHost["renderQuestion"];
 }
 
 interface DocWindow {
@@ -97,7 +99,7 @@ function saveFile(file: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-export function createDocsUi({ docs, stage, notesButton, view, explorer, activity, agentActive, storage }: DocsUiDeps) {
+export function createDocsUi({ docs, stage, notesButton, view, explorer, activity, agentActive, storage, renderQuestion }: DocsUiDeps) {
   const docWindows = new Map<string, DocWindow>();
   /** While windows from an earlier visit come back, which is not a user action to log. */
   let restoring = false;
@@ -199,6 +201,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     else activity.append({ by: "user", kind: "edited", ref, said: `${ids.length} blocks` });
   }
 
+  // Quizzes open in the doc editor for now, with read-only question previews. Stage 5's quiz card can
+  // branch on `loaded.kind === "quiz"` here and pass its own WindowBody to `windows.open`.
   async function createWindow(ref: string, request: OpenRequest): Promise<Result<{ ref: string; title: string }>> {
     const loaded = await docs.load(ref);
     if (isApiError(loaded)) return loaded as unknown as Result<{ ref: string; title: string }>;
@@ -227,6 +231,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
           if (status === "error" && message) console.warn(`Could not save ${loaded.ref}:`, message);
         },
         notify: (message) => toast(message),
+        onEscape: () => windows.minimize(loaded.ref, true),
+        renderQuestion,
       },
       { label: loaded.title },
     );
@@ -481,6 +487,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   }
 
   function openNotes() {
+    if (!notesList.children.length) notesList.innerHTML = '<li class="notes-empty">Loading…</li>';
     placeNotes();
     notesPanel.hidden = false;
     notesButton.setAttribute("aria-expanded", "true");
