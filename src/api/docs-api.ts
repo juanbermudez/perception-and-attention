@@ -6,7 +6,7 @@
 // The store boots on the first call, so the guide is untouched until someone makes a doc.
 
 import { blockToMarkdown, describeView, exportDocument, markdownToBlocks } from "../model/markdown";
-import { validateQuestion } from "../model/quiz";
+import { summarizeResults, validateQuestion } from "../model/quiz";
 import { LIMITS } from "../store/limits";
 import { storageBanner } from "../store/mode";
 import type {
@@ -513,28 +513,8 @@ export function createDocsApi(options: DocsApiOptions) {
 
   async function results(db: Store, artifact: Artifact): Promise<QuizResults> {
     const attempts = await db.listAttempts(artifact.id);
-    const questions = artifact.blocks
-      .filter((block) => block.type === "question")
-      .map((block) => {
-        const mine = attempts.filter((attempt) => attempt.blockId === block.id);
-        const entry: QuizResults["questions"][number] = {
-          id: block.id,
-          kind: String(block.data?.kind ?? "?"),
-          attempts: mine.length,
-          correct: mine.filter((attempt) => attempt.correct === true).length,
-        };
-        if (mine.length) entry.last = mine[mine.length - 1].correct;
-        return entry;
-      });
-    return {
-      ref: refOf(artifact),
-      summary: {
-        answered: questions.filter((question) => question.attempts > 0).length,
-        correct: questions.filter((question) => question.last === true).length,
-        of: questions.length,
-      },
-      questions,
-    };
+    const questions = artifact.blocks.filter((block) => block.type === "question").map((block) => ({ id: block.id, kind: String(block.data?.kind ?? "?") }));
+    return { ref: refOf(artifact), ...summarizeResults(questions, attempts) };
   }
 
   // search (spec §6.4): live block rows for the shared scorer in model/search.ts
@@ -554,7 +534,7 @@ export function createDocsApi(options: DocsApiOptions) {
     });
   }
 
-  // quiz storage (spec §6.10); grading and the card are Stage 5
+  // quiz storage (spec §6.10); grading is in the page (model/quiz.ts, ui/quiz-card.ts)
   async function createQuiz(input: { title: string; questions: unknown[]; intro?: string; open?: boolean }, actor: Actor = "agent"): Result<DocCreated> {
     if (!isObject(input) || !Array.isArray(input.questions) || input.questions.length === 0)
       return fail("bad_input", "A quiz needs a title and 1–30 questions.");
