@@ -77,6 +77,15 @@ src/
     attention.ts       Normalization model of attention; region pulse
     activity.ts        Critically damped springs and exponential decay
     callouts.ts        Label placement outside the head
+    markdown.ts        Markdown ↔ doc blocks; the escaped, allow-listed inline renderer
+    quiz.ts            Quiz question types and validation
+  api/
+    docs-api.ts        Docs and quizzes: create, edit blocks, outline, read, attempts, windows
+  store/               Local SQLite (WASM) store for docs, in a worker (OPFS, or memory)
+    engine.ts          All reads and writes over one connection; one transaction per batch
+    migrations.ts      Schema, gated on user_version
+    client.ts          Starts the worker from the bundled source; storage mode and tab lock
+    worker.ts          Loads sqlite-wasm from the embedded binary and serves engine calls
   scene/               Three.js
     brain-scene.ts     Builds the scene and runs the frame loop
     geometry.ts        Atlas decoding, surface sampling, route curves
@@ -88,8 +97,8 @@ src/
     dom.ts             Element lookup, escaping, [[region|text]] links, toasts
     icons.ts, keyboard.ts, panel-resize.ts
   data/                Atlas and skull geometry derived from Z-Anatomy; functional-area positions
-tests/                 Content, anatomy, attention, callout and motion tests
-scripts/               build, local server, atlas, skull and functional-area preparation
+tests/                 Content, anatomy, attention, callout, motion, store, markdown and docs tests
+scripts/               build (bundles the store worker and embeds sqlite3.wasm), local server, atlas, skull and functional-area preparation
 provenance/            Source hashes, transforms and bounds for the derived geometry
 docs/                  Science fact-check notes
 ```
@@ -135,5 +144,5 @@ node scripts/prepare-skull.mjs
 ## Credits and licenses
 
 - **Anatomy:** [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy) by Gauthier Kervyn and contributors, based on BodyParts3D. The derived geometry keeps CC BY-SA 4.0; the inner-ear (cochlea) meshes keep CC BY-NC-SA 4.0 (non-commercial). See [`ATTRIBUTION.md`](ATTRIBUTION.md).
-- **Libraries:** [math](https://github.com/pmndrs/math) by Isaac Mason and [Three.js](https://threejs.org/), both MIT.
+- **Libraries:** [math](https://github.com/pmndrs/math) by Isaac Mason and [Three.js](https://threejs.org/), both MIT. [SQLite Wasm](https://sqlite.org/wasm) (SQLite is public domain; the npm wrapper is Apache-2.0; the Emscripten glue is MIT) and [marked](https://marked.js.org/) (MIT) for local docs.
 - **Code license:** not yet chosen.

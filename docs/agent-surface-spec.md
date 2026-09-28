@@ -58,6 +58,20 @@ These facts shape the design. Sources are listed in §18.
 - Do tools stay registered after hash changes?
 - Is OPFS available in the ChatGPT browser? This one blocks Stage 3.
 
+**Stage 3 spike results (2026-09-28, `@sqlite.org/sqlite-wasm` 3.53.4-build1):**
+
+| Question | Answer |
+| --- | --- |
+| Does sqlite-wasm with `opfs-sahpool` load from the single-file build? | **Yes.** The build bundles `src/store/worker.ts` (sqlite JS + our engine) as an IIFE string, embeds `sqlite3.wasm` gzipped and base64-encoded inside it, and the page starts it from a Blob URL. Checked in Chromium 152 (the Claude desktop browser pane) and in headless Chrome: first boot 80–330 ms including gunzip, wasm compile and opening OPFS. |
+| Does the init accept an embedded binary? | Use Emscripten's **`instantiateWasm`** hook with the decompressed bytes. `wasmBinary` alone is not enough: Emscripten still evaluates `new URL("sqlite3.wasm", import.meta.url)`, which throws in a Blob worker. |
+| Does data survive? | Yes: across reloads, across a full browser restart (fixed Chrome profile), and across six reloads that re-open the store as early as `DOMContentLoaded`. |
+| Second tab | The Web Lock (`pa-db`, `ifAvailable`) sends it to memory mode with reason `other-tab`. |
+| `file://` | Chrome starts the Blob worker; the store runs in memory mode (reason `file`). Other browsers are untested. |
+| Can the page detect OPFS support? | Only partly. `createSyncAccessHandle` exists **only inside workers**, so the page checks `navigator.storage.getDirectory` and the worker falls back to memory if the pool cannot be installed. |
+| Hazard found | When `installOpfsSAHPoolVfs()` cannot acquire a file handle, sqlite-wasm calls `removeVfs()`, which **deletes the pool directory, database included**. The worker therefore first opens and closes every pool file itself, retrying for up to 2 s; only then does it install the VFS. We could not reproduce the race in Chrome, so this is a guard, not a fix for an observed bug. |
+| COOP/COEP | Not needed. The SharedArrayBuffer-based `opfs` and `opfs-wl` VFSes are disabled through `sqlite3ApiConfig`, which also silences their startup warnings. |
+| ChatGPT desktop browser | **Not yet checked.** Run the checks in `IMPLEMENTATION_PLAN.md` Stage 3 there. |
+
 ---
 
 ## 3. Key decisions, with the strongest case against each
@@ -626,6 +640,8 @@ Blocks form a flat list, and each row is one block.
 - `view` and `question` blocks write the HTML-comment metadata followed by a readable line, for example `**3D view:** LGN and V1 from the left, skull dissolved`. The markdown reads cleanly anywhere and round-trips back into the guide.
 - Answers are included for quiz export.
 - The first line is `<!-- perception-attention doc:k3f9 exported 2026-09-27 -->`.
+- *As built:* the title follows as `# Title`, and importing a file that starts with the header takes it back as the title. A question's readable part ends with `<!-- /question -->`, so import skips it. Text that would read as block syntax ("# ", "- ", "1. ", ">", "---" at a line start) is backslash-escaped on export and unescaped on import, so export → import gives the same blocks. Known lossy cases: leading spaces on a line, blank lines inside a paragraph or list item, list indents with no parent item, and empty paragraphs.
+- *As built:* in `read(full)`, `view` and `question` blocks show their caption or prompt as `md`, with the JSON in `data`. An `update` whose `md` is a plain paragraph changes only the text (a bullet stays a bullet), and list blocks keep their indent.
 
 **Inline rendering** uses our own small renderer:
 
@@ -711,7 +727,7 @@ A quiz is an artifact of `kind: "quiz"`. Its blocks are optional intro paragraph
 **Single-file build:**
 
 - Bundle the worker as a string and start it from a Blob URL. The Blob inherits the page origin, so OPFS works.
-- Embed `sqlite3.wasm` as base64 and hand it to the init function. **Stage 3 spike:** confirm the init accepts a binary (Emscripten `wasmBinary`) or a `locateFile` Blob URL.
+- Embed `sqlite3.wasm` gzipped and base64-encoded, decompress it with `DecompressionStream`, and pass it through Emscripten's `instantiateWasm` hook (spike results in §2).
 
 **Startup:**
 
@@ -789,6 +805,16 @@ interface Store {
 }
 ```
 
+**As built (Stage 3):**
+
+- Markdown is parsed in the page (`docs-api`), so store ops carry block content. Store-level ops add `restore` (undo a block delete) and `revert` (undo an edit from `block_history`), and `update` takes either a whole block or `text` alone, which keeps the type, indent and data.
+- `rev` is checked only when sent. The docs API requires it from the agent; the user's editor may omit it (§9.3).
+- Extra read methods: `blockHistory`, `locateBlock`, `listAttempts`, `listWindows`, `listActivity`, `getSetting`/`setSetting`. `searchRows` also returns the artifact kind and title and the block type. `mode` comes with a `reason` for the banner.
+- Soft-deleted blocks keep their `ord`; `restore` puts them back there, which is exact when undo runs in reverse order.
+- `block_history` has no `type` column, so `revert` restores text and data, not a type change.
+- A saved database that fails to open or migrate is left untouched, and the store runs in memory with reason `failed`.
+- Titles are limited to 200 characters (not in §13).
+
 ### 11.4 Remote sync (later, designed now)
 
 - The local store stays the source of truth. The activity and block-op log doubles as an **outbox**.
@@ -835,12 +861,12 @@ interface Store {
 
 **Bundle growth:**
 
-- about 1.3 MB for sqlite3.wasm as base64
+- about 1.3 MB for sqlite3.wasm as base64 (**measured: 525 KiB**, gzipped before base64; the worker string with the sqlite JS and our engine is 760 KiB)
 - about 250–350 KB for Tiptap and ProseMirror
-- about 40 KB for marked
+- about 40 KB for marked (**measured: 45 KB**, plus 25 KB for the Stage 3 modules)
 - about 15–60 KB for zod
 
-`dist/index.html` goes from about 5.6 MB today to about 7.3 MB. Heavy modules are instantiated lazily.
+`dist/index.html` goes from about 5.6 MB today to about 7.3 MB. Heavy modules are instantiated lazily. **Measured after Stage 3:** 5,648 KiB → 6,477 KiB (+829 KiB). The store worker starts only on the first docs call.
 
 **Frame loop:**
 

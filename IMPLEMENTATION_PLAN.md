@@ -99,7 +99,21 @@ Spec: [`docs/agent-surface-spec.md`](docs/agent-surface-spec.md). Each stage shi
 - Hostile markdown cases.
 - Enforcement of every limit.
 
-**Status**: Not Started
+**Status**: In Progress — core done; tool wrappers pending.
+
+**Done on `webmcp/stage3`**
+- Spike: sqlite-wasm with `opfs-sahpool` works from the single-file build (results in spec §2 and §14). The build grew by 829 KiB (5,648 → 6,477 KiB).
+- `src/store/`: `Store` interface, engine, migrations, worker, RPC client, storage mode and banner, tab lock. `src/model/markdown.ts`, `src/model/quiz.ts` (types and validation; grading is Stage 5), `src/api/docs-api.ts`.
+- `main.ts` exposes `window.docsDebug` (the docs API). The store boots on its first call, so the guide is unchanged until a doc is made.
+- Tests: `tests/store.test.mjs`, `tests/markdown.test.mjs`, `tests/docs-api.test.mjs` (45 tests; acceptance prompt 7 runs headlessly).
+
+**For the integrator**
+- Tool wrappers: `doc` → `docs.doc(input)`; `edit_blocks` → `docs.editBlocks(input)`; `outline(docs)` → `docs.outlineDocs()`; `outline(doc:*|quiz:*)` → `docs.outlineArtifact(ref)`; `read(doc:*|quiz:*, detail)` → `docs.read(ref, detail)`; `search(scope: docs)` scores `docs.searchRows()` with `model/search.ts`; `go(block:*)` and `window` use `docs.locate(ref)`. Every method returns `{ error: { code, message, ... } }` instead of throwing.
+- Wire the hooks in `createDocsApi`: `currentView` (Stage 2 view API, for `view: "current"`), `isLocked` and `open` (Stage 4), `download`.
+- `get_context.store` comes from `docs.status()`, which never boots the store.
+- Activity log: this branch does not have Stage 1's `src/api/activity.ts`, so it was not moved. The store has `appendActivity` and `listActivity` with the same semantics (seq cursor, at most 30 per read, last 500 kept). Keep the in-memory ring as the source for `get_context`, and mirror entries into the store only once it is open; logging to the store from page load would boot the worker for every visitor.
+- Replace the ref parsing in `docs-api.ts` (`artifactId`, `blockId`) with `model/refs.ts`.
+- Browser checks still to run, including in the ChatGPT desktop browser: `pnpm preview`, then `await docsDebug.doc({ action: "create", title: "T", markdown: "- a" })`, reload, and `await docsDebug.outlineDocs()` lists it with `docsDebug.status().store === "local"`. A second tab reports `memory` / `other-tab`. `dist/index.html` opened from disk reports `memory` / `file`.
 
 ## Stage 4: Floating windows and the doc editor
 
