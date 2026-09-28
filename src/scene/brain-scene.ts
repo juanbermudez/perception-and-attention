@@ -643,9 +643,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   labelContainer.append(leaders);
   for (const id of Object.keys(regions) as RegionId[]) {
     const region = regions[id];
+    // The dot and its wire sphere are white so they stand out against the coloured
+    // region highlight; only the soft glow takes the topic colour.
     const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.026, 12, 12),
-      new THREE.MeshBasicMaterial({ color: "#bda0ff", transparent: true, depthTest: false }),
+      new THREE.SphereGeometry(0.018, 12, 12),
+      new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, depthTest: false }),
     );
     sphere.position.fromArray(region.position);
     sphere.renderOrder = 5;
@@ -657,8 +659,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     halo.scale.set(0.6, 0.6, 0.6);
     world.add(halo);
     const pulse = new THREE.Mesh(
-      new THREE.SphereGeometry(0.115, 20, 16),
-      new THREE.MeshBasicMaterial({ color: "#bda0ff", transparent: true, opacity: 0.15, wireframe: true, depthWrite: false, depthTest: false }),
+      new THREE.SphereGeometry(0.075, 16, 12),
+      new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.15, wireframe: true, depthWrite: false, depthTest: false }),
     );
     pulse.position.copy(sphere.position);
     pulse.renderOrder = 5;
@@ -678,7 +680,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const leader = document.createElementNS("http://www.w3.org/2000/svg", "path");
     leaders.append(leader);
     const colorTarget = vec3.create();
-    (sphere.material as THREE.MeshBasicMaterial).color.toArray(colorTarget);
+    (halo.material as THREE.SpriteMaterial).color.toArray(colorTarget);
     markers.push({
       id,
       object: sphere,
@@ -1111,16 +1113,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const objectMaterial = marker.object.material as THREE.MeshBasicMaterial,
         haloMaterial = marker.halo.material as THREE.SpriteMaterial,
         pulseMaterial = marker.pulse.material as THREE.MeshBasicMaterial;
-      objectMaterial.color.fromArray(stepColor(marker.color, marker.colorTarget, dt, reduced));
-      haloMaterial.color.copy(objectMaterial.color);
-      pulseMaterial.color.copy(objectMaterial.color);
+      haloMaterial.color.fromArray(stepColor(marker.color, marker.colorTarget, dt, reduced));
       objectMaterial.opacity = presence * spot;
       haloMaterial.opacity = presence * spot;
       const energy = (regionEnergy.get(marker.id) ?? 0) + (impulse.get(marker.id) ?? 0) * 0.6;
       marker.object.scale.setScalar(lerp(1, 1.15, selection));
-      marker.halo.scale.setScalar(lerp(0.32, 0.56, selection) + Math.min(energy, 1.2) * 0.22);
+      marker.halo.scale.setScalar(lerp(0.26, 0.44, selection) + Math.min(energy, 1.2) * 0.18);
       marker.pulse.scale.setScalar(lerp(0.65, 1 + (pulseAmount - 0.5) * 0.3, selection));
-      pulseMaterial.opacity = presence * spot * lerp(0.12, pulseAmount * 0.45, selection);
+      pulseMaterial.opacity = presence * spot * lerp(0.1, pulseAmount * 0.4, selection);
       marker.object.getWorldPosition(projection);
       projection.project(camera);
       const x = (projection.x * 0.5 + 0.5) * width;
