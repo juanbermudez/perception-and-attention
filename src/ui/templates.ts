@@ -7,7 +7,7 @@ import { sources } from "../content/sources";
 import type { Pathway, RegionId } from "../content/types";
 import { type AttentionSettings, MAX_ATTENTION_GAIN, NORMALIZATION_SIGMA, sensoryStreams, streamResponses } from "../model/attention";
 import { escapeHtml, linkedText } from "./dom";
-import { arrowIcon, chevronIcon, externalIcon, topicIcon } from "./icons";
+import { arrowIcon, chevronIcon, topicIcon } from "./icons";
 
 const sourceLink = (title: string, url: string, note = "") =>
   `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(title)}</a>${note ? `<span>${escapeHtml(note)}</span>` : ""}</li>`;
@@ -32,7 +32,6 @@ export function introHtml() {
     <h2 id="intro-title">${escapeHtml(overview.title)}</h2>
     ${overview.lede.map((p) => `<p class="intro-lede">${linkedText(p)}</p>`).join("")}
     <section class="intro-section"><h3>Topics</h3><ol class="journey-list">${topics}</ol></section>
-    <button class="source-link" data-about>About this project ${externalIcon}</button>
   </div>`;
 }
 
@@ -66,12 +65,27 @@ export function pathAfterHtml(path: Pathway) {
     .filter((source) => source !== undefined)
     .map((source) => sourceLink(source.title, source.url, `${source.author} — ${source.note}`))
     .join("");
-  const answers = path.answers.map((answer, i) => `<button class="quiz-option" data-answer="${i}">${escapeHtml(answer)}</button>`).join("");
   return `<section class="big-picture"><h3>Summary</h3><p>${linkedText(path.insight)}</p></section>
-    <details class="after-block quiz"><summary>Check your understanding</summary><p class="quiz-question">${escapeHtml(path.question)}</p><div class="quiz-options">${answers}</div><p class="quiz-feedback" aria-live="polite"></p></details>
-    <details class="after-block"><summary>Limits of this model</summary><p>${linkedText(path.caveat)}</p></details>
+    <details class="after-block"><summary>Anatomical accuracy</summary><p>${linkedText(path.caveat)}</p></details>
     <details class="after-block"><summary>Sources</summary><ul class="source-list">${refs}</ul></details>`;
 }
+
+/** Regions a topic covers: walkthrough regions in step order, then others drawn on its routes. */
+export function topicRegions(path: Pathway) {
+  const inSteps = [...new Set(path.steps.map((step) => step.region))];
+  const onRoutes = [...new Set(path.edges.flatMap((edge) => [edge.from, edge.to]))].filter((id) => !inSteps.includes(id));
+  return { inSteps, onRoutes };
+}
+
+export function regionListHtml(path: Pathway, selected: RegionId) {
+  const row = (id: RegionId) =>
+    `<li><button class="region-row${id === selected ? " current" : ""}" data-open-region="${id}"><span class="region-row-name">${escapeHtml(regions[id].label)}</span><span class="region-row-text">${escapeHtml(stripLinks(regionGuides[id].summary))}</span></button></li>`;
+  const { inSteps, onRoutes } = topicRegions(path);
+  const others = onRoutes.length ? `<h3 class="region-list-heading">Also shown</h3><ul class="region-list">${onRoutes.map(row).join("")}</ul>` : "";
+  return `<p class="panel-lede">Regions in this topic. Select one to learn more.</p><ul class="region-list">${inSteps.map(row).join("")}</ul>${others}`;
+}
+
+const stripLinks = (text: string) => text.replace(/\[\[[a-zA-Z0-9]+\|([^\]]+)\]\]/g, "$1");
 
 export function regionHtml(id: RegionId, path: Pathway) {
   const region = regions[id];
@@ -84,13 +98,14 @@ export function regionHtml(id: RegionId, path: Pathway) {
     .map((source) => sourceLink(source.title, source.url))
     .join("");
   const stepIndex = path.steps.findIndex((step) => step.region === id);
-  return `<div class="region-heading"><h3 id="drawer-title" tabindex="-1"><button class="region-title-button" data-region="${id}" aria-label="Focus ${escapeHtml(region.label)}">${escapeHtml(region.label)}</button></h3></div>
+  return `<button class="back-link" data-region-list>${chevronIcon("back-chevron")}All regions</button>
+    <div class="region-heading"><h3 id="drawer-title" tabindex="-1"><button class="region-title-button" data-region="${id}" aria-label="Focus ${escapeHtml(region.label)}">${escapeHtml(region.label)}</button></h3></div>
     <p class="region-kind">${escapeHtml(region.where)}</p>
     <p class="drawer-intro">${linkedText(guide.summary)}</p>
     ${section("How it works", guide.mechanism)}
     ${role ? section(`In ${escapeHtml(path.title.toLowerCase())}`, role) : ""}
     ${section("Connections", guide.connections)}
-    ${section("In this model", guide.limit)}
+    ${section("Anatomical accuracy", guide.limit)}
     ${refs ? `<section class="drawer-section"><h4>Sources</h4><ul class="source-list">${refs}</ul></section>` : ""}
     <div class="region-nav"><button data-back-guide>${stepIndex >= 0 ? `← Back to step ${stepIndex + 1}` : "← Back to walkthrough"}</button></div>`;
 }

@@ -75,5 +75,6 @@ export function attentionWeight(path: PathId, edge: Edge, settings: AttentionSet
 }
 
 export function regionPulse(seconds: number, reducedMotion = false): number {
-  return reducedMotion ? 0.575 : 0.575 + 0.325 * Math.cos((seconds * Math.PI * 2) / 4.5);
+  // Opacity pulses between 50% and 95% over 4.5 s; steady at the midpoint with reduced motion.
+  return reducedMotion ? 0.725 : 0.725 + 0.225 * Math.cos((seconds * Math.PI * 2) / 4.5);
 }

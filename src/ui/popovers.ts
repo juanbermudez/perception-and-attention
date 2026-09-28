@@ -1,4 +1,4 @@
-// Settings and Info are native popovers, placed above their dock buttons.
+// Settings and Info are native popovers, placed below their dock buttons.
 import { byId } from "./dom";
 
 export function setupPopovers() {
@@ -13,7 +13,8 @@ export function setupPopovers() {
     const width = rect.width || Number.parseFloat(getComputedStyle(popover).width);
     const height = rect.height || 360;
     popover.style.left = `${Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8))}px`;
-    popover.style.top = `${Math.max(8, Math.min(anchor.top - height - 10, window.innerHeight - height - 8))}px`;
+    // The dock sits at the top of the stage, so popovers open downward.
+    popover.style.top = `${Math.max(8, Math.min(anchor.bottom + 10, window.innerHeight - height - 8))}px`;
   }
 
   function placeOpen() {

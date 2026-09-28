@@ -14,6 +14,7 @@ import {
   pathAfterHtml,
   priorityButtonsHtml,
   regionHtml,
+  regionListHtml,
   stepDotsHtml,
   stepsHtml,
   streamRowsHtml,
@@ -40,15 +41,25 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   let scene: BrainScene | undefined;
   let panel: Panel = "guide";
   let expandedStep: number | null = 0;
+  /** Region shown in the Region tab; null shows the list of regions. */
   let shownRegion: RegionId | null = null;
   let walkTimer: ReturnType<typeof setTimeout> | undefined;
 
   const current = () => pathways.find((path) => path.id === state.path) ?? pathways[0];
+  let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+  let previewing: RegionId | null = null;
+  /** Stop a hover preview. Without `restore`, the camera stays where the next action puts it. */
+  function cancelPreview(restore = false) {
+    clearTimeout(hoverTimer);
+    if (previewing) scene?.endPreview(restore);
+    previewing = null;
+  }
   const smooth = (): ScrollBehavior => (reducedMotion.matches ? "auto" : "smooth");
 
   /* ---------- Overview ---------- */
 
   function showIntro() {
+    cancelPreview();
     stopWalk();
     state.overview = true;
     state.path = "attention";
@@ -76,6 +87,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   /* ---------- Topics and steps ---------- */
 
   function selectPath(id: PathId) {
+    cancelPreview();
     stopWalk();
     state.overview = false;
     state.path = id;
@@ -103,6 +115,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   }
 
   function setStep(index: number, { camera = true, signal = true, keepWalking = false } = {}) {
+    cancelPreview();
     const path = current();
     state.step = Math.max(0, Math.min(path.steps.length - 1, index));
     state.selected = path.steps[state.step].region;
@@ -137,7 +150,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     });
     byId<HTMLButtonElement>("step-prev").disabled = state.step <= 0;
     byId<HTMLButtonElement>("step-next").disabled = state.step >= path.steps.length - 1;
-    if (panel === "region" && shownRegion !== state.selected) renderRegion(state.selected);
+    if (panel === "region") {
+      if (shownRegion === null) renderRegionList();
+      else if (shownRegion !== state.selected) renderRegion(state.selected);
+    }
   }
 
   function selectRegion(id: RegionId, focusCamera = true) {
@@ -184,8 +200,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   /* ---------- Panel tabs ---------- */
 
-  function setPanel(next: Panel, focusTitle = false) {
+  function setPanel(next: Panel) {
     panel = next;
+    // The Streams tab compares all senses, so the step spotlight is off there.
+    state.spotlight = next !== "streams";
     for (const tab of document.querySelectorAll<HTMLButtonElement>(".panel-tab")) {
       const active = tab.dataset.panel === next;
       tab.setAttribute("aria-selected", String(active));
@@ -196,16 +214,23 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("sensory-controls").hidden = next !== "streams";
     byId("step-controls").hidden = next === "streams";
     body.scrollTop = 0;
-    if (next === "region") {
-      renderRegion(state.selected);
-      if (focusTitle) byId("drawer-title").focus({ preventScroll: true });
-    } else shownRegion = null;
+    if (next !== "region") shownRegion = null;
     if (next === "streams") updateAttention();
   }
 
   function renderRegion(id: RegionId) {
     shownRegion = id;
     byId("drawer-content").innerHTML = regionHtml(id, current());
+  }
+
+  function renderRegionList() {
+    shownRegion = null;
+    byId("drawer-content").innerHTML = regionListHtml(current(), state.selected);
+  }
+
+  function showRegionList() {
+    setPanel("region");
+    renderRegionList();
   }
 
   function showRegion(id: RegionId = state.selected) {
@@ -217,7 +242,9 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
       if (host) selectPath(host.id);
     }
     selectRegion(id);
-    setPanel("region", true);
+    setPanel("region");
+    renderRegion(id);
+    byId("drawer-title").focus({ preventScroll: true });
   }
 
   /* ---------- Attention streams ---------- */
@@ -274,15 +301,16 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (button) selectPath(button.dataset.path as PathId);
   });
   byId("home-button").addEventListener("click", showIntro);
+  byId("intro-about").addEventListener("click", onOpenAbout);
   byId("back-to-intro").addEventListener("click", () => {
     showIntro();
     byId("home-button").focus({ preventScroll: true });
   });
   byId("intro-scroll").addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
+    cancelPreview();
     const topic = target.closest<HTMLButtonElement>(".journey");
     if (topic) selectPath(topic.dataset.path as PathId);
-    else if (target.closest("[data-about]")) onOpenAbout();
     else {
       const mention = target.closest<HTMLButtonElement>(".region-mention");
       if (mention) scene?.focusRegion(mention.dataset.region as RegionId, true);
@@ -305,15 +333,6 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
       updateSteps();
     } else setStep(index);
   });
-  byId("path-after").addEventListener("click", (event) => {
-    const option = (event.target as HTMLElement).closest<HTMLButtonElement>(".quiz-option");
-    if (!option) return;
-    const path = current();
-    const correct = Number(option.dataset.answer) === path.correct;
-    option.dataset.result = correct ? "correct" : "wrong";
-    const feedback = option.closest(".quiz")?.querySelector(".quiz-feedback");
-    if (feedback) feedback.textContent = correct ? `Correct. ${path.explanation}` : "Not correct. Try another answer.";
-  });
 
   inspector.addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -322,7 +341,9 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
       handleStreams(button);
       return;
     }
+    cancelPreview();
     if (button.dataset.openRegion) showRegion(button.dataset.openRegion as RegionId);
+    else if (button.hasAttribute("data-region-list")) showRegionList();
     else if (button.hasAttribute("data-back-guide")) setPanel("guide");
     else if (button.dataset.region) {
       const id = button.dataset.region as RegionId;
@@ -337,7 +358,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   const panelTabs = document.querySelector(".panel-tabs");
   for (const tab of document.querySelectorAll<HTMLButtonElement>(".panel-tab")) {
-    tab.addEventListener("click", () => (tab.dataset.panel === "region" ? showRegion() : setPanel(tab.dataset.panel as Panel)));
+    tab.addEventListener("click", () => (tab.dataset.panel === "region" ? showRegionList() : setPanel(tab.dataset.panel as Panel)));
   }
   panelTabs?.addEventListener("keydown", (event) => {
     const e = event as KeyboardEvent;
@@ -347,8 +368,32 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (next === null) return;
     e.preventDefault();
     e.stopPropagation();
-    setPanel(tabs[next].dataset.panel as Panel);
+    if (tabs[next].dataset.panel === "region") showRegionList();
+    else setPanel(tabs[next].dataset.panel as Panel);
     tabs[next].focus();
+  });
+
+  // Hovering a region name in the panel previews it in 3D; leaving returns the view.
+  const regionTarget = (node: EventTarget | null) =>
+    (node as HTMLElement | null)?.closest<HTMLElement>(".region-mention, .step-region-link, .region-row") ?? null;
+  inspector.addEventListener("pointerover", (event) => {
+    if (event.pointerType !== "mouse") return;
+    const target = regionTarget(event.target);
+    const id = (target?.dataset.region ?? target?.dataset.openRegion) as RegionId | undefined;
+    if (!id) return;
+    clearTimeout(hoverTimer);
+    if (previewing === id) return;
+    hoverTimer = setTimeout(() => {
+      previewing = id;
+      scene?.previewRegion(id);
+    }, 140);
+  });
+  inspector.addEventListener("pointerout", (event) => {
+    const target = regionTarget(event.target);
+    if (!target || target.contains(event.relatedTarget as Node | null)) return;
+    clearTimeout(hoverTimer);
+    // A short grace period lets the pointer move to a neighbouring name without a round trip.
+    hoverTimer = setTimeout(() => cancelPreview(true), 160);
   });
 
   return {

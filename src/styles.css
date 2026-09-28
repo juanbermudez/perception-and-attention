@@ -154,11 +154,11 @@ kbd {
   touch-action: none;
 }
 
-/* Bottom dock: overview, the six pathways with names, then settings and info. */
+/* Top dock: overview, the six topics with names, then settings and info. */
 .dock {
   position: absolute;
   left: 50%;
-  bottom: var(--space-4);
+  top: var(--space-4);
   transform: translateX(-50%);
   max-width: calc(100% - 32px);
   z-index: 8;
@@ -284,7 +284,7 @@ kbd {
   .dock {
     left: var(--space-3);
     right: var(--space-3);
-    bottom: var(--space-3);
+    top: var(--space-3);
     transform: none;
     max-width: none;
   }
@@ -556,7 +556,7 @@ body.labels-hidden #region-labels {
   position: absolute;
   z-index: 9;
   left: 50%;
-  bottom: 84px;
+  bottom: var(--space-5);
   transform: translateX(-50%);
   max-width: min(340px, 90%);
   padding: 8px 12px;
@@ -697,9 +697,6 @@ body.labels-hidden #region-labels {
   text-wrap: pretty;
 }
 .intro-section {
-  margin-top: var(--space-5);
-}
-.intro > .source-link {
   margin-top: var(--space-5);
 }
 .intro-section h3 {
@@ -1111,39 +1108,6 @@ body.labels-hidden #region-labels {
   line-height: 1.5;
   color: var(--quiet);
   margin-top: 2px;
-}
-.quiz p.quiz-question {
-  color: var(--ink);
-}
-.quiz-options {
-  display: grid;
-  gap: var(--space-1);
-  margin-bottom: var(--space-3);
-}
-.quiz-option {
-  min-height: 36px;
-  padding: 7px 12px;
-  text-align: left;
-  font-size: 12.5px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: var(--inner-radius);
-}
-.quiz-option:hover {
-  color: var(--ink);
-  border-color: #ffffff30;
-}
-.quiz-option[data-result="correct"] {
-  color: #fff;
-  border-color: #7fe0a6;
-  background: #7fe0a614;
-}
-.quiz-option[data-result="wrong"] {
-  color: var(--muted);
-  border-color: #e08a7f80;
-}
-.quiz-feedback {
-  min-height: 1em;
 }
 
 /* Walkthrough transport */
@@ -1734,7 +1698,7 @@ dialog::backdrop {
     width: 40px;
   }
   .stage-toast {
-    bottom: 76px;
+    bottom: var(--space-4);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1754,4 +1718,78 @@ dialog::backdrop {
   .step-body {
     transition-duration: 0s, 0.12s;
   }
+}
+
+/* Region tab: list first, then one region's detail. */
+.region-list-heading {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+.region-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.region-list li {
+  border-bottom: 1px solid var(--line);
+}
+.region-row {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 2px;
+  text-align: left;
+}
+.region-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.region-row-name::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--path-color);
+  opacity: 0.45;
+  flex: none;
+}
+.region-row.current .region-row-name::before {
+  opacity: 1;
+}
+.region-row-text {
+  padding-left: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--quiet);
+}
+.region-row:hover .region-row-text {
+  color: var(--muted);
+}
+.back-chevron {
+  transform: rotate(180deg);
+}
+#drawer-content > .back-link {
+  margin-bottom: var(--space-3);
+}
+
+/* The About link stays pinned under the overview. */
+.intro-footer {
+  flex: none;
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+.intro-footer .source-link {
+  margin: 0;
+  padding: 0;
+  min-height: 40px;
+  border-top: 0;
 }

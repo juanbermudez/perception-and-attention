@@ -57,12 +57,12 @@ console.log(
 );
 
 const values = Array.from({ length: 901 }, (_, i) => regionPulse(i * 0.005));
-assert(Math.abs(Math.min(...values) - 0.25) < 1e-12);
-assert(Math.abs(Math.max(...values) - 0.9) < 1e-12);
+assert(Math.abs(Math.min(...values) - 0.5) < 1e-12);
+assert(Math.abs(Math.max(...values) - 0.95) < 1e-12);
 assert.equal(regionPulse(0), regionPulse(4.5));
-assert(Math.abs(regionPulse(2.25) - 0.25) < 1e-12);
-assert.equal(regionPulse(1, true), 0.575);
-console.log("PASS selected anatomy pulse: 4.5 seconds, 25–90% opacity, steady 57.5% with reduced motion.");
+assert(Math.abs(regionPulse(2.25) - 0.5) < 1e-12);
+assert.equal(regionPulse(1, true), 0.725);
+console.log("PASS selected anatomy pulse: 4.5 seconds, 50–95% opacity, steady 72.5% with reduced motion.");
 
 assert.deepEqual(Object.keys(regionGuides).sort(), Object.keys(regions).sort());
 const ids = new Set(guideSources.map((source) => source.id));
@@ -90,7 +90,6 @@ let signals = 0;
 for (const path of pathways) {
   assert(path.short && path.subtitle && path.intro && path.insight && path.caveat, `${path.id}: missing copy`);
   assert(path.sourceIds.length && path.sourceIds.every((id) => sourceIds.has(id)), `${path.id}: unresolved source`);
-  assert(path.correct >= 0 && path.correct < path.answers.length);
   path.steps.forEach((step, index) => {
     assert(step.fact, `${path.id} step ${index + 1}: missing key fact`);
     const hops = step.signal ?? (index > 0 ? [[[path.steps[index - 1].region, step.region]]] : []);

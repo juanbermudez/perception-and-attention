@@ -30,6 +30,10 @@ const GLOW_TAU = 0.35;
 // The overview shows every sense flowing at once, labelled by relay and cortex.
 const OVERVIEW_PATHS = new Set<PathId>(["vision", "hearing", "touch"]);
 const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl", "retina", "cochlea"]);
+// Walkthrough spotlight: routes and regions outside the current step fade to these levels.
+const SPOT_DIM_ROUTE = 0.14;
+const SPOT_DIM_REGION = 0.25;
+const SPOT_DIM_MARKER = 0.3;
 const _curve_point = vec3.create();
 const _particle_a = vec3.create();
 const _particle_b = vec3.create();
@@ -50,6 +54,8 @@ interface Route {
   visibleWeight: number;
   weight: WeightMotion;
   emphasis: WeightMotion;
+  /** 1 inside the walkthrough spotlight, dimmed outside it. */
+  spot: WeightMotion;
   length: number;
   rate: number;
 }
@@ -88,6 +94,7 @@ interface Marker extends LabelLayout {
   presence: WeightMotion;
   selection: WeightMotion;
   labelWeight: WeightMotion;
+  spot: WeightMotion;
   color: ColorMotion;
   colorTarget: Vec3;
   labelColor: string;
@@ -119,7 +126,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const focusFrom = vec3.create(),
     focusTo = vec3.create(),
     focusTarget = vec3.create();
-  const focusDirection = new THREE.Vector3();
+  const focusDirection = new THREE.Vector3(),
+    viewFrom = new THREE.Vector3(),
+    lookAt = vec3.create();
   const savedCamera = new THREE.Vector3(),
     savedTarget = new THREE.Vector3();
   const gestureCamera = new THREE.Vector3(),
@@ -374,30 +383,58 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     }
     highlightRegion(id);
     if (!focusCamera) return;
-    clearDamping();
     const region = regions[id].position,
       side = region[2] < 0 ? -1 : 1;
+    if (closeEar) vec3.copy(lookAt, region);
+    else vec3.set(lookAt, region[0] * 0.35, lerp(state.skull ? skullCenterY : -0.1, region[1], 0.35), region[2] * 0.35);
+    // Each region has a viewing direction that keeps it in front of the skull.
+    if (closeEar) viewFrom.set(-0.6, 0.3, 1.55);
+    else if (id.startsWith("retina") || id === "chiasm") viewFrom.set(-1, 0.18, side * 0.6);
+    else if (id === "v1" || id === "l6" || id === "extrastriate") viewFrom.set(0.75, 0.22, side);
+    else if (id === "cingulate" || id === "motor" || id === "s1") viewFrom.set(-0.15, 0.75, side);
+    else if (id === "medulla" || id.startsWith("brainstem")) viewFrom.set(0.5, -0.16, side);
+    else viewFrom.set(clamp(region[0] * 0.2, -0.6, 0.6), 0.22, side);
+    animateCamera(lookAt, viewFrom, clamp(contextDistance * 0.94, controls.minDistance, controls.maxDistance));
+  }
+  /** Ease the camera to look at `target` from `direction` at `distance`, orbiting the short way round. */
+  function animateCamera(target: Vec3, direction: THREE.Vector3, distance: number) {
+    clearDamping();
     controls.target.toArray(focusFrom);
-    if (closeEar) vec3.copy(focusTo, region);
-    else vec3.set(focusTo, region[0] * 0.35, lerp(state.skull ? skullCenterY : -0.1, region[1], 0.35), region[2] * 0.35);
+    vec3.copy(focusTo, target);
     focusDirection.copy(camera.position).sub(controls.target);
     fromDistance = focusDirection.length();
     focusDirection.normalize();
     fromTheta = Math.atan2(focusDirection.x, focusDirection.z);
     fromPhi = Math.acos(clamp(focusDirection.y, -1, 1));
-    if (closeEar) focusDirection.set(-0.6, 0.3, 1.55);
-    else if (id.startsWith("retina") || id === "chiasm") focusDirection.set(-1, 0.18, side * 0.6);
-    else if (id === "v1" || id === "l6" || id === "extrastriate") focusDirection.set(0.75, 0.22, side);
-    else if (id === "cingulate" || id === "motor" || id === "s1") focusDirection.set(-0.15, 0.75, side);
-    else if (id === "medulla" || id.startsWith("brainstem")) focusDirection.set(0.5, -0.16, side);
-    else focusDirection.set(clamp(region[0] * 0.2, -0.6, 0.6), 0.22, side);
-    focusDirection.normalize();
+    focusDirection.copy(direction).normalize();
     toTheta = fromTheta + repeat(Math.atan2(focusDirection.x, focusDirection.z) - fromTheta + Math.PI, Math.PI * 2) - Math.PI;
     toPhi = Math.acos(clamp(focusDirection.y, -1, 1));
-    toDistance = clamp(contextDistance * 0.94, controls.minDistance, controls.maxDistance);
+    toDistance = distance;
     focusStarted = performance.now();
     updateFocus(focusStarted);
   }
+
+  // Hovering a region name previews it: look at it and highlight it, then return
+  // to the saved view when the pointer leaves.
+  let preview: { id: RegionId; target: Vec3; direction: THREE.Vector3; distance: number; closeEar: boolean } | null = null;
+  function previewRegion(id: RegionId) {
+    if (!preview) {
+      const direction = camera.position.clone().sub(controls.target);
+      preview = { id, target: controls.target.toArray() as Vec3, direction, distance: direction.length(), closeEar };
+    }
+    preview.id = id;
+    focusRegion(id, true);
+  }
+  function endPreview(restore = true) {
+    if (!preview) return;
+    const saved = preview;
+    preview = null;
+    if (!restore) return;
+    closeEar = saved.closeEar;
+    animateCamera(saved.target, saved.direction, saved.distance);
+  }
+  /** The region the scene should treat as selected: a hover preview wins over the step. */
+  const shownRegion = () => preview?.id ?? state.selected;
   resetOverview();
 
   // An understated orbit underneath makes the 3D space readable.
@@ -473,6 +510,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         visibleWeight: 0,
         weight: createWeight(),
         emphasis: createWeight(),
+        spot: createWeight(1),
         length,
         rate,
       });
@@ -636,6 +674,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       presence: createWeight(),
       selection: createWeight(),
       labelWeight: createWeight(),
+      spot: createWeight(1),
       color: createColor(colorTarget),
       colorTarget,
       labelColor: "",
@@ -780,6 +819,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   function kick(id: RegionId, amount: number) {
     impulse.set(id, Math.min(1.6, (impulse.get(id) ?? 0) + amount));
   }
+  // Routes and regions the current step is about; everything else is dimmed.
+  const spotRoutes = new Set<Route>();
+  const spotRegions = new Set<RegionId>();
+  function withStage(own: Route[], route: Route, into: Set<Route>) {
+    into.add(route);
+    // Staged routes carry both sides together (both eyes, both ears).
+    if (route.edge.stage !== undefined) for (const other of own) if (other.edge.stage === route.edge.stage) into.add(other);
+  }
   function sendVolley(hops: Signal, fallback: RegionId) {
     const own = routes.filter((route) => route.path === state.path);
     const built: Hop[] = [];
@@ -787,10 +834,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const chosen = new Set<Route>();
       for (const [from, to] of pairs) {
         const match = own.find((route) => route.edge.from === from && route.edge.to === to);
-        if (!match) continue;
-        chosen.add(match);
-        // Staged routes carry both sides together (both eyes, both ears).
-        if (match.edge.stage !== undefined) for (const route of own) if (route.edge.stage === match.edge.stage) chosen.add(route);
+        if (match) withStage(own, match, chosen);
       }
       if (!chosen.size) continue;
       const longest = Math.max(...[...chosen].map((route) => route.length));
@@ -800,6 +844,16 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         sources: [...chosen].map((route) => route.edge.from),
         targets: [...chosen].map((route) => route.edge.to),
       });
+    }
+    spotRoutes.clear();
+    spotRegions.clear();
+    spotRegions.add(fallback);
+    for (const hop of built) for (const route of hop.routes) spotRoutes.add(route);
+    // A first step has no incoming signal; spotlight what leaves the region instead.
+    if (!built.length) for (const route of own) if (route.edge.from === fallback) withStage(own, route, spotRoutes);
+    for (const route of spotRoutes) {
+      spotRegions.add(route.edge.from);
+      spotRegions.add(route.edge.to);
     }
     if (!built.length || reducedMotion.matches) {
       volley = null;
@@ -818,13 +872,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const current = pathways.find((p) => p.id === state.path)!;
     const reduced = reducedMotion.matches,
       pulseAmount = regionPulse((ms - selectionStart) / 1000, reduced);
-    if (highlightedRegion !== state.selected) highlightRegion(state.selected);
-    const selectedSense = senseForRegion(state.selected);
+    const shown = shownRegion();
+    if (highlightedRegion !== shown) highlightRegion(shown);
+    const selectedSense = senseForRegion(shown);
     if (state.path === "attention" && selectedSense) highlightTargetColor.set(streamColors[selectedSense]);
     else highlightTargetColor.copy(pathwayColors.get(state.path)!);
     highlightTargetColor.toArray(selectedHighlight.target);
     for (const layer of highlightLayers) {
-      const weight = stepWeight(layer.weight, layer === selectedHighlight && !state.overview ? 1 : 0, dt, reduced);
+      const weight = stepWeight(layer.weight, layer === selectedHighlight && (!state.overview || preview) ? 1 : 0, dt, reduced);
       layer.object.visible = weight > ACTIVITY_CUTOFF;
       layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
       layer.object.material.uniforms.pulse.value = pulseAmount * weight;
@@ -911,6 +966,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       else impulse.set(id, next);
     }
 
+    const spotOn = !state.overview && state.spotlight && spotRoutes.size + spotRegions.size > 0;
+    const regionSpot = (id: RegionId) => (!spotOn || spotRegions.has(id) || id === shown ? 1 : SPOT_DIM_REGION);
     let offset = 0;
     regionEnergy.clear();
     regionColors.clear();
@@ -931,13 +988,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       }
       route.visibleWeight = stepWeight(route.weight, weight, dt, reduced);
       const inVolley = hop?.routes.has(route) ?? false;
-      const isStepEdge = inVolley || route.edge.from === state.selected || route.edge.to === state.selected;
+      const isStepEdge = inVolley || spotRoutes.has(route);
       const emphasis = stepWeight(route.emphasis, isStepEdge ? 1 : 0, dt, reduced);
-      route.material.opacity = route.visibleWeight * lerp(0.055, 0.13, emphasis) * (1 - earBlend);
+      const spot = stepWeight(route.spot, !spotOn || spotRoutes.has(route) ? 1 : SPOT_DIM_ROUTE, dt, reduced);
+      route.material.opacity = route.visibleWeight * spot * lerp(0.055, 0.13, emphasis) * (1 - earBlend);
       route.lines.visible = route.material.opacity > 0.0001;
       if (route.visibleWeight < ACTIVITY_CUTOFF) continue;
       // Ongoing flow keeps both ends mildly active; volleys add impulses on arrival.
-      const baseline = route.visibleWeight * 0.32;
+      const baseline = route.visibleWeight * spot * 0.32;
       if (baseline > (regionEnergy.get(route.edge.from) ?? 0)) {
         regionEnergy.set(route.edge.from, baseline);
         regionColors.set(route.edge.from, route.color);
@@ -951,7 +1009,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       for (let p = 0; p < PER_EDGE; p++) {
         let t = repeat(time * route.rate * (1 + (p % 5) * 0.07) + p / PER_EDGE, 1);
         const packet = (0.5 + 0.5 * Math.cos((t - time * 0.16 + stage * 0.13) * Math.PI * 6)) ** 6;
-        let strength = route.visibleWeight * (0.16 + packet * 0.72);
+        let strength = route.visibleWeight * spot * (0.16 + packet * 0.72);
         if (inVolley && p < VOLLEY_PARTICLES) {
           t = hopProgress * 1.12 - p * 0.014;
           strength = route.visibleWeight * (t >= 0 && t <= 1 ? 1.6 : 0);
@@ -988,8 +1046,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     colorAttribute.needsUpdate = true;
     const pathColor = pathwayColors.get(state.path)!;
     clusters.forEach((cluster, index) => {
-      let energy = (regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75;
-      if ((cluster.id === "l6" && state.selected !== "l6") || (cluster.id === "v1" && state.selected === "l6")) energy = 0;
+      let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id);
+      if ((cluster.id === "l6" && shown !== "l6") || (cluster.id === "v1" && shown === "l6")) energy = 0;
       if (closeEar && (cluster.surface || ["cochleaR", "brainstemR", "socR", "icR", "mgnR", "ic", "mgn"].includes(cluster.id))) energy = 0;
       const activityColor = regionColors.get(cluster.id) ?? pathColor,
         level = Math.min(energy, 1.2);
@@ -1012,16 +1070,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     clusterColorAttribute.needsUpdate = true;
     let visibleCount = 0;
     for (const marker of markers) {
-      const active = !state.overview && marker.id === state.selected;
+      const active = (!state.overview || preview !== null) && marker.id === shown;
       marker.label.classList.toggle("selected", active);
       marker.label.setAttribute("aria-pressed", String(active));
       const targetVisible =
         (active || activeRegionIds.has(marker.id)) &&
         !(closeEar && ["cochleaR", "brainstemR", "socR", "icR", "mgnR", "ic", "mgn", "a1"].includes(marker.id)) &&
         !(marker.id === "l6" && !active) &&
-        !(marker.id === "v1" && state.selected === "l6");
+        !(marker.id === "v1" && shown === "l6");
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
+      const spot = stepWeight(marker.spot, regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
       const visible = presence > ACTIVITY_CUTOFF;
       marker.object.visible = visible;
       marker.halo.visible = visible;
@@ -1043,13 +1102,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       objectMaterial.color.fromArray(stepColor(marker.color, marker.colorTarget, dt, reduced));
       haloMaterial.color.copy(objectMaterial.color);
       pulseMaterial.color.copy(objectMaterial.color);
-      objectMaterial.opacity = presence;
-      haloMaterial.opacity = presence;
+      objectMaterial.opacity = presence * spot;
+      haloMaterial.opacity = presence * spot;
       const energy = (regionEnergy.get(marker.id) ?? 0) + (impulse.get(marker.id) ?? 0) * 0.6;
       marker.object.scale.setScalar(lerp(1, 0.4, earBlend) * lerp(1, 1.15, selection));
       marker.halo.scale.setScalar(lerp(1, 0.45, earBlend) * (lerp(0.32, 0.56, selection) + Math.min(energy, 1.2) * 0.22));
       marker.pulse.scale.setScalar(lerp(0.65, 1 + (pulseAmount - 0.5) * 0.3, selection));
-      pulseMaterial.opacity = presence * lerp(0.12, pulseAmount * 0.45, selection);
+      pulseMaterial.opacity = presence * spot * lerp(0.12, pulseAmount * 0.45, selection);
       marker.object.getWorldPosition(projection);
       projection.project(camera);
       const x = (projection.x * 0.5 + 0.5) * width;
@@ -1080,13 +1139,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.labelHeight = marker.label.offsetHeight || marker.labelHeight;
       if (!marker.label.hidden) visibleMarkers[visibleCount++] = marker;
     }
-    // Callouts: columns just outside the projected head, kept above the dock.
+    // Callouts: columns just outside the projected head, kept below the dock.
     measureHead();
     const origin = labelContainer.getBoundingClientRect();
     calloutBounds.width = width;
-    calloutBounds.top = 14;
-    const dockTop = dock ? dock.getBoundingClientRect().top - origin.top : height;
-    calloutBounds.bottom = Math.max(calloutBounds.top + 40, Math.min(height - 10, dockTop - 12));
+    calloutBounds.top = dock ? dock.getBoundingClientRect().bottom - origin.top + 12 : 14;
+    calloutBounds.bottom = Math.max(calloutBounds.top + 40, height - 14);
     layoutCallouts(visibleMarkers, visibleCount, head, calloutBounds, dt, reduced);
     for (const marker of markers) if (marker.label.hidden) marker.leader.setAttribute("d", "");
     for (let i = 0; i < visibleCount; i++) {
@@ -1094,9 +1152,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.label.style.left = `${marker.labelX.toFixed(1)}px`;
       marker.label.style.top = `${marker.labelY.toFixed(1)}px`;
       marker.leader.setAttribute("d", leaderPath(marker));
-      const shown = (marker.labelWeight.value * marker.fade).toFixed(3);
-      marker.label.style.opacity = shown;
-      marker.leader.style.opacity = shown;
+      const opacity = (marker.labelWeight.value * marker.fade * (marker.id === shown ? 1 : lerp(0.45, 1, marker.spot.value))).toFixed(3);
+      marker.label.style.opacity = opacity;
+      marker.leader.style.opacity = opacity;
     }
     renderer.render(scene, camera);
     frameCount++;
@@ -1143,6 +1201,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     },
     focusRegion,
     sendVolley,
+    previewRegion,
+    endPreview,
     /** Render frames without requestAnimationFrame (hidden tabs, automated checks). */
     advance(frames = 1, step = 1 / 60) {
       for (let i = 0; i < frames; i++) {

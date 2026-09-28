@@ -18,6 +18,8 @@ export interface ExplorerState extends AttentionSettings {
   skull: boolean;
   /** Temporal bones around the inner ear, shown in the hearing topic. */
   bones: boolean;
+  /** Dim routes and regions the current walkthrough step is not about. */
+  spotlight: boolean;
 }
 
 export function createState(reducedMotion: boolean): ExplorerState {
@@ -33,6 +35,7 @@ export function createState(reducedMotion: boolean): ExplorerState {
     xray: true,
     skull: true,
     bones: true,
+    spotlight: true,
     focus: 65,
     enabledSenses: { vision: true, hearing: true, touch: true },
     priority: "balanced",

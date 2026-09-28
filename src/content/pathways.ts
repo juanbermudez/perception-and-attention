@@ -48,11 +48,6 @@ export const pathways: Pathway[] = [
       { from: "lgn", to: "v1", bend: [0.1, -0.18, 0.32], stage: 2 },
     ],
     sourceIds: ["visual", "visual-anatomy", "photoreceptors", "hubel-wiesel"],
-    question: "After the optic chiasm, what does the left side of the brain see?",
-    answers: ["Everything the left eye sees", "The right half of the visual field, from both eyes", "Only the centre of gaze"],
-    correct: 1,
-    explanation:
-      "Fibres from the nasal half of each retina cross and fibres from the outer half do not, so each hemisphere receives the opposite half of the visual field from both eyes.",
   },
   {
     id: "hearing",
@@ -121,11 +116,6 @@ export const pathways: Pathway[] = [
       { from: "mgnR", to: "a1R", bend: [-0.015, 0.07, -0.015], stage: 4 },
     ],
     sourceIds: ["ear-anatomy", "hair-cells", "auditory"],
-    question: "Where do signals from the two ears first meet?",
-    answers: ["In auditory cortex", "In the superior olive, in the brainstem", "In the cochlea"],
-    correct: 1,
-    explanation:
-      "Each auditory nerve connects only to the cochlear nuclei on its own side. The superior olive is the first stage that combines both ears, which is used to locate sounds.",
   },
   {
     id: "touch",
@@ -173,14 +163,6 @@ export const pathways: Pathway[] = [
       { from: "s1", to: "parietal", bend: [0.02, 0.08, 0.08], stage: 2 },
     ],
     sourceIds: ["body-sensation", "somatosensory-cortex"],
-    question: "Why does the left hemisphere process touch from the right hand?",
-    answers: [
-      "The pathway crosses to the other side in the medulla",
-      "The right hand has no nerves to the right hemisphere",
-      "Touch is processed only in the left hemisphere",
-    ],
-    correct: 0,
-    explanation: "Fine-touch fibres travel up the spinal cord on the same side, then cross in the medulla after the dorsal column nuclei.",
   },
   {
     id: "loop",
@@ -232,10 +214,6 @@ export const pathways: Pathway[] = [
       { from: "l6", to: "lgn", bend: [0, -0.25, 0.22], kind: "feedback" },
     ],
     sourceIds: ["thalamus", "lgn-synapses", "switch", "ct-awake"],
-    question: "Does the cortex only receive signals from the thalamus?",
-    answers: ["Yes, the pathway only runs one way", "No, it also sends a large projection back to the thalamus", "Only during sleep"],
-    correct: 1,
-    explanation: "Layer 6 sends feedback to the thalamus directly (excitation) and through the TRN (inhibition), which changes how much the relay passes on.",
   },
   {
     id: "attention",
@@ -319,10 +297,6 @@ export const pathways: Pathway[] = [
       { from: "parietal", to: "s1", channel: "touch", bend: [0, 0.12, -0.09], kind: "feedback" },
     ],
     sourceIds: ["attention-networks", "salience", "normalization", "attention-gain", "baseline", "pulvinar", "trn-selection", "trn-basal-ganglia"],
-    question: "What happens to signals you are not attending to?",
-    answers: ["They stop reaching the brain", "They are still processed, at a reduced level, and can still draw attention", "Only visual signals remain"],
-    correct: 1,
-    explanation: "Attention reduces the strength of unattended signals but does not remove them, so an important event can still draw attention.",
   },
   {
     id: "speech",
@@ -381,9 +355,5 @@ export const pathways: Pathway[] = [
       { from: "motor", to: "a1", bend: [0, 0, -0.15], kind: "feedback" },
     ],
     sourceIds: ["language-streams", "parallel-speech", "broca-timing", "speech-planning-debate", "articulation", "language-network"],
-    question: "Which stream links speech sounds to their meaning?",
-    answers: ["The ventral stream", "The dorsal stream", "The optic radiation"],
-    correct: 0,
-    explanation: "The ventral stream maps sound to meaning in both hemispheres; the dorsal stream maps sound to articulation, mainly in the left hemisphere.",
   },
 ];

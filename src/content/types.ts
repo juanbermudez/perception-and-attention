@@ -83,10 +83,6 @@ export interface Pathway {
   steps: Step[];
   edges: Edge[];
   sourceIds: string[];
-  question: string;
-  answers: string[];
-  correct: number;
-  explanation: string;
 }
 
 export interface Source {
