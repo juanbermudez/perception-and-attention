@@ -440,7 +440,8 @@ kbd {
   position: absolute;
   z-index: 9;
   left: 50%;
-  bottom: var(--space-5);
+  /* While an assistant tour is captioned, toasts sit above the caption bar. */
+  bottom: calc(var(--space-5) + var(--narration-space, 0px));
   transform: translateX(-50%);
   max-width: min(340px, 90%);
   padding: 8px 12px;
@@ -455,6 +456,94 @@ kbd {
 }
 .stage-toast.visible {
   opacity: 1;
+}
+/* Assistant tour captions: a framed card along the bottom of the stage. */
+.narration {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: var(--space-4);
+  width: min(560px, calc(100% - 32px));
+  transform: translateX(-50%);
+  animation: narration-in 0.2s ease-out;
+}
+@keyframes narration-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+.narration-surface {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+}
+.narration-body {
+  flex: 1;
+  min-width: 0;
+}
+.narration-meta {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  font-variant-numeric: tabular-nums;
+}
+.narration-text {
+  margin: var(--space-1) 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.narration-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+.narration-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  border-radius: var(--inner-radius);
+  transition:
+    background 0.16s ease-out,
+    color 0.16s ease-out;
+}
+.narration-button:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+.narration-button svg {
+  width: 15px;
+  height: 15px;
+}
+.narration-pause .icon-play,
+.narration-pause[aria-pressed="true"] .icon-pause {
+  display: none;
+}
+.narration-pause[aria-pressed="true"] .icon-play {
+  display: block;
+}
+@container stage (max-width: 600px) {
+  .narration {
+    bottom: var(--space-3);
+    width: calc(100% - 24px);
+  }
+  .narration-pause span {
+    display: none;
+  }
 }
 #loading {
   position: absolute;
@@ -1568,10 +1657,13 @@ dialog::backdrop {
     min-height: 40px;
   }
   .stage-toast {
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--narration-space, 0px));
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .narration {
+    animation: none;
+  }
   button,
   .region-label,
   .stage-toast,
