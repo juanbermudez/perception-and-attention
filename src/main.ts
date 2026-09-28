@@ -3,18 +3,23 @@ import { startAgentSurface } from "./agent/index";
 import { createActivityLog } from "./api/activity";
 import { createDocsApi } from "./api/docs-api";
 import { createGuideApi } from "./api/guide-api";
+import { createQuizApi } from "./api/quiz-api";
+import { isFailure } from "./api/result";
 import { createTourRunner } from "./api/tour";
 import { createViewApi, type ViewApi, type ViewOutcome } from "./api/view-api";
+import { type Question, showMeRef } from "./model/quiz";
 import { createBrainScene } from "./scene/brain-scene";
 import { createState } from "./state";
 import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { createPresence } from "./ui/agent-presence";
-import { byId } from "./ui/dom";
+import { byId, toast } from "./ui/dom";
 import { createExplorer } from "./ui/explorer";
 import { setupKeyboard } from "./ui/keyboard";
 import { createNarration } from "./ui/narration";
 import { setupPanelResize } from "./ui/panel-resize";
+import { createPickMode, routeRegionClicks } from "./ui/pick-mode";
+import { createQuizCard, type QuizCard } from "./ui/quiz-card";
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const state = createState(reducedMotion.matches);
@@ -25,7 +30,9 @@ const explorer = createExplorer(state, reducedMotion, () => about.open());
 const setPlaying = (value: boolean) => {
   state.playing = value;
 };
-setupKeyboard(state, explorer, setPlaying, about.isOpen);
+// The quiz card, while open, takes keys 1–6, Enter and → before the topic and step shortcuts.
+let quizCard: QuizCard | undefined;
+setupKeyboard(state, explorer, setPlaying, about.isOpen, () => quizCard?.keyOwner() ?? null);
 setupPanelResize();
 byId("about-button").addEventListener("click", () => about.open());
 reducedMotion.addEventListener("change", (event) => {
@@ -33,12 +40,21 @@ reducedMotion.addEventListener("change", (event) => {
   setPlaying(false);
   explorer.stopWalk();
 });
+const stage = byId("scene-title").closest<HTMLElement>(".brain-stage")!;
 // Captions for assistant tours.
-const narration = createNarration(byId("scene-title").closest<HTMLElement>(".brain-stage")!);
+const narration = createNarration(stage);
+// Region pick mode for quiz questions (spec §10): while it is on, a click on a marker or label answers.
+const pick = createPickMode(state);
+pick.onChange((active) => stage.classList.toggle("picking", active));
+const onRegion = routeRegionClicks(
+  pick,
+  (id) => explorer.showRegion(id),
+  () => toast("Pick one of the marked regions."),
+);
 
 let view: ViewApi | undefined;
 try {
-  const scene = createBrainScene(byId("canvas-container"), byId("region-labels"), state, (id) => explorer.showRegion(id));
+  const scene = createBrainScene(byId("canvas-container"), byId("region-labels"), state, onRegion);
   explorer.attachScene(scene);
   view = createViewApi(state, scene);
   byId("loading").remove();
@@ -79,7 +95,34 @@ for (const type of ["pointerdown", "wheel", "keydown"] as const)
     },
     { capture: true, passive: true },
   );
-const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on, view, tour });
+// Docs and quizzes. The store boots on first use, so the guide is unchanged until a doc or quiz is made.
+const docs = createDocsApi({
+  store: browserStore,
+  // Quizzes open in the card. Stage 4: route doc refs to the window manager here too.
+  open: (ref) => {
+    if (ref.startsWith("quiz:")) void quizCard?.open(ref);
+  },
+});
+/** "Show me" after a quiz answer: go to the question's place, then apply its view. */
+function showMe(question: Question) {
+  const ref = showMeRef(question);
+  const went = ref ? api.go(ref) : null;
+  if (went && isFailure(went)) toast(went.error.message);
+  const shown = question.view && view ? view.apply(question.view) : null;
+  if (shown && isFailure(shown)) console.warn("Show me: the question's view did not apply", shown.error);
+}
+quizCard = createQuizCard({
+  stage,
+  docs,
+  pick: view ? pick : null,
+  openTopic: () => (state.overview ? null : state.path),
+  showMe,
+  showRegion: (id) => explorer.showRegion(id),
+  onEvent: (event) =>
+    activity.append({ by: "user", kind: event.kind === "answered" ? "answered" : `quiz_${event.kind}`, ref: event.ref, ok: event.ok, said: event.said }),
+});
+const quizzes = createQuizApi({ docs, card: quizCard });
+const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on, view, tour, quizzes });
 const agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
 explorer.onEvent((event) => {
   // Agent navigation is logged once, as its tool call (or its tour); autoplay is not a user action.
@@ -119,9 +162,10 @@ Object.defineProperty(window, "explorerDebug", {
     narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
     narration,
     tour,
+    quiz: quizCard,
+    pick,
   },
 });
 
-// Docs and quizzes (Stage 3 core). The store boots on first use, so the guide is unchanged
-// until a doc is made. The `doc`/`edit_blocks` tools and the windows wrap this API later.
-Object.defineProperty(window, "docsDebug", { value: createDocsApi({ store: browserStore }) });
+// The docs API by hand (Stage 3). The `doc`/`edit_blocks` tools and the windows wrap it in Stage 4.
+Object.defineProperty(window, "docsDebug", { value: docs });

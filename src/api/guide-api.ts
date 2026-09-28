@@ -20,6 +20,7 @@ import { pathwayById, WALK_SECONDS } from "../model/topics";
 import { normalizeViewPatch } from "../model/view";
 import type { ActivityLog } from "./activity";
 import { type Detail, DOCS_LATER, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
+import type { QuizApi, QuizInput } from "./quiz-api";
 import { fail, isFailure, type Result, type WriteResult } from "./result";
 import { TOUR_LIMITS, type TourRunner, type TourStop } from "./tour";
 import type { ViewApi } from "./view-api";
@@ -70,6 +71,8 @@ export interface GuideApiDeps {
   view?: Pick<ViewApi, "apply" | "current">;
   /** Captioned agent tours; missing where there is no caption bar. */
   tour?: TourRunner;
+  /** Quizzes and the quiz card (Stage 5); missing where docs are not available. */
+  quizzes?: Pick<QuizApi, "quiz" | "read" | "status">;
   now?: () => number;
 }
 
@@ -96,7 +99,7 @@ interface PlannedStop extends TourStop {
 const SELECTION_CHARS = 500;
 const PANELS: Record<Panel, string> = { guide: "walkthrough", region: "region", streams: "streams" };
 
-export function createGuideApi({ explorer, about, activity, playing, agentControl, view, tour, now = Date.now }: GuideApiDeps) {
+export function createGuideApi({ explorer, about, activity, playing, agentControl, view, tour, quizzes, now = Date.now }: GuideApiDeps) {
   const context = () => {
     const snapshot = explorer.snapshot();
     return { snapshot, path: snapshot.overview ? null : snapshot.path };
@@ -133,6 +136,7 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
       about: aboutTab ? formatRef({ kind: "about", tab: aboutTab }) : undefined,
       selection: selection ? { ref: selection.place ? placeText(selection.place) : undefined, text: selection.text.slice(0, SELECTION_CHARS) } : undefined,
       tour: tour?.status() ?? undefined,
+      quiz: quizzes?.status() ?? undefined,
       control: agentControl() ? undefined : "off",
       activity: log.entries.map((entry) => ({
         seq: entry.seq,
@@ -141,6 +145,7 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
         ref: entry.ref,
         said: entry.said,
         on: entry.on,
+        ...(entry.ok === undefined ? {} : { ok: entry.ok }),
         ago: Math.max(0, Math.round((now() - entry.time) / 1000)),
       })),
       cursor: log.cursor,
@@ -381,14 +386,35 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
     return view.apply(patch);
   }
 
+  /* ---------- Quizzes (Stage 5) ---------- */
+
+  /** Quiz refs, and "results" for a doc with questions, are read from the docs store; everything else from the guide. */
+  function readRef(ref: string, detail?: Detail): Result<object> | Promise<Result<object>> {
+    if (quizzes) {
+      const resolved = resolveRef(ref);
+      if (!isFailure(resolved) && (resolved.ref.kind === "quiz" || (resolved.ref.kind === "doc" && detail === "results"))) {
+        if (detail === "sources")
+          return fail("bad_input", "Quizzes have no sources. Use brief, full, markdown or results.", ["brief", "full", "markdown", "results"]);
+        return quizzes.read(formatRef(resolved.ref), detail);
+      }
+    }
+    return read(ref, detail, { path: context().path });
+  }
+
+  function quiz(input: QuizInput): Result<WriteResult> | Promise<Result<WriteResult>> {
+    if (!quizzes) return fail("not_available", DOCS_LATER);
+    return quizzes.quiz(input);
+  }
+
   return {
     context: getContext,
     outline: (ref?: string, page?: Page) => outline(ref, page),
-    read: (ref: string, detail?: Detail) => read(ref, detail, { path: context().path }),
+    read: readRef,
     search,
     go,
     walkthrough,
     setView,
+    quiz,
   };
 }
 

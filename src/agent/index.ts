@@ -3,7 +3,7 @@
 import type { ActivityLog } from "../api/activity";
 import type { GuideApi } from "../api/guide-api";
 import { installAgentDebug, installModelContextShim } from "./shim";
-import { tools } from "./tools";
+import { agentTools } from "./tools";
 import { createToolRunner, findModelContext, type PresencePort, registerTools, resultFormat } from "./webmcp";
 
 export interface AgentSurfaceDeps {
@@ -17,7 +17,7 @@ export interface AgentSurfaceDeps {
 
 export function startAgentSurface({ api, control, presence, activity, search }: AgentSurfaceDeps) {
   const format = resultFormat(search);
-  const runner = createToolRunner({ tools, api, control, presence, activity });
+  const runner = createToolRunner({ tools: agentTools, api, control, presence, activity });
   if (new URLSearchParams(search).get("agent") === "shim") installAgentDebug(runner, installModelContextShim(), format);
   const controller = new AbortController();
   const modelContext = findModelContext();

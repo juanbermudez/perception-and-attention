@@ -1290,33 +1290,37 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     clusterColorAttribute.needsUpdate = true;
     let visibleCount = 0;
     const labelMode = state.labelMode,
-      labelsOn = state.labels && state.layers.labels > 0;
+      labelsOn = state.labels && state.layers.labels > 0,
+      pick = state.pick;
     for (const marker of markers) {
-      const active = focusActive && marker.id === shown;
+      // In pick mode (a quiz's region question) nothing is marked as selected, so no marker stands out.
+      const active = !pick && focusActive && marker.id === shown;
       const isolated = isolate?.regions.includes(marker.id) ?? false;
       marker.label.classList.toggle("selected", active);
       marker.label.setAttribute("aria-pressed", String(active));
       // While isolating, only isolated regions (and the one shown) keep markers, whatever the topic.
       // Layer 5 and 6 share V1's position, so only the one being shown (or isolated) gets a marker.
       // On the overview map, markers appear only for the topic being previewed.
-      const targetVisible =
-        (home
-          ? homeTopic !== null && topicRegionIds.get(homeTopic)!.has(marker.id)
-          : isolate
-            ? isolated || active
-            : active || activeRegionIds.has(marker.id)) &&
-        !(LAYER_MARKERS.has(marker.id) && !active && !isolated) &&
-        !(marker.id === "v1" && LAYER_MARKERS.has(shown));
+      // In pick mode, markers show for exactly the regions offered, whatever the topic or isolate.
+      const targetVisible = pick
+        ? pick.includes(marker.id)
+        : (home
+            ? homeTopic !== null && topicRegionIds.get(homeTopic)!.has(marker.id)
+            : isolate
+              ? isolated || active
+              : active || activeRegionIds.has(marker.id)) &&
+          !(LAYER_MARKERS.has(marker.id) && !active && !isolated) &&
+          !(marker.id === "v1" && LAYER_MARKERS.has(shown));
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
-      const spot = stepWeight(marker.spot, regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
+      const spot = stepWeight(marker.spot, pick || regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
       const visible = presence > ACTIVITY_CUTOFF && markersPresence > ACTIVITY_CUTOFF;
       marker.object.visible = visible;
       marker.halo.visible = visible;
       marker.pulse.visible = visible;
       const markerPath = homeTopic ?? state.path;
       const sense = senseForRegion(marker.id),
-        col = markerPath === "attention" && sense ? streamColors[sense] : (pathways.find((p) => p.id === markerPath) ?? current).color;
+        col = markerPath === "attention" && sense && !pick ? streamColors[sense] : (pathways.find((p) => p.id === markerPath) ?? current).color;
       if (targetVisible) {
         highlightTargetColor.set(col);
         highlightTargetColor.toArray(marker.colorTarget);
@@ -1332,7 +1336,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       haloMaterial.color.fromArray(stepColor(marker.color, marker.colorTarget, dt, reduced));
       objectMaterial.opacity = presence * spot * markersPresence;
       haloMaterial.opacity = presence * spot * markersPresence;
-      const energy = (regionEnergy.get(marker.id) ?? 0) + (impulse.get(marker.id) ?? 0) * 0.6;
+      // Pick mode keeps every offered marker alike: no step spotlight and no activity swell.
+      const energy = pick ? 0 : (regionEnergy.get(marker.id) ?? 0) + (impulse.get(marker.id) ?? 0) * 0.6;
       marker.object.scale.setScalar(lerp(1, 1.15, selection));
       marker.halo.scale.setScalar(lerp(0.26, 0.44, selection) + Math.min(energy, 1.2) * 0.18);
       marker.pulse.scale.setScalar(lerp(0.65, 1 + (pulseAmount - 0.5) * 0.3, selection));
@@ -1352,6 +1357,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         labelsOn &&
         inView &&
         (labelMode === "all" ||
+          pick !== null ||
           (labelMode === "auto" && isolate !== null) ||
           active ||
           (labelMode === "focus"

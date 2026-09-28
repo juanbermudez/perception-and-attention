@@ -37,7 +37,8 @@ export function helpCard() {
       listLimit: LIST_LIMIT.max,
       searchLimit: SEARCH_LIMIT.max,
     },
-    control: "Write tools (go, walkthrough, set_view) return agent_control_off while the user has assistant control off in About. Read tools always work.",
+    control:
+      "Write tools (go, walkthrough, set_view, quiz) return agent_control_off while the user has assistant control off in About. Read tools always work.",
     errors: ["bad_input", "unknown_ref (with options)", "not_available (with a reason)", "locked_by_user (camera only)", "limit", "agent_control_off"],
   };
 }

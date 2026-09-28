@@ -5,11 +5,13 @@ export type Actor = "user" | "agent";
 
 export interface ActivityInput {
   by: Actor;
-  /** navigated, played, paused, agent_control, or the name of the agent's tool. */
+  /** navigated, played, paused, answered, agent_control, or the name of the agent's tool. */
   kind: string;
   ref?: string;
   said?: string;
   on?: boolean;
+  /** A quiz answer: whether it was right. */
+  ok?: boolean;
 }
 export interface ActivityEntry extends ActivityInput {
   seq: number;
