@@ -98,6 +98,8 @@ export function stackColumn(items: LabelLayout[], top: number, bottom: number, m
   }
 }
 
+const previousSides: number[] = [];
+
 export function layoutCallouts(labels: LabelLayout[], count: number, head: Silhouette, bounds: CalloutBounds, dt: number, reducedMotion = false) {
   const centre = (head.left + head.right) / 2;
   const left: LabelLayout[] = [],
@@ -105,10 +107,8 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
   for (let i = 0; i < count; i++) {
     const label = labels[i],
       preferred = label.anchorX < centre ? -1 : 1;
-    if (label.side === 0 || (label.side !== preferred && Math.abs(label.anchorX - centre) > SWITCH)) {
-      if (label.side !== 0) label.initialized = false;
-      label.side = preferred;
-    }
+    previousSides[i] = label.side;
+    if (label.side === 0 || (label.side !== preferred && Math.abs(label.anchorX - centre) > SWITCH)) label.side = preferred;
     (label.side < 0 ? left : right).push(label);
   }
   // If one column would overflow, hand its most central labels to the other side.
@@ -120,7 +120,6 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
     while (from.length > capacity && to.length < capacity) {
       const moved = from.shift()!;
       moved.side = side;
-      moved.initialized = false;
       to.push(moved);
     }
   };
@@ -142,7 +141,6 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
       }
       if (pick < 0) break;
       const [moved] = from.splice(pick, 1);
-      if (moved.side !== side) moved.initialized = false;
       moved.side = side;
       to.push(moved);
     }
@@ -160,6 +158,11 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
   const middle = (head.top + head.bottom) / 2;
   stackColumn(left, bounds.top, bounds.bottom, middle);
   stackColumn(right, bounds.top, bounds.bottom, middle);
+
+  // A label restarts only when its final side differs from last frame's. Comparing
+  // final sides stops a balanced label from being reset every frame when its
+  // preferred side and the balancing step disagree.
+  for (let i = 0; i < count; i++) if (previousSides[i] !== 0 && labels[i].side !== previousSides[i]) labels[i].initialized = false;
 
   // Glide toward the solved slot. A label that changes sides jumps and fades in
   // rather than sliding across the head.

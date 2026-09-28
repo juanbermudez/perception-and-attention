@@ -165,6 +165,84 @@ Checked 2026-09-27. Sources: abstracts via Europe PMC/PubMed, plus full text whe
 
 ---
 
+## VISION BEYOND V1 (added 2026-09-27)
+
+Added for the expanded Vision topic. Several items check claims from a draft outline; where the draft overstated something, the entry says so.
+
+### 43. Midget and parasol ganglion cell proportions (macaque)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- About 80% of ganglion cells are midget (Pβ) cells projecting to the parvocellular LGN layers; about 10% are parasol (Pα) cells projecting to the magnocellular layers.
+- **Citation:** Perry VH, Oehler R, Cowey A (1984) Neuroscience 12:1101–1123. https://doi.org/10.1016/0306-4522(84)90006-X
+
+### 44. Magnocellular signals arrive earlier
+- **Verdict:** CONFIRMED, with the scope stated. **Confidence:** high.
+- In anaesthetised macaque LGN, the fastest magnocellular latencies precede the fastest parvocellular ones by about 10 ms. The authors note that convergence in cortex could reduce or remove this advantage.
+- **Citation:** Maunsell JHR et al. (1999) Vis Neurosci 16:1–14. https://doi.org/10.1017/S0952523899156177
+
+### 45. "The magnocellular pathway projects to the superior colliculus"
+- **Verdict:** NEEDS CORRECTION. **Confidence:** high.
+- The magnocellular pathway is the parasol → LGN magnocellular layers route. The superior colliculus receives a separate retinal projection (about 10% of ganglion cells, mostly other cell types); midbrain injections label no midget cells and few parasol cells (Perry et al. 1984). Used wording: roughly 90% of ganglion cells go to the LGN, the rest to the superior colliculus, pretectum and suprachiasmatic nucleus.
+
+### 46. Dorsal = magnocellular, ventral = parvocellular
+- **Verdict:** OVERSIMPLIFIED. **Confidence:** high.
+- The dorsal stream is dominated by magnocellular input, but the ventral stream receives both channels, and they mix within V1.
+- **Citations:** Merigan WH, Maunsell JHR (1993) Annu Rev Neurosci 16:369–402. https://doi.org/10.1146/annurev.ne.16.030193.002101 · Nassi JJ, Callaway EM (2009) Nat Rev Neurosci 10:360–372. https://doi.org/10.1038/nrn2619
+
+### 47. Patient D.F. (perception vs action)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- After ventral-stream damage she could not report the orientation of a slot or the shape of objects, but her grasping and posting movements were accurate.
+- **Citations:** Goodale MA et al. (1991) Nature 349:154–156. https://doi.org/10.1038/349154a0 · Goodale & Milner (1992) TINS. https://doi.org/10.1016/0166-2236(92)90344-8
+
+### 48. MT/V5 and motion
+- **Verdict:** CONFIRMED for direction and speed tuning; "MT computes optic flow" NEEDS CORRECTION. **Confidence:** high.
+- Most MT neurons are tuned to direction and speed. Microstimulation of MT biases monkeys' motion judgements (Salzman et al. 1990). Selectivity for optic-flow patterns (expansion, rotation) is characteristic of the neighbouring area MSTd (Duffy & Wurtz 1991).
+- Patient L.M. (Zihl et al. 1983): bilateral lateral temporo-occipital damage, loss of motion perception with other vision largely intact.
+- **Citations:** Born & Bradley (2005) https://doi.org/10.1146/annurev.neuro.26.041002.131052 · Salzman et al. (1990) https://doi.org/10.1038/346174a0 · Duffy & Wurtz (1991) https://doi.org/10.1152/jn.1991.65.6.1329 · Zihl et al. (1983) https://doi.org/10.1093/brain/106.2.313
+
+### 49. Human MT location
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Usually buried in a sulcus: the ascending limb of the inferior temporal sulcus (53%), its posterior continuation (26%) or the ITS itself (11%), near its junction with the lateral occipital sulcus.
+- **Citation:** Dumoulin SO et al. (2000) Cereb Cortex 10:454–463. https://doi.org/10.1093/cercor/10.5.454
+
+### 50. Optic ataxia after parietal damage
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- **Citation:** Perenin MT, Vighetto A (1988) Brain 111:643–674. https://doi.org/10.1093/brain/111.3.643
+
+### 51. IT object recognition
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- About 100 randomly sampled IT neurons, over windows as short as 12.5 ms, carried accurate information about object identity and category that generalised across position and scale (macaque). Human LOC responds more to objects than to textures.
+- **Citations:** Hung CP et al. (2005) Science 310:863–866. https://doi.org/10.1126/science.1117593 · DiCarlo et al. (2012) https://doi.org/10.1016/j.neuron.2012.01.010 · Malach R et al. (1995) PNAS. https://doi.org/10.1073/pnas.92.18.8135
+
+### 52. FFA
+- **Verdict:** "Activates exclusively for facial identity and expression" NEEDS CORRECTION. **Confidence:** high.
+- The FFA responds more to faces than to other categories, not exclusively. It was found in 12 of 15 subjects in the original study, and is typically larger in the right hemisphere. Identity is its main role; expression and gaze are processed more in the posterior STS (Haxby et al. 2000). Expertise effects (Gauthier et al. 2000) keep its specificity debated.
+- Causal evidence: electrical stimulation distorted perceived faces but not other objects (Parvizi et al. 2012). Macaque: 97% of visually responsive neurons in the largest face patch were face-selective (Tsao et al. 2006).
+- **Citations:** Kanwisher et al. (1997) https://doi.org/10.1523/JNEUROSCI.17-11-04302.1997 · Haxby et al. (2000) https://doi.org/10.1016/S1364-6613(00)01482-0 · Gauthier et al. (2000) https://doi.org/10.1038/72140 · Parvizi et al. (2012) https://doi.org/10.1523/JNEUROSCI.2609-12.2012 · Tsao et al. (2006) https://doi.org/10.1126/science.1119983
+
+### 53. PPA
+- **Verdict:** CONFIRMED for scene layout; "navigation limits" NEEDS CORRECTION. **Confidence:** high.
+- The PPA responds to scenes, weakly to objects and not to faces. Empty rooms drive it as strongly as furnished ones, and more than twice as strongly as object arrays. Coding of where one can walk (navigational affordances) was shown in the occipital place area, not the PPA.
+- **Citations:** Epstein R, Kanwisher N (1998) Nature 392:598–601. https://doi.org/10.1038/33402 · Bonner MF, Epstein RA (2017) PNAS. https://doi.org/10.1073/pnas.1618228114
+
+### 54. EBA
+- **Verdict:** CONFIRMED; "translates posture and articulation" is stronger than the evidence. **Confidence:** high.
+- The EBA is body-selective, in lateral occipitotemporal cortex next to MT. TMS over it slows discrimination of body parts but not faces or objects, and it responds during one's own limb movements without visual feedback. A separate fusiform body area lies next to the FFA.
+- **Citations:** Downing PE et al. (2001) Science 293:2470–2473. https://doi.org/10.1126/science.1063414 · Urgesi et al. (2004) https://doi.org/10.1016/j.cub.2004.11.031 · Astafiev et al. (2004) https://doi.org/10.1038/nn1241 · Peelen & Downing (2005) https://doi.org/10.1152/jn.00513.2004
+
+### 55. VWFA
+- **Verdict:** CONFIRMED, with its specificity debated. **Confidence:** high.
+- Left lateral occipitotemporal sulcus, reproducible across people and scripts, partially selective for written strings. Its response to writing grows with literacy, with a small reduction in face responses (Dehaene et al. 2010). Reading is too recent to have shaped the genome; the region is thought to be recycled object-recognition cortex. Surgical removal of a small part caused a reading deficit with other categories intact (Gaillard et al. 2006). Price & Devlin (2003) argued it is not word-specific.
+- The draft's "OCR module" analogy was left out.
+- **Citations:** Cohen et al. (2000) https://doi.org/10.1093/brain/123.2.291 · Dehaene & Cohen (2011) https://doi.org/10.1016/j.tics.2011.04.003 · Dehaene et al. (2010) https://doi.org/10.1126/science.1194140 · Dehaene & Cohen (2007) https://doi.org/10.1016/j.neuron.2007.10.004 · Gaillard et al. (2006) https://doi.org/10.1016/j.neuron.2006.03.031 · Price & Devlin (2003) https://doi.org/10.1016/S1053-8119(03)00084-3
+
+### 56. Category areas are selective, not exclusive
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Category identity can be decoded from ventral temporal cortex even when the regions that respond most to that category are excluded.
+- **Citations:** Haxby JV et al. (2001) Science 293:2425–2430. https://doi.org/10.1126/science.1063736 · Grill-Spector K, Weiner KS (2014) Nat Rev Neurosci 15:536–548. https://doi.org/10.1038/nrn3747
+
+### 57. Marker placement for MT, IT, FFA, PPA, EBA and VWFA
+- The atlas does not segment these areas. `scripts/place-functional-areas.mjs` maps a typical group-average MNI coordinate into the atlas by matching the MNI brain box to the atlas cerebrum box, then snaps it to the nearest vertex of the gyrus or sulcus the area lies in. All six snapped within 5 mm. Positions are illustrative; individual locations vary by several millimetres.
+
 ## HEARING
 
 ### 24. Human cochlear cell counts

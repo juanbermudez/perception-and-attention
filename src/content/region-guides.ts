@@ -19,12 +19,12 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   retina: {
     summary: "The retina is a thin layer of neural tissue at the back of the eye. It develops from the brain and is part of the central nervous system.",
     mechanism:
-      "Rods and cones absorb light; their activity decreases when light reaches them. Other retinal cells (bipolar, horizontal and amacrine cells) compare signals from neighbouring points, so the output mainly reports contrast, colour differences and change. Only ganglion cells send output to the brain.",
+      "Rods and cones absorb light; their activity decreases when light reaches them. Other retinal cells (bipolar, horizontal and amacrine cells) compare signals from neighbouring points, so the output mainly reports contrast, colour differences and change. Only ganglion cells send output to the brain. There are several types, each sending a different version of the image. In monkeys, about 80% are midget cells (fine detail and red–green colour) and about 10% are parasol cells (motion and changes in brightness).",
     roles: { vision: "The first stage of vision. The image is processed and compressed here before any signal reaches the brain." },
     connections:
       "Ganglion-cell axons form the optic nerve, which runs to the [[chiasm|optic chiasm]]. The [[retinaR|right retina]] does the same for the other eye.",
     limit: "Shown as a surface. The retinal layers, cell types and the blind spot are not modelled.",
-    sourceIds: ["retinal-circuits", "photoreceptors"],
+    sourceIds: ["retinal-circuits", "photoreceptors", "magno-parvo-counts"],
   },
   retinaR: {
     summary: "The retina of the right eye.",
@@ -54,9 +54,9 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       loop: "Where retinal input (the driver) and cortical feedback (the modulator) meet.",
     },
     connections:
-      "Receives the optic tract and sends the optic radiation to [[v1|V1]]. Receives feedback from [[l6|layer 6]] directly and through the [[trn|TRN]].",
+      "Receives the optic tract and sends the optic radiation to [[v1|V1]]. Receives feedback from [[l6|layer 6]] directly and through the [[trn|TRN]]. In primates, about 90% of retinal ganglion cells project here; the rest go to the superior colliculus (eye movements), the pretectum (pupil reflex) and the suprachiasmatic nucleus (daily body clock).",
     limit: "The atlas includes this nucleus, but its layers are not modelled.",
-    sourceIds: ["lgn-layers", "lgn-synapses"],
+    sourceIds: ["lgn-layers", "lgn-synapses", "magno-parvo-counts", "lgn-latency", "visual-projections"],
   },
   v1: {
     summary: "Primary visual cortex (V1) is the first area of cortex to receive visual input. It lies at the back of the brain, along the calcarine sulcus.",
@@ -67,7 +67,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       loop: "Its deepest layer sends feedback to the thalamus.",
     },
     connections:
-      "Sends output to [[extrastriate|higher visual areas]] along several routes: toward the temporal lobe (object recognition), toward the parietal lobe (location and action), and a lateral route involved in faces and body movement.",
+      "Sends output to [[extrastriate|higher visual areas]] along several routes: toward the temporal lobe ([[it|object recognition]]), through [[mt|MT]] toward the parietal lobe (location and action), and a lateral route involved in faces and body movement.",
     limit: "The highlight follows the calcarine sulcus. The actual border of V1 varies between people.",
     sourceIds: ["visual-cortex-map", "hubel-wiesel", "third-pathway"],
   },
@@ -106,13 +106,14 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     mechanism:
       "Neurons around the intraparietal sulcus represent where things are and how relevant they are at the moment. This priority map guides eye movements, reaching and attention.",
     roles: {
+      vision: "The end of the dorsal stream. Uses vision to guide eye movements, reaching and grasping.",
       attention: "Part of the dorsal attention network, which directs attention voluntarily.",
       touch: "Combines touch with vision and body position so that you can act on what you feel.",
     },
     connections:
-      "Receives input from visual, auditory and [[s1|touch]] areas and works with [[pfc|prefrontal cortex]]. Damage, especially on the right, can cause spatial neglect.",
+      "Receives visual input from [[mt|MT]] and other visual areas, as well as auditory and [[s1|touch]] input, and works with [[pfc|prefrontal cortex]]. Damage can cause optic ataxia (inaccurate reaching toward things a person sees clearly) and, especially on the right, spatial neglect.",
     limit: "The highlight is the superior parietal lobule, one part of a larger network.",
-    sourceIds: ["attention-networks", "multisensory-space"],
+    sourceIds: ["attention-networks", "multisensory-space", "optic-ataxia", "two-streams"],
   },
   pulvinar: {
     summary:
@@ -128,11 +129,88 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary: "Higher visual areas are the many visual areas beyond V1. Different areas specialize in features such as shape, colour, motion, faces and places.",
     mechanism:
       "Neurons here respond to larger parts of the visual field and to more complex features than neurons in V1. Attention effects are larger here than in V1: in monkey area V4, attention increases responses by about 25%.",
-    roles: { attention: "Responses to the attended object increase relative to responses to other objects." },
+    roles: {
+      vision: "The first stages after V1. Areas V2 and V4 combine V1's local features into contours, shapes and colours and pass them to the temporal lobe.",
+      attention: "Responses to the attended object increase relative to responses to other objects.",
+    },
     connections:
-      "Receives input from [[v1|V1]], exchanges signals with the [[pulvinar|pulvinar]], and sends output to temporal and [[parietal|parietal]] cortex.",
+      "Receives input from [[v1|V1]], exchanges signals with the [[pulvinar|pulvinar]], and sends output to [[it|inferior temporal cortex]], the category-selective areas and [[parietal|parietal]] cortex.",
     limit: "The lateral occipital highlight represents a large group of different areas.",
-    sourceIds: ["attention-gain", "baseline", "third-pathway"],
+    sourceIds: ["attention-gain", "baseline", "third-pathway", "parallel-pathways"],
+  },
+  mt: {
+    summary:
+      "Area MT (also called V5) is a visual area specialized for motion. In humans it is usually found on the side of the brain, where the occipital lobe meets the temporal lobe.",
+    mechanism:
+      "Most MT neurons respond to movement in a particular direction and at a particular speed, over a larger part of the visual field than V1 neurons. Some combine local motion signals into the motion of a whole object. In monkeys, electrically stimulating a small group of MT neurons shifts the animal's judgement of motion toward those neurons' preferred direction. A neighbouring area, MST, responds to the overall patterns of motion produced when you move through a scene (optic flow), such as the expansion seen when walking forward.",
+    roles: {
+      vision:
+        "Signals the direction and speed of moving things. Its output is used to follow objects with the eyes and to judge how things, and you, are moving.",
+    },
+    connections:
+      "Receives input from [[v1|V1]], directly and through V2, dominated by magnocellular signals. Sends output to [[parietal|posterior parietal cortex]] and to areas that control eye movements.",
+    limit:
+      "The marker sits on a nearby sulcal landmark. In human imaging this region is usually called hMT+, because MT and MST are hard to separate. Its position varies between people, most often lying in the inferior temporal sulcus or its ascending branch.",
+    sourceIds: ["mt-review", "mt-stimulation", "motion-blindness", "mt-landmark", "mst-flow"],
+  },
+  it: {
+    summary:
+      "Inferior temporal cortex (IT) is a late stage of the ventral stream, the route that identifies objects. The term comes from monkey studies; in humans, the corresponding cortex covers the lower side and underside of the temporal lobe.",
+    mechanism:
+      "IT neurons respond to complex shapes and object parts. Their responses stay similar when an object moves, changes size or is seen from a somewhat different angle, which lets the same object be recognized in different conditions. In monkeys, the activity of about 100 IT neurons over as little as 12.5 ms was enough to tell which object was shown and its category. In humans, the lateral occipital complex, next to MT, responds more to objects than to textures and is an early part of this system.",
+    roles: { vision: "Identifies what an object is. Its output goes to areas for memory, emotion and decisions." },
+    connections:
+      "Receives input from V4 and other [[extrastriate|higher visual areas]]. Contains or borders regions that prefer particular categories, such as [[ffa|faces]] and [[ppa|places]]. Sends output to the medial temporal lobe (memory), the amygdala and prefrontal cortex.",
+    limit:
+      "Monkey IT and human ventral temporal cortex are similar but not identical. The highlight is the inferior temporal sulcus; the region itself is larger and has no sharp borders.",
+    sourceIds: ["object-recognition", "it-readout", "loc", "vtc-review"],
+  },
+  ffa: {
+    summary:
+      "The fusiform face area (FFA) is a region on the fusiform gyrus that responds more strongly to faces than to other objects. It is found in most people and is usually larger in the right hemisphere.",
+    mechanism:
+      "In the study that named it, the FFA was found in 12 of 15 people. It responds more to faces than to houses, hands, objects or scrambled faces, including faces seen from a three-quarter view. It is involved mainly in recognizing who a face belongs to; expressions and gaze direction are processed more in the superior temporal sulcus. In monkeys, 97% of the visually responsive neurons in the largest face-selective region preferred faces. How specific the human FFA is remains debated: in car and bird experts, it also responded more to cars or birds.",
+    roles: { vision: "Part of a network of face-selective areas used to recognize individuals." },
+    connections:
+      "Receives input from earlier visual areas, including a face-selective region in the occipital lobe (the occipital face area). Works with the superior temporal sulcus (expressions and gaze) and the front of the temporal lobe (knowing who someone is).",
+    limit:
+      "The marker shows a typical position on the left fusiform gyrus, to match the rest of the route. The FFA is often larger and more consistent in the right hemisphere, and its exact position varies by several millimetres between people.",
+    sourceIds: ["ffa", "ffa-review", "face-network", "face-stimulation", "face-patches", "expertise"],
+  },
+  ppa: {
+    summary:
+      "The parahippocampal place area (PPA) responds more to images of places and scenes, such as rooms, streets and landscapes, than to single objects, and hardly at all to faces.",
+    mechanism:
+      "The PPA responds to the layout of the space in a scene. An empty room produces as strong a response as the same room with furniture, and more than twice the response to a set of objects with no room around them. It is involved in recognizing the type of place and familiar landmarks. A separate scene area on the outer surface of the occipital lobe, the occipital place area, represents where it is possible to walk in a scene.",
+    roles: { vision: "Helps recognize places and landmarks, which supports finding your way." },
+    connections:
+      "Receives input from earlier visual areas and connects with the retrosplenial cortex and hippocampus, which are involved in navigation and memory.",
+    limit:
+      "The highlight is the collateral sulcus; the PPA covers part of it and nearby parahippocampal cortex. It is found in both hemispheres; only the left is shown.",
+    sourceIds: ["ppa", "opa-affordances", "vtc-review"],
+  },
+  eba: {
+    summary:
+      "The extrastriate body area (EBA) responds more to images of human bodies and body parts than to faces or other objects. It lies on the side of the brain, next to and partly overlapping area MT.",
+    mechanism:
+      "It responds to still and moving images of bodies. Briefly disrupting it with magnetic stimulation (TMS) slowed the recognition of body parts, but not of faces or other objects. It is also active when you move your own arm or leg toward a target, even without seeing the movement.",
+    roles: { vision: "Analyses the shape and posture of bodies, which supports recognizing people and what they are doing." },
+    connections:
+      "Part of the lateral visual route toward the superior temporal sulcus, which is involved in perceiving other people's actions. A second body-selective region, the fusiform body area, lies next to the [[ffa|FFA]].",
+    limit:
+      "The highlight is the middle temporal gyrus; the EBA occupies part of its back end and neighbouring cortex. It is found in both hemispheres; only the left is shown.",
+    sourceIds: ["eba", "eba-tms", "eba-action", "fba", "third-pathway"],
+  },
+  vwfa: {
+    summary:
+      "The visual word form area (VWFA) is a region in the left occipitotemporal sulcus that responds to written words and letter strings in scripts the reader knows.",
+    mechanism:
+      "It responds similarly to a word whether it is written in upper or lower case, and its location is similar across people and writing systems. It develops as people learn to read: adults who learned to read show a larger response to writing here than adults who never learned, and a slightly smaller response to faces. Writing is only about 5,000 years old, too recent for a brain area to have evolved for it, so the VWFA is thought to be object-recognition cortex that is taken over when a person learns to read. In one patient, surgery that removed a small part of it caused a marked reading difficulty, while recognition of other kinds of images stayed normal. How specific it is has been debated: it is also active during tasks such as naming pictures or reading Braille.",
+    roles: { vision: "Recognizes letters and words, then passes them to language areas that retrieve their sound and meaning." },
+    connections: "Receives input from earlier visual areas and sends output to language areas in the left temporal and frontal lobes.",
+    limit:
+      "The highlight is the left occipitotemporal sulcus; the VWFA covers a small part of it and is not segmented. Its exact position varies by several millimetres between people.",
+    sourceIds: ["vwfa", "vwfa-review", "literacy", "recycling", "vwfa-lesion", "vwfa-debate"],
   },
   cochlea: {
     summary: "The cochlea is the spiral-shaped hearing organ of the inner ear, inside the temporal bone.",
@@ -411,6 +489,138 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     title: "McAdams & Maunsell · Effects of attention on orientation-tuning functions in V4 (1999)",
     url: "https://doi.org/10.1523/JNEUROSCI.19-01-00431.1999",
   },
+  {
+    id: "magno-parvo-counts",
+    title: "Perry, Oehler & Cowey · Retinal ganglion cells that project to the dorsal lateral geniculate nucleus in the macaque monkey (1984)",
+    url: "https://doi.org/10.1016/0306-4522(84)90006-X",
+  },
+  {
+    id: "lgn-latency",
+    title: "Maunsell et al. · Visual response latencies of magnocellular and parvocellular LGN neurons in macaque monkeys (1999)",
+    url: "https://doi.org/10.1017/S0952523899156177",
+  },
+  {
+    id: "parallel-pathways",
+    title: "Nassi & Callaway · Parallel processing strategies of the primate visual system (2009)",
+    url: "https://doi.org/10.1038/nrn2619",
+  },
+  {
+    id: "two-streams",
+    title: "Goodale & Milner · Separate visual pathways for perception and action (1992)",
+    url: "https://doi.org/10.1016/0166-2236(92)90344-8",
+  },
+  { id: "mt-review", title: "Born & Bradley · Structure and function of visual area MT (2005)", url: "https://doi.org/10.1146/annurev.neuro.26.041002.131052" },
+  {
+    id: "mt-stimulation",
+    title: "Salzman, Britten & Newsome · Cortical microstimulation influences perceptual judgements of motion direction (1990)",
+    url: "https://doi.org/10.1038/346174a0",
+  },
+  {
+    id: "motion-blindness",
+    title: "Zihl, von Cramon & Mai · Selective disturbance of movement vision after bilateral brain damage (1983)",
+    url: "https://doi.org/10.1093/brain/106.2.313",
+  },
+  {
+    id: "mt-landmark",
+    title: "Dumoulin et al. · A new anatomical landmark for reliable identification of human area V5/MT (2000)",
+    url: "https://doi.org/10.1093/cercor/10.5.454",
+  },
+  { id: "mst-flow", title: "Duffy & Wurtz · Sensitivity of MST neurons to optic flow stimuli (1991)", url: "https://doi.org/10.1152/jn.1991.65.6.1329" },
+  {
+    id: "optic-ataxia",
+    title: "Perenin & Vighetto · Optic ataxia: a specific disruption in visuomotor mechanisms (1988)",
+    url: "https://doi.org/10.1093/brain/111.3.643",
+  },
+  {
+    id: "object-recognition",
+    title: "DiCarlo, Zoccolan & Rust · How does the brain solve visual object recognition? (2012)",
+    url: "https://doi.org/10.1016/j.neuron.2012.01.010",
+  },
+  {
+    id: "it-readout",
+    title: "Hung et al. · Fast readout of object identity from macaque inferior temporal cortex (2005)",
+    url: "https://doi.org/10.1126/science.1117593",
+  },
+  {
+    id: "loc",
+    title: "Malach et al. · Object-related activity revealed by fMRI in human occipital cortex (1995)",
+    url: "https://doi.org/10.1073/pnas.92.18.8135",
+  },
+  {
+    id: "vtc-review",
+    title: "Grill-Spector & Weiner · The functional architecture of the ventral temporal cortex and its role in categorization (2014)",
+    url: "https://doi.org/10.1038/nrn3747",
+  },
+  {
+    id: "ffa",
+    title: "Kanwisher, McDermott & Chun · The fusiform face area: a module in human extrastriate cortex specialized for face perception (1997)",
+    url: "https://doi.org/10.1523/JNEUROSCI.17-11-04302.1997",
+  },
+  {
+    id: "ffa-review",
+    title: "Kanwisher & Yovel · The fusiform face area: a cortical region specialized for the perception of faces (2006)",
+    url: "https://doi.org/10.1098/rstb.2006.1934",
+  },
+  {
+    id: "face-network",
+    title: "Haxby, Hoffman & Gobbini · The distributed human neural system for face perception (2000)",
+    url: "https://doi.org/10.1016/S1364-6613(00)01482-0",
+  },
+  {
+    id: "face-stimulation",
+    title: "Parvizi et al. · Electrical stimulation of human fusiform face-selective regions distorts face perception (2012)",
+    url: "https://doi.org/10.1523/JNEUROSCI.2609-12.2012",
+  },
+  {
+    id: "face-patches",
+    title: "Tsao et al. · A cortical region consisting entirely of face-selective cells (2006)",
+    url: "https://doi.org/10.1126/science.1119983",
+  },
+  {
+    id: "expertise",
+    title: "Gauthier et al. · Expertise for cars and birds recruits brain areas involved in face recognition (2000)",
+    url: "https://doi.org/10.1038/72140",
+  },
+  { id: "ppa", title: "Epstein & Kanwisher · A cortical representation of the local visual environment (1998)", url: "https://doi.org/10.1038/33402" },
+  {
+    id: "opa-affordances",
+    title: "Bonner & Epstein · Coding of navigational affordances in the human visual system (2017)",
+    url: "https://doi.org/10.1073/pnas.1618228114",
+  },
+  {
+    id: "eba",
+    title: "Downing et al. · A cortical area selective for visual processing of the human body (2001)",
+    url: "https://doi.org/10.1126/science.1063414",
+  },
+  {
+    id: "eba-tms",
+    title: "Urgesi, Berlucchi & Aglioti · Magnetic stimulation of extrastriate body area impairs visual processing of nonfacial body parts (2004)",
+    url: "https://doi.org/10.1016/j.cub.2004.11.031",
+  },
+  {
+    id: "eba-action",
+    title: "Astafiev et al. · Extrastriate body area in human occipital cortex responds to the performance of motor actions (2004)",
+    url: "https://doi.org/10.1038/nn1241",
+  },
+  { id: "fba", title: "Peelen & Downing · Selectivity for the human body in the fusiform gyrus (2005)", url: "https://doi.org/10.1152/jn.00513.2004" },
+  { id: "vwfa", title: "Cohen et al. · The visual word form area (2000)", url: "https://doi.org/10.1093/brain/123.2.291" },
+  {
+    id: "vwfa-review",
+    title: "Dehaene & Cohen · The unique role of the visual word form area in reading (2011)",
+    url: "https://doi.org/10.1016/j.tics.2011.04.003",
+  },
+  {
+    id: "literacy",
+    title: "Dehaene et al. · How learning to read changes the cortical networks for vision and language (2010)",
+    url: "https://doi.org/10.1126/science.1194140",
+  },
+  { id: "recycling", title: "Dehaene & Cohen · Cultural recycling of cortical maps (2007)", url: "https://doi.org/10.1016/j.neuron.2007.10.004" },
+  {
+    id: "vwfa-lesion",
+    title: "Gaillard et al. · Direct intracranial, fMRI, and lesion evidence for the causal role of left inferotemporal cortex in reading (2006)",
+    url: "https://doi.org/10.1016/j.neuron.2006.03.031",
+  },
+  { id: "vwfa-debate", title: "Price & Devlin · The myth of the visual word form area (2003)", url: "https://doi.org/10.1016/S1053-8119(03)00084-3" },
   { id: "hair-cells", title: "Ashmore · Cochlear outer hair cell motility (2008)", url: "https://doi.org/10.1152/physrev.00044.2006" },
   {
     id: "prestin",

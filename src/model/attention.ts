@@ -20,6 +20,12 @@ const senseRegions: Partial<Record<RegionId, SenseId>> = {
   v1: "vision",
   l6: "vision",
   extrastriate: "vision",
+  mt: "vision",
+  it: "vision",
+  ffa: "vision",
+  ppa: "vision",
+  eba: "vision",
+  vwfa: "vision",
   pulvinar: "vision",
   cochlea: "hearing",
   cochleaR: "hearing",
@@ -72,6 +78,17 @@ export function attentionWeight(path: PathId, edge: Edge, settings: AttentionSet
   if (!settings.enabledSenses[path]) return 0;
   // Map the model's response onto route brightness; balanced streams sit at 0.7.
   return clamp((streamResponses(settings)[path] / BALANCED_RESPONSE) * BALANCED_WEIGHT, 0.12, 1);
+}
+
+const OVERVIEW_PATHS = new Set<PathId>(["vision", "hearing", "touch"]);
+
+/** Brightness of one route in the current view; 0 hides it. */
+export function routeWeight(path: PathId, edge: Edge, view: AttentionSettings & { overview: boolean; path: PathId }): number {
+  // Detail routes (e.g. beyond V1) would crowd the overview and the Attention streams.
+  if (edge.detail) return !view.overview && path === view.path ? 1 : 0;
+  if (view.overview) return OVERVIEW_PATHS.has(path) ? 0.7 : 0;
+  if (view.path === "attention") return attentionWeight(path, edge, view);
+  return path === view.path ? 1 : 0;
 }
 
 export function regionPulse(seconds: number, reducedMotion = false): number {

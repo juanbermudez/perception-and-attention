@@ -37,6 +37,32 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     label: "Left lateral occipital gyrus",
     context: "Anatomical reference for this visual association landmark.",
   },
+  mt: {
+    parts: ["Anterior_occipital_sulcus*l"],
+    label: "Left anterior occipital sulcus",
+    context: "Sulcal landmark near MT; MT itself is not segmented, and its position varies between people.",
+  },
+  it: {
+    parts: ["Inferior_temporal_sulcusl"],
+    label: "Left inferior temporal sulcus",
+    context: "Anatomical reference for inferior temporal cortex; functional borders are not segmented.",
+  },
+  ffa: {
+    parts: ["Lateral_occipitotemporal_gyrusl"],
+    label: "Left fusiform gyrus",
+    context: "Parent surface reference; the FFA covers part of the middle of this gyrus and is not segmented.",
+  },
+  ppa: { parts: ["Collateral_sulcusl"], label: "Left collateral sulcus", context: "Parent surface reference; the PPA is not segmented." },
+  eba: {
+    parts: ["Middle_temporal_gyrusl"],
+    label: "Left middle temporal gyrus",
+    context: "Parent surface reference; the EBA lies near the back end of this gyrus and is not segmented.",
+  },
+  vwfa: {
+    parts: ["Occipitotemporal_sulcus_(Lateral_part*)l"],
+    label: "Left occipitotemporal sulcus",
+    context: "Parent surface reference; the VWFA is not segmented.",
+  },
   cochlea: { parts: ["Cochleal"], label: "Left cochlea" },
   cochleaR: { parts: ["Cochlear"], label: "Right cochlea" },
   brainstem: { parts: ["Anterior_cochlear_nucleusl", "Posterior_cochlear_nucleusl"], label: "Left cochlear nuclei" },

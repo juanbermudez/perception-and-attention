@@ -1,0 +1,92 @@
+{
+  "mt": {
+    "position": [
+      1.593,
+      0.004,
+      1.214
+    ],
+    "mni": [
+      -44,
+      -72,
+      6
+    ],
+    "mesh": "Anterior_occipital_sulcus*l",
+    "basis": "hMT+/V5 lies where the ascending limb of the inferior temporal sulcus meets the lateral occipital sulcus (Dumoulin et al., 2000).",
+    "snappedMillimetres": 4
+  },
+  "eba": {
+    "position": [
+      1.554,
+      -0.107,
+      1.433
+    ],
+    "mni": [
+      -50,
+      -70,
+      0
+    ],
+    "mesh": "Middle_temporal_gyrusl",
+    "basis": "Lateral occipitotemporal cortex, next to and partly overlapping hMT+ (Downing et al., 2001).",
+    "snappedMillimetres": 1.9
+  },
+  "it": {
+    "position": [
+      0.408,
+      -0.656,
+      1.361
+    ],
+    "mni": [
+      -50,
+      -35,
+      -20
+    ],
+    "mesh": "Inferior_temporal_sulcusl",
+    "basis": "Lateral inferior temporal cortex, anterior to the category-selective fusiform areas (Grill-Spector & Weiner, 2014).",
+    "snappedMillimetres": 4.8
+  },
+  "ffa": {
+    "position": [
+      1.062,
+      -0.65,
+      1.057
+    ],
+    "mni": [
+      -40,
+      -52,
+      -20
+    ],
+    "mesh": "Lateral_occipitotemporal_gyrusl",
+    "basis": "Mid-fusiform gyrus (Kanwisher et al., 1997; Grill-Spector & Weiner, 2014). Usually larger in the right hemisphere.",
+    "snappedMillimetres": 4.1
+  },
+  "ppa": {
+    "position": [
+      0.817,
+      -0.366,
+      0.794
+    ],
+    "mni": [
+      -27,
+      -44,
+      -10
+    ],
+    "mesh": "Collateral_sulcusl",
+    "basis": "Posterior parahippocampal cortex and collateral sulcus (Epstein & Kanwisher, 1998).",
+    "snappedMillimetres": 2.4
+  },
+  "vwfa": {
+    "position": [
+      1.139,
+      -0.424,
+      1.221
+    ],
+    "mni": [
+      -44,
+      -56,
+      -15
+    ],
+    "mesh": "Occipitotemporal_sulcus_(Lateral_part*)l",
+    "basis": "Left lateral occipitotemporal sulcus (Cohen et al., 2000; Dehaene & Cohen, 2011).",
+    "snappedMillimetres": 1.5
+  }
+}

@@ -1,10 +1,13 @@
 import type { Vec3 } from "math";
 import atlas from "../data/atlas-data.json";
+import areas from "../data/functional-areas.json";
 import type { Region, RegionId } from "./types";
 
 // Anchors come from the atlas; landmark centres stand in for nuclei it does not segment.
 const at = (id: keyof typeof atlas.anchors): Vec3 => atlas.anchors[id] as Vec3;
 const center = (name: keyof typeof atlas.landmarks): Vec3 => atlas.landmarks[name].center as Vec3;
+// Functional areas the atlas does not segment; see scripts/place-functional-areas.mjs.
+const area = (id: keyof typeof areas): Vec3 => areas[id].position as Vec3;
 
 export const regions: Record<RegionId, Region> = {
   retina: {
@@ -87,6 +90,54 @@ export const regions: Record<RegionId, Region> = {
     name: "higher visual areas",
     where: "Occipital lobe, lateral surface",
     position: at("extrastriate"),
+  },
+  mt: {
+    id: "mt",
+    label: "Area MT (V5)",
+    short: "MT · motion",
+    name: "area MT",
+    where: "Side of the brain, where the occipital and temporal lobes meet",
+    position: area("mt"),
+  },
+  it: {
+    id: "it",
+    label: "Inferior temporal cortex (IT)",
+    short: "IT · objects",
+    name: "inferior temporal cortex",
+    where: "Lower side of the temporal lobe",
+    position: area("it"),
+  },
+  ffa: {
+    id: "ffa",
+    label: "Fusiform face area (FFA)",
+    short: "FFA · faces",
+    name: "the fusiform face area",
+    where: "Fusiform gyrus, on the underside of the temporal lobe",
+    position: area("ffa"),
+  },
+  ppa: {
+    id: "ppa",
+    label: "Parahippocampal place area (PPA)",
+    short: "PPA · places",
+    name: "the parahippocampal place area",
+    where: "Collateral sulcus, on the underside of the temporal lobe, toward the midline",
+    position: area("ppa"),
+  },
+  eba: {
+    id: "eba",
+    label: "Extrastriate body area (EBA)",
+    short: "EBA · bodies",
+    name: "the extrastriate body area",
+    where: "Side of the brain, where the occipital and temporal lobes meet, next to MT",
+    position: area("eba"),
+  },
+  vwfa: {
+    id: "vwfa",
+    label: "Visual word form area (VWFA)",
+    short: "VWFA · words",
+    name: "the visual word form area",
+    where: "Left occipitotemporal sulcus, on the underside of the temporal lobe",
+    position: area("vwfa"),
   },
   cochlea: {
     id: "cochlea",

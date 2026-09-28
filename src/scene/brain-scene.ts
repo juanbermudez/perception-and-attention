@@ -17,7 +17,7 @@ import type { Edge, PathId, RegionId, Signal } from "../content/types";
 import atlas from "../data/atlas-data.json";
 import skullData from "../data/skull-data.json";
 import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepWeight, type WeightMotion } from "../model/activity";
-import { attentionWeight, regionPulse, senseForRegion, sensoryStreams } from "../model/attention";
+import { regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
 import { type CalloutBounds, type LabelLayout, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
 import type { ExplorerState } from "../state";
 import { bundleFrames, SAMPLES, sample, sampleEdge, sampleSurface, unpack } from "./geometry";
@@ -37,7 +37,6 @@ const ACTIVITY_TAU = 0.9;
 const SPIKE_RATE = 7;
 const GLOW_TAU = 0.35;
 // The overview shows every sense flowing at once, labelled by relay and cortex.
-const OVERVIEW_PATHS = new Set<PathId>(["vision", "hearing", "touch"]);
 const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl", "retina", "cochlea"]);
 // Zooming in fades the skull and outer brain so the region of interest stands out.
 // Distances are camera-to-target in scene units; the overview sits at about 12.
@@ -396,6 +395,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     else if (id === "v1" || id === "l6" || id === "extrastriate") viewFrom.set(0.75, 0.22, side);
     else if (id === "cingulate" || id === "motor" || id === "s1") viewFrom.set(-0.15, 0.75, side);
     else if (id === "medulla" || id.startsWith("brainstem")) viewFrom.set(0.5, -0.16, side);
+    // Areas on the underside of the temporal lobe are seen from below and to the side.
+    else if (id === "ffa" || id === "ppa" || id === "vwfa" || id === "it") viewFrom.set(0.3, -0.6, side);
+    else if (id === "mt" || id === "eba") viewFrom.set(0.45, 0.05, side);
     else viewFrom.set(clamp(region[0] * 0.2, -0.6, 0.6), 0.22, side);
     animateCamera(lookAt, viewFrom, clamp(contextDistance * 0.94, controls.minDistance, controls.maxDistance));
   }
@@ -544,6 +546,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     "pfc",
     "parietal",
     "extrastriate",
+    "mt",
+    "it",
+    "ffa",
+    "ppa",
+    "eba",
+    "vwfa",
     "a1",
     "a1R",
     "temporal",
@@ -555,6 +563,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     "insula",
     "cingulate",
   ]);
+  // Areas a few millimetres apart get tighter patches so neighbours stay distinct.
+  const smallAreas = new Set<RegionId>(["mt", "ffa", "ppa", "eba", "vwfa"]);
   const clusters: ActivityCluster[] = [];
   for (const id of Object.keys(regions) as RegionId[]) {
     const anchor = regions[id].position,
@@ -564,7 +574,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     if (surface)
       for (let i = 0; i < cortexPositions.length; i += 3) {
         vec3.fromBuffer(_brain_point, cortexPositions, i);
-        if (vec3.squaredDistance(_brain_point, anchor) < 0.48 ** 2) near.push(i);
+        if (vec3.squaredDistance(_brain_point, anchor) < (smallAreas.has(id) ? 0.2 : 0.48) ** 2) near.push(i);
       }
     for (let i = 0; i < CLUSTER_POINTS; i++) {
       if (near.length) {
@@ -947,15 +957,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     regionColors.clear();
     activeRegionIds.clear();
     for (const route of routes) {
-      const weight = state.overview
-        ? OVERVIEW_PATHS.has(route.path)
-          ? 0.7
-          : 0
-        : state.path === "attention"
-          ? attentionWeight(route.path, route.edge, state)
-          : route.path === state.path
-            ? 1
-            : 0;
+      const weight = routeWeight(route.path, route.edge, state);
       if (weight > 0) {
         activeRegionIds.add(route.edge.from);
         activeRegionIds.add(route.edge.to);
@@ -1172,6 +1174,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
           h: m.labelHeight,
           side: m.side,
           anchor: [Math.round(m.anchorX), Math.round(m.anchorY)],
+          weight: Number(m.labelWeight.value.toFixed(3)),
+          fade: Number(m.fade.toFixed(3)),
         }));
     },
     headSnapshot() {

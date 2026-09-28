@@ -2,7 +2,7 @@
 
 An open-source, interactive review of some basics of human perception and attention. A 3D brain built from a reference anatomy atlas shows six topics, each as a short step-by-step walkthrough:
 
-1. **Vision**: from the eye to visual cortex
+1. **Vision**: from the eye to visual cortex, then the two streams that identify objects (including areas for faces, places, bodies and words) and guide action
 2. **Hearing**: from the ear to auditory cortex
 3. **Touch**: from skin and muscles to touch cortex
 4. **Cortex–thalamus feedback**: how the cortex adjusts its own input
@@ -33,7 +33,7 @@ This is a first version; I expect to keep adding detail.
 
 The text summarizes published research and textbooks. It was checked against primary papers and review articles in September 2026; [`docs/science-factcheck.md`](docs/science-factcheck.md) lists each claim with its verdict, confidence, species and citation. Every DOI in the content was resolved against Crossref. When a finding comes from animal studies, the text says so; when researchers disagree, the text says so.
 
-Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei) are shown as markers at approximate positions. This is an educational resource, not a clinical reference.
+Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei) are shown as markers at approximate positions. Functional areas it does not segment (MT, IT, FFA, PPA, EBA, VWFA) are placed from typical group-average MNI coordinates and snapped onto the gyrus or sulcus they lie in; individual locations vary by several millimetres. This is an educational resource, not a clinical reference.
 
 ## Getting started
 
@@ -85,9 +85,9 @@ src/
     about.ts           About dialog (About, Papers, Code, Models)
     dom.ts             Element lookup, escaping, [[region|text]] links, toasts
     icons.ts, keyboard.ts, panel-resize.ts
-  data/                Atlas and skull geometry derived from Z-Anatomy
+  data/                Atlas and skull geometry derived from Z-Anatomy; functional-area positions
 tests/                 Content, anatomy, attention, callout and motion tests
-scripts/               build, local server, atlas and skull preparation
+scripts/               build, local server, atlas, skull and functional-area preparation
 provenance/            Source hashes, transforms and bounds for the derived geometry
 docs/                  Science fact-check notes
 ```
@@ -125,6 +125,8 @@ Normal builds use the checked-in files in `src/data/`. To regenerate them, obtai
 node scripts/prepare-atlas.mjs /path/to/inputs
 node scripts/prepare-skull.mjs
 ```
+
+`src/data/functional-areas.json` is generated from the atlas by `node scripts/place-functional-areas.mjs`, which lists each area's source coordinate and the mesh it is snapped to.
 
 ## Credits and licenses
 

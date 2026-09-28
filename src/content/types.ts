@@ -14,6 +14,12 @@ export type RegionId =
   | "parietal"
   | "pulvinar"
   | "extrastriate"
+  | "mt"
+  | "it"
+  | "ffa"
+  | "ppa"
+  | "eba"
+  | "vwfa"
   | "cochlea"
   | "cochleaR"
   | "brainstem"
@@ -68,6 +74,8 @@ export interface Edge {
   /** Routes with the same stage fire together (both eyes, both ears). */
   stage?: number;
   channel?: SenseId;
+  /** Shown only inside its own topic, not in the overview or the Attention streams. */
+  detail?: boolean;
 }
 
 export interface Pathway {

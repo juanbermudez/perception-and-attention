@@ -7,7 +7,7 @@ export const overview = {
   ],
   modelNotes: [
     "The anatomy uses 167 structures from the Z-Anatomy atlas (based on BodyParts3D), all placed with one shared transform. It is a single reference brain, not a scan of a real person.",
-    "Small nuclei that the atlas does not include (the TRN, pulvinar, superior olive, VPL and dorsal column nuclei) are shown as markers at their approximate positions. Functional areas such as V1, A1, area Spt and Broca’s area are placed on the gyri where they are usually found; their exact borders vary between people.",
+    "Small nuclei that the atlas does not include (the TRN, pulvinar, superior olive, VPL and dorsal column nuclei) are shown as markers at their approximate positions. Functional areas such as V1, A1, area Spt and Broca’s area are placed on the gyri where they are usually found. MT and the face, place, body and word areas are placed from typical coordinates in group imaging studies. Their exact positions and borders vary between people.",
     "Routes are smooth curves between markers, not reconstructed nerve fibres. Particle speed, brightness and the attention numbers are for illustration, not physiological measurements.",
     "This is an educational resource, not a clinical or diagnostic reference.",
   ],

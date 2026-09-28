@@ -6,7 +6,7 @@ async function bundle(entry) {
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
 }
 const [
-  { attentionWeight, regionPulse, streamResponses },
+  { attentionWeight, regionPulse, routeWeight, streamResponses },
   { layoutCallouts, leaderPath, stackColumn },
   { regionGuides, guideSources },
   { pathways, regions, sources },
@@ -111,6 +111,22 @@ for (const path of pathways) {
 for (const source of sources) assert.equal(new URL(source.url).protocol, "https:");
 console.log(`PASS ${pathways.length} walkthroughs: every step has a key fact, ${signals} step signals follow drawn edges, all pathway sources resolve.`);
 
+// Detail routes (beyond V1) appear only inside their own topic.
+{
+  const vision = pathways.find((path) => path.id === "vision");
+  const detail = vision.edges.filter((edge) => edge.detail),
+    core = vision.edges.filter((edge) => !edge.detail);
+  assert(detail.length && core.length);
+  const view = (overview, path) => ({ ...settings, priority: "balanced", enabledSenses: { vision: true, hearing: true, touch: true }, overview, path });
+  for (const edge of detail) {
+    assert.equal(routeWeight("vision", edge, view(true, "vision")), 0, "Detail route shown in the overview.");
+    assert.equal(routeWeight("vision", edge, view(false, "attention")), 0, "Detail route shown in the Attention topic.");
+    assert.equal(routeWeight("vision", edge, view(false, "vision")), 1);
+  }
+  for (const edge of core) assert.equal(routeWeight("vision", edge, view(true, "vision")), 0.7);
+  console.log(`PASS ${detail.length} detail routes show only inside Vision; ${core.length} core routes still show in the overview.`);
+}
+
 // Callouts: columns outside the head, stacked without overlap, in anchor order.
 const makeLabel = (x, y, w = 120) => ({
   anchorX: x,
@@ -203,6 +219,24 @@ for (const side of [-1, 1]) {
     assert(spacing >= 4 - 0.01 && spacing < 14, `Squeezed spacing ${spacing.toFixed(1)} px.`);
   }
   assert(column[0].targetY - 13 >= 99 && column.at(-1).targetY + 13 <= 421, "Squeezed column escaped its band.");
+}
+// A label moved to the other column to balance them keeps that side and fades in,
+// instead of being pulled back to its preferred side and restarting every frame.
+{
+  const lopsided = [490, 500, 510, 520, 530, 540].map((x, i) => makeLabel(x, 250 + i * 40));
+  for (let frame = 0; frame < 120; frame++) layoutCallouts(lopsided, lopsided.length, head, bounds, dt);
+  assert(
+    lopsided.some((label) => label.side < 0),
+    "Columns were not balanced.",
+  );
+  const sides = lopsided.map((label) => label.side);
+  layoutCallouts(lopsided, lopsided.length, head, bounds, dt);
+  assert.deepEqual(
+    lopsided.map((label) => label.side),
+    sides,
+    "Balanced labels changed sides while nothing moved.",
+  );
+  for (const label of lopsided) assert.equal(label.fade, 1, "A balanced label never finished fading in.");
 }
 // Orbiting: anchors sweep, labels glide under the speed cap.
 for (let frame = 0; frame < 600; frame++) {
