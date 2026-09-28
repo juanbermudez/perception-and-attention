@@ -106,8 +106,6 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     stepDots.innerHTML = stepDotsHtml(path);
     byId("path-after").innerHTML = pathAfterHtml(path);
     byId("streams-tab").hidden = id !== "attention";
-    byId("ear-view").hidden = id !== "hearing";
-    byId("bone-toggle").hidden = id !== "hearing";
     updateAttention();
     setPanel("guide");
     updateDock();

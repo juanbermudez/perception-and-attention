@@ -248,6 +248,22 @@ kbd {
   gap: 2px;
   flex: none;
 }
+.dock-text {
+  height: 40px;
+  padding: 0 10px;
+  flex: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  border-radius: var(--inner-radius);
+  transition:
+    background 0.16s ease-out,
+    color 0.16s ease-out;
+}
+.dock-text:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
 .ghost-icon {
   display: grid;
   place-items: center;
@@ -276,6 +292,7 @@ kbd {
     font-size: 10.5px;
   }
   .dock-home,
+  .dock-text,
   .ghost-icon {
     height: 50px;
   }
@@ -306,7 +323,6 @@ kbd {
 }
 
 /* Popovers open above their dock buttons. */
-.view-options,
 .view-help {
   position: fixed;
   inset: auto;
@@ -347,80 +363,10 @@ kbd {
   width: 16px;
   height: 16px;
 }
-.option-group {
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--line);
-}
-.option-group h3 {
-  margin: 0 0 var(--space-2);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--quiet);
-}
-.view-controls,
-.anatomical-views {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-}
-.chip {
-  min-height: 30px;
-  padding: 5px 10px;
-  font-size: 11.5px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-.chip.active {
-  color: var(--ink);
-  background: var(--hover);
-  border-color: #ffffff26;
-}
-.chip:hover {
-  color: var(--ink);
-  background: #ffffff0d;
-}
-.view-controls .chip::before {
-  content: "";
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--quiet);
-  margin-right: 6px;
-  vertical-align: 1px;
-}
-.view-controls .chip.active::before {
-  background: #7fe0a6;
-}
 .gain-control input {
   flex: 1;
   min-width: 0;
   accent-color: var(--accent);
-}
-.options-actions {
-  display: flex;
-  gap: var(--space-4);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line);
-}
-.option-action {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  font-size: 11.5px;
-  color: var(--muted);
-  padding: 0;
-}
-.option-action:hover {
-  color: var(--ink);
-}
-.option-action svg {
-  width: 14px;
-  height: 14px;
 }
 .source-link {
   display: flex;
@@ -535,9 +481,6 @@ kbd {
   color: var(--ink);
   border-color: #ffffff40;
   z-index: 10;
-}
-body.labels-hidden #region-labels {
-  visibility: hidden;
 }
 .label-role {
   color: var(--quiet);
@@ -1711,9 +1654,7 @@ dialog::backdrop {
     font-size: 10.5px;
     padding: 0 7px;
   }
-  .chip,
   .icon-button,
-  .option-action,
   .layer-button,
   .stream-action,
   #attention-priority button {

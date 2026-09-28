@@ -1,11 +1,8 @@
-// Settings and Info are native popovers, placed below their dock buttons.
+// The Info popover is native; it opens below its dock button.
 import { byId } from "./dom";
 
 export function setupPopovers() {
-  const pairs = [
-    { popover: byId("view-options"), button: byId("options-button") },
-    { popover: byId("view-help"), button: byId("help-button") },
-  ];
+  const pairs = [{ popover: byId("view-help"), button: byId("help-button") }];
 
   function place(popover: HTMLElement, anchorButton: HTMLElement) {
     const anchor = anchorButton.getBoundingClientRect();

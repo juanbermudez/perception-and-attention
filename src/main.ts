@@ -6,7 +6,6 @@ import { createExplorer } from "./ui/explorer";
 import { setupKeyboard } from "./ui/keyboard";
 import { setupPanelResize } from "./ui/panel-resize";
 import { setupPopovers } from "./ui/popovers";
-import { setupSettings } from "./ui/settings";
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const state = createState(reducedMotion.matches);
@@ -14,10 +13,12 @@ const state = createState(reducedMotion.matches);
 const popovers = setupPopovers();
 const about = setupAbout(popovers.hideAll);
 const explorer = createExplorer(state, reducedMotion, () => about.open());
-const { setPlaying } = setupSettings(state, explorer);
+const setPlaying = (value: boolean) => {
+  state.playing = value;
+};
 setupKeyboard(state, explorer, setPlaying, about.isOpen);
 setupPanelResize(popovers.placeOpen);
-byId("help-credits").addEventListener("click", () => about.open());
+byId("about-button").addEventListener("click", () => about.open());
 reducedMotion.addEventListener("change", (event) => {
   if (!event.matches) return;
   setPlaying(false);

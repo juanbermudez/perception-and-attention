@@ -141,7 +141,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     roles: { hearing: "Separates sound into its frequency components." },
     connections:
       "The auditory nerve carries its output to the [[brainstem|cochlear nuclei]] on the same side. With age, auditory nerve fibres can be lost well before hair cells; this “hidden hearing loss” does not show on a standard hearing test.",
-    limit: "The spiral is atlas geometry in its real position. Hair cells and fluid movement are not modelled. Settings → Inner ear shows a close-up.",
+    limit: "The spiral is atlas geometry in its real position. Hair cells and fluid movement are not modelled.",
     sourceIds: ["hair-cells", "prestin", "tonotopy", "hidden-hearing-loss"],
   },
   cochleaR: {
