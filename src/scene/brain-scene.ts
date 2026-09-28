@@ -39,6 +39,12 @@ const GLOW_TAU = 0.35;
 // The overview shows every sense flowing at once, labelled by relay and cortex.
 const OVERVIEW_PATHS = new Set<PathId>(["vision", "hearing", "touch"]);
 const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl", "retina", "cochlea"]);
+// Zooming in fades the skull and outer brain so the region of interest stands out.
+// Distances are camera-to-target in scene units; the overview sits at about 12.
+const ZOOM_FADE_START = 9;
+const ZOOM_FADE_END = 4;
+/** Opacity kept at full zoom, per layer. Deep relays and brainstem stay more visible. */
+const ZOOM_KEEP = { skull: 0.12, cortex: 0.3, lower: 0.35, inner: 0.65 };
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
 const SPOT_DIM_ROUTE = 0.14;
 const SPOT_DIM_REGION = 0.25;
@@ -599,8 +605,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   glowCanvas.height = 64;
   const g = glowCanvas.getContext("2d")!;
   const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, "#ffffffcc");
-  grad.addColorStop(0.15, "#ffffff70");
+  grad.addColorStop(0, "#ffffffa0");
+  grad.addColorStop(0.15, "#ffffff55");
   grad.addColorStop(0.5, "#ffffff15");
   grad.addColorStop(1, "#ffffff00");
   g.fillStyle = grad;
@@ -613,7 +619,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   for (const id of Object.keys(regions) as RegionId[]) {
     const region = regions[id];
     const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 16, 16),
+      new THREE.SphereGeometry(0.026, 12, 12),
       new THREE.MeshBasicMaterial({ color: "#bda0ff", transparent: true, depthTest: false }),
     );
     sphere.position.fromArray(region.position);
@@ -884,20 +890,26 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     controls.autoRotate = state.overview && state.playing && !reduced && !userOrbited && focusStarted < 0;
     updateFocus(ms);
     controls.update(dt);
-    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, state.xray ? 0.3 : 0.62, dt, reduced);
+    // 0 at overview distance, 1 when zoomed in close (smoothstep).
+    const zoomT = clamp((ZOOM_FADE_START - camera.position.distanceTo(controls.target)) / (ZOOM_FADE_START - ZOOM_FADE_END), 0, 1);
+    const near = zoomT * zoomT * (3 - 2 * zoomT);
+    const zoomFade = (keep: number) => lerp(1, keep, near);
+    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, (state.xray ? 0.3 : 0.62) * zoomFade(ZOOM_KEEP.cortex), dt, reduced);
     cortex.visible = cortexOpacity.value > ACTIVITY_CUTOFF;
-    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 : 0, dt, reduced);
+    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 * zoomFade(ZOOM_KEEP.skull) : 0, dt, reduced);
     skull.visible = skullOpacity.value > ACTIVITY_CUTOFF;
     for (const layer of surfaceLayers) {
       const target =
         layer.group === "cortex" ? (state.xray ? 0.065 : 0.26) : layer.group === "bone" ? 0.075 : layer.group === "ear" ? 0.95 : state.xray ? 0.02 : 0.045;
-      layer.material.opacity = stepWeight(layer.opacity, surfaceVisible(layer.group) ? target : 0, dt, reduced);
+      const keep = layer.group === "cortex" ? ZOOM_KEEP.cortex : layer.group === "deep" ? ZOOM_KEEP.inner : 1;
+      layer.material.opacity = stepWeight(layer.opacity, surfaceVisible(layer.group) ? target * zoomFade(keep) : 0, dt, reduced);
       layer.object.visible = layer.opacity.value > ACTIVITY_CUTOFF;
     }
     for (const layer of pointLayers) {
       const target =
         layer.group === "bone" ? 0.28 : layer.group === "auditory-nerve" ? 0.8 : layer.group === "deep" ? (state.xray ? 0.42 : 0.6) : state.xray ? 0.5 : 0.72;
-      layer.material.uniforms.opacity.value = stepWeight(layer.opacity, pointsVisible(layer.group) ? target : 0, dt, reduced);
+      const keep = layer.group === "lower" ? ZOOM_KEEP.lower : layer.group === "deep" || layer.group === "stem" ? ZOOM_KEEP.inner : 1;
+      layer.material.uniforms.opacity.value = stepWeight(layer.opacity, pointsVisible(layer.group) ? target * zoomFade(keep) : 0, dt, reduced);
       layer.object.visible = layer.opacity.value > ACTIVITY_CUTOFF;
     }
 
