@@ -2,6 +2,7 @@ import { browserStorage, createAgentControl } from "./agent/control";
 import { startAgentSurface } from "./agent/index";
 import { createActivityLog } from "./api/activity";
 import { createGuideApi } from "./api/guide-api";
+import { createTourRunner } from "./api/tour";
 import { createViewApi, type ViewApi, type ViewOutcome } from "./api/view-api";
 import { createBrainScene } from "./scene/brain-scene";
 import { createState } from "./state";
@@ -30,7 +31,7 @@ reducedMotion.addEventListener("change", (event) => {
   setPlaying(false);
   explorer.stopWalk();
 });
-// Captions for assistant tours; the tour runner arrives with the agent tools.
+// Captions for assistant tours.
 const narration = createNarration(byId("scene-title").closest<HTMLElement>(".brain-stage")!);
 
 let view: ViewApi | undefined;
@@ -51,15 +52,43 @@ explorer.snapshot();
 // Agent surface (spec §4): tools over GuideApi, an activity log the agent polls, presence and a kill switch.
 const activity = createActivityLog();
 const presence = createPresence(byId("agent-presence"));
-const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on });
+const tour = createTourRunner({
+  narration,
+  onEvent: (event) => {
+    // The agent's own tour controls are logged as its tool calls; the user's, and the natural end, are logged here.
+    if (event.by === "user" || event.kind === "ended") activity.append({ by: event.by, kind: `tour_${event.kind}`, said: `Stop ${event.stop} of ${event.of}` });
+  },
+});
+narration.onAction((action) => {
+  if (action === "pause") tour.pause("user");
+  else if (action === "resume") tour.resume("user");
+  else if (action === "skip") tour.next("user");
+  else tour.stop("user");
+});
+// Any user orbit, click or key pauses a tour (it does not end it). The caption bar's buttons, Tab and modifier keys do not.
+const QUIET_KEYS = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock"]);
+for (const type of ["pointerdown", "wheel", "keydown"] as const)
+  window.addEventListener(
+    type,
+    (event) => {
+      if (!tour.active || tour.paused || (event.target instanceof Node && narration.element.contains(event.target))) return;
+      if (event instanceof KeyboardEvent && QUIET_KEYS.has(event.key)) return;
+      tour.pause("user");
+    },
+    { capture: true, passive: true },
+  );
+const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on, view, tour });
 const agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
 explorer.onEvent((event) => {
-  // Agent navigation is logged once, as its tool call; autoplay is not a user action.
-  if (!event.auto && !agent.runner.running) activity.append({ by: "user", kind: event.kind, ref: event.ref });
+  // Agent navigation is logged once, as its tool call (or its tour); autoplay is not a user action.
+  if (!event.auto && !agent.runner.running && !tour.driving) activity.append({ by: "user", kind: event.kind, ref: event.ref });
 });
 agentControl.onChange((on) => {
   activity.append({ by: "user", kind: "agent_control", on });
-  if (!on) presence.hide();
+  if (!on) {
+    presence.hide();
+    tour.stop("user");
+  }
 });
 
 const noScene: ViewOutcome = { error: { code: "not_available", message: "The 3D view is not running." } };
@@ -87,5 +116,6 @@ Object.defineProperty(window, "explorerDebug", {
     visibleRegions: () => explorer.scene?.visibleRegions(),
     narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
     narration,
+    tour,
   },
 });

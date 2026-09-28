@@ -236,6 +236,36 @@ export function effectiveLayers(layers: Readonly<Record<LayerId, number>>, isola
   return out;
 }
 
+/* ---------- Navigation ---------- */
+
+/** The view settings an agent changes with set_view that navigation restores. */
+export interface AgentViewSettings {
+  layers: Record<LayerId, number>;
+  layerEffect: LayerEffect;
+  isolate: Isolation | null;
+  labelMode: LabelMode;
+  viewFocus: RegionId | null;
+}
+export type NavigationTarget = { overview: true } | { overview: false; path: PathId };
+
+/**
+ * Going home, or into another topic, restores the default layers, isolation, label mode and view
+ * focus, so an agent's view does not linger somewhere it no longer fits. Moving within a topic keeps
+ * them. A tour stop navigates first and applies its own view after, so the stop's settings win.
+ * Returns true if anything changed.
+ */
+export function clearViewOnNavigate(view: AgentViewSettings & { overview: boolean; path: PathId }, to: NavigationTarget) {
+  if (!to.overview && !view.overview && view.path === to.path) return false;
+  const layersChanged = LAYER_IDS.some((id) => view.layers[id] !== 1);
+  const changed = layersChanged || view.layerEffect !== "dissolve" || view.isolate !== null || view.labelMode !== "auto" || view.viewFocus !== null;
+  if (layersChanged) view.layers = defaultLayers();
+  view.layerEffect = "dissolve";
+  view.isolate = null;
+  view.labelMode = "auto";
+  view.viewFocus = null;
+  return changed;
+}
+
 /* ---------- ViewPatch ---------- */
 
 export interface CameraPatch {

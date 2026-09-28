@@ -7,6 +7,7 @@ import type { PathId, RegionId, SenseId } from "../content/types";
 import { attentionGain, sensoryStreams } from "../model/attention";
 import { formatRef, type Place, parseHash, placeHash, placeRef, type RegionSection } from "../model/refs";
 import { hostTopic, signalFor, topicHasRegion, WALK_SECONDS } from "../model/topics";
+import { clearViewOnNavigate } from "../model/view";
 import type { BrainScene } from "../scene/brain-scene";
 import type { ExplorerState } from "../state";
 import { byId, linkedText, nextTabIndex, toast } from "./dom";
@@ -63,6 +64,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   function showIntro({ camera = true } = {}) {
     cancelPreview();
     stopWalk();
+    clearViewOnNavigate(state, { overview: true });
     state.overview = true;
     state.homeFocus = null;
     state.path = "attention";
@@ -93,6 +95,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   function selectPath(id: PathId, { step = 0, camera = true } = {}) {
     cancelPreview();
     stopWalk();
+    clearViewOnNavigate(state, { overview: false, path: id });
     state.overview = false;
     state.homeFocus = null;
     state.path = id;

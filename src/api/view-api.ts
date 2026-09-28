@@ -24,14 +24,11 @@ import {
   zoomNearness,
 } from "../model/view";
 import type { ExplorerState } from "../state";
+import { type ApiError, fail, type Result, type WriteResult } from "./result";
 
 export const VIEW_STACK_DEPTH = 10;
-
-export interface ViewError {
-  code: "bad_input" | "locked_by_user" | "not_available";
-  message: string;
-  options?: string[];
-}
+/** The Undo label on the agent's toast after a view change. */
+export const VIEW_UNDO_LABEL = "Back to previous view";
 
 /** The part of the brain scene the view API drives (implemented by createBrainScene). */
 export interface ViewScene {
@@ -63,13 +60,13 @@ export interface ViewReport {
   /** Layers the topic hides whatever their presence (ears outside hearing, for example). */
   gated?: LayerId[];
 }
-export interface ViewResult {
+/** `undo` (when present) goes back to the view before this change; the tool runner hands it to the toast. */
+export interface ViewResult extends WriteResult {
   view: ViewReport;
-  said: string;
   /** Parts of the patch that were not applied; the rest was. */
-  skipped?: { camera: ViewError };
+  skipped?: { camera: ApiError };
 }
-export type ViewOutcome = ViewResult | { error: ViewError };
+export type ViewOutcome = Result<ViewResult>;
 
 interface ViewSnapshot {
   pose: Pose;
@@ -82,7 +79,7 @@ interface ViewSnapshot {
   xray: boolean;
 }
 
-const LOCKED: ViewError = { code: "locked_by_user", message: "The user is moving the view, so the camera was left as it is." };
+const LOCKED = "The user is moving the view, so the camera was left as it is.";
 const SIDE_SAID: Record<Side, string> = { front: "the front", back: "behind", left: "the left", right: "the right", top: "above", bottom: "below" };
 const LABELS_SAID: Record<LabelMode, string> = {
   auto: "labels back to the topic's own",
@@ -217,10 +214,14 @@ export function createViewApi(state: ExplorerState, scene: ViewScene) {
   }
 
   function withSkipped(result: ViewResult, skipped: boolean): ViewResult {
-    return skipped ? { ...result, skipped: { camera: LOCKED } } : result;
+    return skipped ? { ...result, skipped: { camera: { code: "locked_by_user", message: LOCKED } } } : result;
   }
 
-  /** Apply a ViewPatch (spec §5.3). Only the fields given change. Returns before the camera arrives; `said` describes the target. */
+  /**
+   * Apply a ViewPatch (spec §5.3). Only the fields given change. Returns before the camera arrives; `said`
+   * describes the target. Mid-gesture the camera part is skipped (`locked_by_user`) and the rest applies;
+   * a patch that only moves the camera then fails as a whole.
+   */
   function apply(input: unknown): ViewOutcome {
     const normalized = normalizeViewPatch(input);
     if ("error" in normalized) return normalized;
@@ -234,8 +235,11 @@ export function createViewApi(state: ExplorerState, scene: ViewScene) {
       patch.labels !== undefined ||
       patch.spotlight !== undefined ||
       patch.xray !== undefined;
+    if (cameraSkipped && !changesState) return fail("locked_by_user", LOCKED);
+    let entry: ViewSnapshot | undefined;
     if ((cameraAsked && !cameraSkipped) || changesState) {
-      stack.push(snapshot());
+      entry = snapshot();
+      stack.push(entry);
       if (stack.length > VIEW_STACK_DEPTH) stack.shift();
     }
     const pose = cameraAsked && !cameraSkipped && patch.camera ? moveCamera(patch.camera, patch.instant) : scene.pose();
@@ -243,13 +247,22 @@ export function createViewApi(state: ExplorerState, scene: ViewScene) {
     if (patch.instant) scene.snapLayers();
     const touched = new Set(Object.keys(patch.layers ?? {}));
     const view = report(pose, { frame: cameraAsked && !cameraSkipped ? patch.camera?.frame : undefined, gated: (id) => touched.has(id) });
-    return withSkipped({ view, said: describe(patch, view, cameraAsked && !cameraSkipped, cameraSkipped) }, cameraSkipped);
+    const result = withSkipped({ view, said: describe(patch, view, cameraAsked && !cameraSkipped, cameraSkipped) }, cameraSkipped);
+    // The toast's Undo reverses this change only while it is still the latest one.
+    if (entry)
+      result.undo = {
+        label: VIEW_UNDO_LABEL,
+        run: () => {
+          if (stack.at(-1) === entry) undo();
+        },
+      };
+    return result;
   }
 
   /** Return to the view before the last change (camera, layers, isolate, labels). */
   function undo(): ViewOutcome {
     const previous = stack.pop();
-    if (!previous) return { error: { code: "not_available", message: "There is no earlier view to go back to." } };
+    if (!previous) return fail("not_available", "There is no earlier view to go back to.");
     const cameraSkipped = scene.gesturing;
     if (!cameraSkipped) scene.setPose(previous.pose);
     state.viewFocus = previous.viewFocus;

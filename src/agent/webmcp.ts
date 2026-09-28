@@ -36,10 +36,18 @@ export interface RunnerDeps {
 
 const MAX_ISSUES = 3;
 
+/** One line per issue. For a union, the option that matched the value's type explains more than "Invalid input". */
+function describeIssue(issue: z.core.$ZodIssue, path: PropertyKey[] = issue.path): string {
+  if (issue.code === "invalid_union") {
+    const matched = issue.errors.find((errors) => errors.length && !errors.every((inner) => inner.code === "invalid_type" && inner.path.length === 0));
+    if (matched) return describeIssue(matched[0], [...path, ...matched[0].path]);
+  }
+  return `${path.length ? path.join(".") : "input"}: ${issue.message}`;
+}
 function describeIssues(issues: z.core.$ZodIssue[]) {
   return issues
     .slice(0, MAX_ISSUES)
-    .map((issue) => `${issue.path.length ? issue.path.join(".") : "input"}: ${issue.message}`)
+    .map((issue) => describeIssue(issue))
     .join("; ");
 }
 
