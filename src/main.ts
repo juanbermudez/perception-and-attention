@@ -1,11 +1,13 @@
 import { browserStorage, createAgentControl } from "./agent/control";
 import { startAgentSurface } from "./agent/index";
 import { createActivityLog } from "./api/activity";
+import { createDocsApi } from "./api/docs-api";
 import { createGuideApi } from "./api/guide-api";
 import { createTourRunner } from "./api/tour";
 import { createViewApi, type ViewApi, type ViewOutcome } from "./api/view-api";
 import { createBrainScene } from "./scene/brain-scene";
 import { createState } from "./state";
+import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { createPresence } from "./ui/agent-presence";
 import { byId } from "./ui/dom";
@@ -119,3 +121,7 @@ Object.defineProperty(window, "explorerDebug", {
     tour,
   },
 });
+
+// Docs and quizzes (Stage 3 core). The store boots on first use, so the guide is unchanged
+// until a doc is made. The `doc`/`edit_blocks` tools and the windows wrap this API later.
+Object.defineProperty(window, "docsDebug", { value: createDocsApi({ store: browserStore }) });
