@@ -189,6 +189,19 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
 }
 
 /**
+ * How close a pointer is to a label: 1 on its centre line, easing to 0 at `radius`
+ * pixels. Horizontal distance counts from the label's ends, so wide labels respond
+ * along their length; vertical distance counts from the centre line, so stacked
+ * neighbours only 14 px apart still scale noticeably less than the label under the pointer.
+ */
+export function labelProximity(label: Pick<LabelLayout, "labelX" | "labelY" | "labelWidth">, x: number, y: number, radius: number) {
+  const dx = Math.max(Math.abs(x - label.labelX) - label.labelWidth / 2, 0),
+    dy = Math.abs(y - label.labelY);
+  const t = clamp(Math.hypot(dx, dy) / radius, 0, 1);
+  return 1 - t * t * (3 - 2 * t);
+}
+
+/**
  * Anchor → 45° segment → horizontal run into the label's near edge.
  * The bend sits next to the region, so leaders stay apart at their labels'
  * heights until they reach it. When the label is far above or below, the

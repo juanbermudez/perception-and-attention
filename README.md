@@ -102,7 +102,7 @@ docs/                  Science fact-check notes
 
 **Attention model.** `model/attention.ts` computes each sense's response as R = A·E / (σ + Σ A·E), a simplified form of the normalization model of attention (Reynolds & Heeger, 2009), with σ = 1 and an attention gain of up to 3×.
 
-**Labels.** `model/callouts.ts` measures the projected head outline, splits labels into left and right columns, and stacks each column so labels keep the vertical order of their regions. That keeps leader lines from crossing. Labels are fanned out vertically from the head's centre (1.3×) so leaders leave their regions at an angle, and are spaced 14 px apart; a crowded column shrinks the gap to 4 px before it overflows. Each leader bends at 45° next to its region, then runs horizontally into the label.
+**Labels.** `model/callouts.ts` measures the projected head outline, splits labels into left and right columns, and stacks each column so labels keep the vertical order of their regions. That keeps leader lines from crossing. Labels are fanned out vertically from the head's centre (1.3×) so leaders leave their regions at an angle, and are spaced 14 px apart; a crowded column shrinks the gap to 4 px before it overflows. Each leader bends at 45° next to its region, then runs horizontally into the label. Labels near the mouse scale up (to 1.18×) and come forward with a soft shadow; the effect falls off within 90 px and is off while dragging, on touch, and with reduced motion.
 
 **Camera.** Focusing a region eases the camera along an orbit to a preset viewing direction for that region. A hover preview saves the current view and returns to it afterwards.
 

@@ -15,11 +15,12 @@ export function createColor(value: Vec3 = [0, 0, 0]): ColorMotion {
 // Caller-owned springs retain their current value and velocity when retargeted.
 // Delta is wall-clock seconds, independent of playback speed and pause state.
 // Critical damping gives continuity without bounce; exits settle sooner.
-export function stepWeight(motion: WeightMotion, target: number, delta: number, reducedMotion = false): number {
+// `smoothTime` overrides the default easing for quick feedback such as hover.
+export function stepWeight(motion: WeightMotion, target: number, delta: number, reducedMotion = false, smoothTime?: number): number {
   if (delta <= 0) return motion.value;
   const goal = clamp(target, 0, 1),
     seconds = clamp(delta, 0, 0.05);
-  spring.damp(motion, goal, reducedMotion ? 0.07 : goal >= motion.value ? 0.28 : 0.2, seconds);
+  spring.damp(motion, goal, reducedMotion ? 0.07 : (smoothTime ?? (goal >= motion.value ? 0.28 : 0.2)), seconds);
   const bounded = clamp(motion.value, 0, 1);
   if (bounded !== motion.value) {
     motion.value = bounded;

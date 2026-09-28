@@ -18,7 +18,7 @@ import atlas from "../data/atlas-data.json";
 import skullData from "../data/skull-data.json";
 import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepPoint, stepWeight, type WeightMotion } from "../model/activity";
 import { regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
-import { type CalloutBounds, type LabelLayout, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
+import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
 import type { ExplorerState } from "../state";
 import { bundleFrames, SAMPLES, sample, sampleEdge, sampleSurface, unpack } from "./geometry";
 import { activityMaterial, applyViewGap, createViewGap, highlightMaterial, pointMaterial, skullPointMaterial } from "./materials";
@@ -45,6 +45,7 @@ const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl"
 const ZOOM_FADE_START = 0.92;
 const ZOOM_FADE_END = 0.5;
 /** Opacity kept at full zoom, per layer. Deep relays and brainstem stay more visible. */
+const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
 const ZOOM_KEEP = { skull: 0.12, cortex: 0.3, lower: 0.35, inner: 0.65 };
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
 const SPOT_DIM_ROUTE = 0.14;
@@ -110,6 +111,8 @@ interface Marker extends LabelLayout {
   presence: WeightMotion;
   selection: WeightMotion;
   labelWeight: WeightMotion;
+  /** 0–1: how close the mouse is; scales the label up toward the viewer. */
+  lift: WeightMotion;
   spot: WeightMotion;
   color: ColorMotion;
   colorTarget: Vec3;
@@ -697,6 +700,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       presence: createWeight(),
       selection: createWeight(),
       labelWeight: createWeight(),
+      lift: createWeight(),
       spot: createWeight(1),
       color: createColor(colorTarget),
       colorTarget,
@@ -706,6 +710,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const projection = new THREE.Vector3();
   const inputEvents = new AbortController();
   const pointers = new Map<number, { x: number; y: number; region?: RegionId; moved: boolean }>();
+  // Mouse position for label proximity; touch has no hover, so it is ignored.
+  let hover: { x: number; y: number } | null = null;
   let multiplePointers = false;
   function pickMarker(x: number, y: number) {
     const rect = orbitSurface.getBoundingClientRect();
@@ -737,7 +743,15 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     (e) => {
       const down = pointers.get(e.pointerId);
       if (down && (e.clientX - down.x) ** 2 + (e.clientY - down.y) ** 2 > 25) down.moved = true;
+      hover = e.pointerType === "touch" ? null : { x: e.clientX, y: e.clientY };
       if (!pointers.size) orbitSurface.style.cursor = pickMarker(e.clientX, e.clientY) ? "pointer" : "grab";
+    },
+    { signal: inputEvents.signal },
+  );
+  orbitSurface.addEventListener(
+    "pointerleave",
+    () => {
+      hover = null;
     },
     { signal: inputEvents.signal },
   );
@@ -1129,7 +1143,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.leader.style.opacity = labelOpacity.toFixed(3);
       marker.leader.classList.toggle("selected", active);
       marker.label.hidden = !inView || labelOpacity <= ACTIVITY_CUTOFF;
-      if (marker.label.hidden) marker.side = 0;
+      if (marker.label.hidden) {
+        marker.side = 0;
+        marker.lift.value = 0;
+        marker.lift.velocity = 0;
+      }
       marker.labelWidth = marker.label.offsetWidth || marker.labelWidth;
       marker.labelHeight = marker.label.offsetHeight || marker.labelHeight;
       if (!marker.label.hidden) visibleMarkers[visibleCount++] = marker;
@@ -1142,8 +1160,16 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     calloutBounds.bottom = Math.max(calloutBounds.top + 40, height - 14);
     layoutCallouts(visibleMarkers, visibleCount, head, calloutBounds, dt, reduced);
     for (const marker of markers) if (marker.label.hidden) marker.leader.setAttribute("d", "");
+    // Labels near the mouse scale up and come forward. Off while dragging, since
+    // labels slide under the pointer, and with reduced motion.
+    const hoverX = hover ? hover.x - origin.left : 0,
+      hoverY = hover ? hover.y - origin.top : 0,
+      proximityOn = hover !== null && pointers.size === 0 && !reduced;
     for (let i = 0; i < visibleCount; i++) {
       const marker = visibleMarkers[i];
+      const lift = stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) : 0, dt, reduced, 0.12);
+      marker.label.style.setProperty("--lift", lift.toFixed(3));
+      marker.label.style.zIndex = lift > 0.01 ? String(3 + Math.round(lift * 6)) : "";
       marker.label.style.left = `${marker.labelX.toFixed(1)}px`;
       marker.label.style.top = `${marker.labelY.toFixed(1)}px`;
       marker.leader.setAttribute("d", leaderPath(marker));

@@ -7,7 +7,7 @@ async function bundle(entry) {
 }
 const [
   { attentionWeight, regionPulse, routeWeight, streamResponses },
-  { layoutCallouts, leaderPath, stackColumn },
+  { labelProximity, layoutCallouts, leaderPath, stackColumn },
   { regionGuides, guideSources },
   { pathways, regions, sources },
 ] = await Promise.all([
@@ -125,6 +125,20 @@ console.log(`PASS ${pathways.length} walkthroughs: every step has a key fact, ${
   }
   for (const edge of core) assert.equal(routeWeight("vision", edge, view(true, "vision")), 0.7);
   console.log(`PASS ${detail.length} detail routes show only inside Vision; ${core.length} core routes still show in the overview.`);
+}
+
+// Proximity: 1 on the label's centre line, easing to 0 at the radius; a stacked
+// neighbour (40 px centre to centre) scales clearly less than the label under the pointer.
+{
+  const label = { labelX: 400, labelY: 300, labelWidth: 120, labelHeight: 26 };
+  assert.equal(labelProximity(label, 400, 300, 90), 1, "Pointer on the label centre.");
+  assert.equal(labelProximity(label, 455, 300, 90), 1, "Pointer at the label's end, on its centre line.");
+  assert.equal(labelProximity(label, 460 + 90, 300, 90), 0, "Pointer at the radius.");
+  assert.equal(labelProximity(label, 400, 300 + 200, 90), 0, "Pointer far below.");
+  const under = labelProximity(label, 420, 306, 90),
+    neighbour = labelProximity(label, 420, 306 + 40, 90);
+  assert(under > 0.95 && neighbour < 0.7 && neighbour > 0.2, `Hovered ${under.toFixed(2)} vs neighbour ${neighbour.toFixed(2)}.`);
+  console.log("PASS label proximity peaks on the hovered label and falls to about half for its neighbours.");
 }
 
 // Callouts: columns outside the head, stacked without overlap, in anchor order.
