@@ -192,4 +192,24 @@ Notes for review:
 - Pick-mode routing (whether the interceptor is active or not).
 - Keys 1–6 answer the card and do not switch topics while it is open.
 
-**Status**: Not Started
+**Status**: Complete in code (branch `webmcp/stage5`); acceptance prompt 4 in the ChatGPT desktop browser is still pending with the spike (spec §2). Checked through `?agent=shim` in Chromium: create, every kind, pick mode on markers and labels, Esc and the list fallback, Show me, retry, drag, live edits, the docked layout under 600 px.
+- `model/quiz.ts`: grading for all 5 kinds (`gradeAnswer`), `summarizeResults` (docs-api's `read(results)` now uses it), `pickChoices`, `showMeRef`, `shuffledOrder`. `validateQuestion` now checks a question's `ref` against the guide and stores the stable form (`step:vision/3` → `step:vision/parallel-channels`).
+- `model/quiz-session.ts`: the card's state without the DOM. `createQuestionState` (draft, submit, pick, reveal, self-grade) and `createQuizSession` (one at a time, dots, score, retry missed, keys, live `update`).
+- `api/quiz-api.ts` + `agent/tools/quiz.ts`: `quiz` create/open/close/reset over `docs.createQuiz` and the card. `GuideApi` takes `quizzes`: `read` routes every `quiz:*` detail (and `results` of a `doc:*`) to the docs API; `get_context.quiz` reports the card (`{ ref, title, question, of, answered, correct, done?, picking? }`).
+- `ui/quiz-card.ts` (overlay, drag with ≥ 48 px kept inside, docked at the bottom under 600 px, end screen), `ui/question-view.ts` (one question, reusable inline), `ui/pick-mode.ts` (`createPickMode`, `routeRegionClicks`), `state.pick` read by the scene.
+- Keyboard: `setupKeyboard` takes a key owner; the open card owns 1–6, Enter and → (and Esc while picking) before the topic and step shortcuts. `createShortcutHandler` is the testable core.
+- Activity: the user's answers are logged as `answered` with `ok` (spec §6.1), plus `quiz_finished` (with the score) and `quiz_closed`.
+- Tests: `tests/quiz.test.mjs` (16) and `tests/quiz-tools.test.mjs` (8); 142 in all, existing tests unchanged. `dist/index.html` 6,815 → 6,860 KiB.
+
+Notes for review:
+- Region answers: the user clicks one region; it is right when it is any of `answer`. Without `choices`, pick mode offers the question's topic (its `ref`'s topic, else the open topic, else the first in UI order that covers every answer), in topic order, without right-hand mirrors (`mgnR`) or markers on the same spot (`l5`/`l6` on V1) unless they are answers.
+- Pick mode hides the label role text (`.label-role`), drops the step spotlight, activity swell, per-sense colours and the selected-label style, so no offered marker stands out. The camera does not move.
+- A marker or label click answers at once (spec §10); the list fallback selects, then Submit. Enter on a focused button that is not an option does what that button does.
+- The `quiz` tool is exported as `quizTools` and registered through `agentTools`, so the Stage 1 assertion that `tools` has seven entries stays unchanged. Fold it into `tools` when merging with Stage 4 (whose tools change that assertion anyway).
+- `quiz` input schema is about 5.7 KB inlined; question `view` is a loose object checked by `normalizeViewPatch` rather than the inlined `set_view` schema.
+- `quiz` `reset` restarts the card from question 1; stored attempts are kept, and `results` counts each question's latest attempt.
+
+**For Stage 4 (docs)**
+- Question blocks inline: `mountQuestion(host, createQuestionState({ id, question }, { regionMode: "idle", onGraded }), { pick, showMe, showRegion })` from `ui/question-view.ts`; store attempts with `docs.recordAttempt` in `onGraded`. Call `view.destroy()` when the block goes.
+- `main.ts` wires `createDocsApi({ open })` so `quiz:` refs open the card; route `doc:` refs to the window manager in the same hook. `go(quiz:*)` and `window` can call `quizCard.open(ref)`.
+- The card is `z-index: 11` on the stage, a sibling of the orbit surface; windows should sit below or above it deliberately.
