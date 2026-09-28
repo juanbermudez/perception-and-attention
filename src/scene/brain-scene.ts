@@ -67,7 +67,6 @@ const ACTIVITY_TAU = 0.9;
 const SPIKE_RATE = 7;
 const GLOW_TAU = 0.35;
 // The overview shows every sense flowing at once, labelled by relay and cortex.
-const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl", "retina", "cochlea"]);
 // Zooming in fades the skull and outer brain so the region of interest stands out
 // (zoomNearness and LAYER_ZOOM_KEEP in model/view.ts). Fading starts as soon as you
 // zoom in past the default focus distance (0.94 of the overview) and is complete at half.
@@ -77,6 +76,10 @@ const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is do
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
 const SPOT_DIM_ROUTE = 0.24;
 const CONTEXT_HIGHLIGHT = 0.28; // highlight weight for the other regions of the current topic
+// Overview map: every topic's regions at a low glow; the previewed topic brighter, the rest dimmer.
+const HOME_GLOW = 0.24;
+const HOME_FOCUS = 0.6;
+const HOME_DIM = 0.06;
 const SPOT_DIM_REGION = 0.25;
 const SPOT_DIM_MARKER = 0.3;
 const _curve_point = vec3.create();
@@ -471,6 +474,26 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const ids = new Set<RegionId>([...path.steps.map((step) => step.region), ...path.edges.flatMap((edge) => [edge.from, edge.to])]);
     for (const id of ids) contextHighlights.add(highlightLayerFor(id));
   }
+  // Overview map: each topic's regions glow in its colour. A region used by several topics
+  // takes the colour of the first one in guide order; previewing a topic recolours its own.
+  const homeColour = new Map<HighlightLayer, Vec3>();
+  const topicLayers = new Map<PathId, Set<HighlightLayer>>();
+  const topicRegionIds = new Map<PathId, Set<RegionId>>();
+  const topicColours = new Map<PathId, Vec3>();
+  for (const path of pathways) {
+    const ids = new Set<RegionId>([...path.steps.map((step) => step.region), ...path.edges.flatMap((edge) => [edge.from, edge.to])]);
+    const colour = new THREE.Color(path.color).toArray() as Vec3;
+    const layers = new Set<HighlightLayer>();
+    for (const id of ids) {
+      const layer = highlightLayerFor(id);
+      layers.add(layer);
+      if (!homeColour.has(layer)) homeColour.set(layer, colour);
+    }
+    topicRegionIds.set(path.id, ids);
+    topicLayers.set(path.id, layers);
+    topicColours.set(path.id, colour);
+  }
+  let wasHome = false;
   // Isolated regions add a third level: full weight, steady, whatever the topic.
   // state.isolate is replaced (never mutated) when it changes, so a reference check is enough.
   const isolateHighlights = new Set<HighlightLayer>();
@@ -1029,6 +1052,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       pulseAmount = regionPulse((ms - selectionStart) / 1000, reduced);
     const shown = shownRegion();
     const isolate = state.isolate;
+    // The overview map applies on the plain overview: no hover preview, agent focus or isolate.
+    const home = state.overview && preview === null && state.viewFocus === null && isolate === null;
+    const homeTopic = home ? state.homeFocus : null;
+    // Leaving the map, topic highlights need their topic colours back.
+    if (wasHome && !home) contextPath = null;
+    wasHome = home;
     updateContextHighlights();
     updateIsolateHighlights();
     if (highlightedRegion !== shown) highlightRegion(shown);
@@ -1040,6 +1069,16 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const focusActive = !state.overview || preview !== null || state.viewFocus !== null;
     for (const layer of highlightLayers) {
       const selected = layer === selectedHighlight;
+      if (home) {
+        const inTopic = homeTopic !== null && topicLayers.get(homeTopic)!.has(layer);
+        const colour = inTopic ? topicColours.get(homeTopic!)! : homeColour.get(layer);
+        if (colour) vec3.copy(layer.target, colour);
+        const weight = stepWeight(layer.weight, !colour ? 0 : homeTopic === null ? HOME_GLOW : inTopic ? HOME_FOCUS : HOME_DIM, dt, reduced);
+        layer.object.visible = weight > ACTIVITY_CUTOFF;
+        layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
+        layer.object.material.uniforms.pulse.value = weight * 0.725;
+        continue;
+      }
       const target =
         selected && focusActive
           ? 1
@@ -1156,7 +1195,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     regionColors.clear();
     activeRegionIds.clear();
     for (const route of routes) {
-      const weight = routeWeight(route.path, route.edge, state, routes);
+      let weight = routeWeight(route.path, route.edge, state, routes);
+      // Previewing a topic on the overview runs all of its routes and quiets the others.
+      if (homeTopic !== null) weight = route.path === homeTopic ? 0.9 : weight * 0.15;
       if (weight > 0) {
         activeRegionIds.add(route.edge.from);
         activeRegionIds.add(route.edge.to);
@@ -1257,8 +1298,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.label.setAttribute("aria-pressed", String(active));
       // While isolating, only isolated regions (and the one shown) keep markers, whatever the topic.
       // Layer 5 and 6 share V1's position, so only the one being shown (or isolated) gets a marker.
+      // On the overview map, markers appear only for the topic being previewed.
       const targetVisible =
-        (isolate ? isolated || active : active || activeRegionIds.has(marker.id)) &&
+        (home
+          ? homeTopic !== null && topicRegionIds.get(homeTopic)!.has(marker.id)
+          : isolate
+            ? isolated || active
+            : active || activeRegionIds.has(marker.id)) &&
         !(LAYER_MARKERS.has(marker.id) && !active && !isolated) &&
         !(marker.id === "v1" && LAYER_MARKERS.has(shown));
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
@@ -1268,8 +1314,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.object.visible = visible;
       marker.halo.visible = visible;
       marker.pulse.visible = visible;
+      const markerPath = homeTopic ?? state.path;
       const sense = senseForRegion(marker.id),
-        col = state.path === "attention" && sense ? streamColors[sense] : current.color;
+        col = markerPath === "attention" && sense ? streamColors[sense] : (pathways.find((p) => p.id === markerPath) ?? current).color;
       if (targetVisible) {
         highlightTargetColor.set(col);
         highlightTargetColor.toArray(marker.colorTarget);
@@ -1309,11 +1356,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
           active ||
           (labelMode === "focus"
             ? isolated
-            : state.overview
-              ? OVERVIEW_LABELS.has(marker.id)
-              : state.path === "attention"
-                ? attentionLabels.has(marker.id)
-                : !["brainstemR", "socR", "icR", "mgnR"].includes(marker.id)));
+            : (homeTopic ?? state.path) === "attention"
+              ? attentionLabels.has(marker.id)
+              : !["brainstemR", "socR", "icR", "mgnR"].includes(marker.id)));
       const labelOpacity = stepWeight(marker.labelWeight, labelTarget ? 1 : 0, dt, reduced);
       marker.label.style.opacity = labelOpacity.toFixed(3);
       marker.label.style.pointerEvents = labelTarget ? "auto" : "none";

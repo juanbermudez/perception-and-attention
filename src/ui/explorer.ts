@@ -64,6 +64,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     cancelPreview();
     stopWalk();
     state.overview = true;
+    state.homeFocus = null;
     state.path = "attention";
     state.selected = "pfc";
     shownRegion = null;
@@ -93,6 +94,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     cancelPreview();
     stopWalk();
     state.overview = false;
+    state.homeFocus = null;
     state.path = id;
     shownRegion = null;
     expandedStep = 0;
@@ -419,6 +421,22 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (button) selectPath(button.dataset.path as PathId);
   });
   byId("home-button").addEventListener("click", () => showIntro());
+  // On the overview, pointing at a topic (in the list or the dock) previews its system in the 3D view.
+  const previewTopic = (event: Event) => {
+    if (!state.overview) return;
+    const topic = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
+    state.homeFocus = topic ? (topic.dataset.path as PathId) : null;
+  };
+  const endTopicPreview = (event: FocusEvent | PointerEvent) => {
+    const next = event.relatedTarget as HTMLElement | null;
+    if (!next?.closest("[data-path]")) state.homeFocus = null;
+  };
+  for (const list of [byId("intro-scroll"), byId("pathway-list")]) {
+    list.addEventListener("pointerover", previewTopic);
+    list.addEventListener("focusin", previewTopic);
+    list.addEventListener("pointerout", endTopicPreview);
+    list.addEventListener("focusout", endTopicPreview);
+  }
   byId("intro-about").addEventListener("click", onOpenAbout);
   byId("back-to-intro").addEventListener("click", () => {
     showIntro();

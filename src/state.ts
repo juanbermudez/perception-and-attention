@@ -32,6 +32,8 @@ export interface ExplorerState extends AttentionSettings {
   isolate: Isolation | null;
   /** A region the camera was pointed at without navigating (highlight and view gap follow it). The next navigation clears it. */
   viewFocus: RegionId | null;
+  /** On the overview, the topic being previewed (its name is hovered or focused); null shows every system. */
+  homeFocus: PathId | null;
 }
 
 export function createState(reducedMotion: boolean): ExplorerState {
@@ -58,6 +60,7 @@ export function createState(reducedMotion: boolean): ExplorerState {
     layerEffect: "dissolve",
     isolate: null,
     viewFocus: null,
+    homeFocus: null,
     focus: 65,
     enabledSenses: { vision: true, hearing: true, touch: true },
     priority: "balanced",
