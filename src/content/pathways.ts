@@ -16,6 +16,7 @@ export const pathways: Pathway[] = [
       "Both eyes connect to the chiasm; after that, the animation follows the route in the left hemisphere, which receives the right half of the visual field. Nerves, tracts and cortical routes are drawn as single curves; the real connections are many parallel fibre bundles that run in both directions, and the two streams exchange information at many points. Routes to the superior colliculus and pretectum are not shown. MT, IT and the category-selective areas are markers at typical positions from group studies; their positions vary by several millimetres between people, and the face area is usually larger in the right hemisphere. The V1 highlight follows the calcarine sulcus; the actual border varies between people.",
     steps: [
       {
+        key: "light-to-signals",
         region: "retina",
         title: "Light becomes neural signals",
         body: "Rods (dim light) and cones (colour and detail) absorb light. In photoreceptors, light reduces electrical activity. Retinal circuits compare neighbouring points, so the output mainly reports contrast and change. Ganglion cells send this output through the optic nerve. Different types of ganglion cell carry different information: midget cells carry fine detail and red–green colour; parasol cells carry motion and changes in brightness.",
@@ -23,24 +24,28 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "optic-chiasm",
         region: "chiasm",
         title: "Fibres cross at the optic chiasm",
         body: "The two optic nerves meet under the brain. Fibres from the half of each retina nearest the nose cross to the other side; fibres from the outer half do not. After this point, each hemisphere receives the opposite half of the visual field from both eyes.",
         fact: "About half of the fibres cross (commonly cited as 53%, from a single detailed count). This is why damage behind the chiasm affects the same half of the visual field in both eyes.",
       },
       {
+        key: "parallel-channels",
         region: "lgn",
         title: "Parallel channels in the LGN",
         body: "Most optic tract fibres end in the [[lgn|lateral geniculate nucleus]] (LGN) of the thalamus. Its layers keep the two eyes separate and keep three channels apart. Magnocellular layers receive parasol cells: fast signals about motion and coarse shape. Parvocellular layers receive midget cells: slower signals about fine detail and red–green colour. Thin koniocellular layers carry blue–yellow colour. The LGN also receives more input from the cortex than from the eyes.",
         fact: "In monkeys, about 80% of retinal ganglion cells feed the parvocellular layers and about 10% the magnocellular layers. The fastest magnocellular responses arrive about 10 ms before the fastest parvocellular ones.",
       },
       {
+        key: "primary-visual-cortex",
         region: "v1",
         title: "Primary visual cortex (V1)",
         body: "The optic radiation carries LGN output to [[v1|primary visual cortex]] at the back of the brain. V1 contains a map of the visual field in which neighbouring points stay next to each other, and the centre of gaze takes up much more cortex than the periphery. Many V1 neurons respond best to edges at a specific orientation. V1 sends its output to many [[extrastriate|higher visual areas]].",
         fact: "The map is inverted: the upper visual field is represented below the calcarine sulcus and the lower field above it.",
       },
       {
+        key: "two-streams",
         region: "extrastriate",
         title: "Two streams leave V1",
         body: "From V1, visual information travels along two main routes. The ventral stream runs down into the temporal lobe through areas V2 and V4 and identifies what things are. The dorsal stream runs up into the parietal lobe through [[mt|area MT]] and represents where things are and how to act on them. The dorsal stream receives mostly magnocellular input; the ventral stream receives both channels. The two streams exchange information at many points.",
@@ -53,6 +58,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "motion",
         region: "mt",
         title: "Motion in area MT",
         body: "[[mt|Area MT]] (also called V5) is specialized for motion. Most of its neurons respond to movement in a particular direction and at a particular speed. In monkeys, electrically stimulating a small group of MT neurons shifts the animal's judgement of motion toward those neurons' preferred direction. A neighbouring area, MST, responds to the overall pattern of motion produced when you move through a scene (optic flow).",
@@ -60,6 +66,7 @@ export const pathways: Pathway[] = [
         signal: [[["v1", "mt"]]],
       },
       {
+        key: "location-and-action",
         region: "parietal",
         title: "Location and action in parietal cortex",
         body: "The dorsal stream continues from MT to [[parietal|posterior parietal cortex]]. Here, the position of things in view is combined with the position of the eyes, head and hand, so that vision can guide eye movements, reaching and grasping. The same region helps direct attention to locations (see the Attention topic).",
@@ -67,6 +74,7 @@ export const pathways: Pathway[] = [
         signal: [[["mt", "parietal"]]],
       },
       {
+        key: "object-recognition",
         region: "it",
         title: "Object recognition in inferior temporal cortex",
         body: "The ventral stream runs from V1 through V2 and V4 to [[it|inferior temporal cortex]] (IT). Along the way, neurons respond to increasingly complex features: edges in V1, contours and simple shapes in V2 and V4, and objects and object parts in IT. IT responses stay similar when an object moves, changes size or is seen from a somewhat different angle.",
@@ -74,6 +82,7 @@ export const pathways: Pathway[] = [
         signal: [[["v1", "extrastriate"]], [["extrastriate", "it"]]],
       },
       {
+        key: "category-areas",
         region: "ffa",
         title: "Areas for faces, places, bodies and words",
         body: "Some regions of temporal cortex respond more strongly to one category of image than to others. The [[ffa|fusiform face area]] prefers faces, the [[ppa|parahippocampal place area]] prefers places and scenes, the [[eba|extrastriate body area]] prefers bodies and body parts, and the [[vwfa|visual word form area]] prefers written words. Each responds most to its category but also responds to others, and the surrounding cortex carries category information too.",
@@ -193,6 +202,7 @@ export const pathways: Pathway[] = [
       "The routes shown run from the right side of the body to the left hemisphere. The spinal cord is not part of the model: the dorsal horn marker sits at the lower end of the medulla and stands for every level of the cord. Skin receptors and individual nuclei are not drawn; the medulla and thalamus highlights show the larger structures that contain them. Spinothalamic fibres end in several thalamic nuclei, which share one thalamus marker here, and all routes are drawn as single curves. S2 and the posterior insula are markers at typical positions from group studies; S2 is active in both hemispheres. Position sense from the legs partly uses a different spinal route, and the face uses the trigeminal nerve and the VPM.",
     steps: [
       {
+        key: "dorsal-columns",
         region: "medulla",
         title: "Touch and position: up the dorsal columns",
         body: "Receptors in the skin, muscles and joints respond to pressure, vibration and stretch. Their large, fast nerve fibres enter the spinal cord and travel up the same side in the dorsal columns. In the lower medulla they connect to the [[medulla|dorsal column nuclei]], whose fibres then cross to the other side and form the medial lemniscus.",
@@ -200,24 +210,28 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "vpl-relay",
         region: "vpl",
         title: "Relay in the VPL",
         body: "The crossed fibres travel in the medial lemniscus to the [[vpl|ventral posterolateral nucleus]] (VPL) of the thalamus. The VPL is the thalamic relay for touch and body position from the body, as the LGN is for vision and the MGN for hearing. It contains a map of the opposite side of the body and also receives part of the pain and temperature pathway, described in later steps. Touch from the face uses a neighbouring nucleus, the VPM.",
         fact: "Because of the crossing, the right hand is represented in the left thalamus and left cortex.",
       },
       {
+        key: "primary-somatosensory-cortex",
         region: "s1",
         title: "Primary somatosensory cortex (S1)",
         body: "[[s1|Primary somatosensory cortex]] runs along the postcentral gyrus and contains a map of the opposite side of the body, with the foot near the midline and the face and tongue at the lower end. The hands, lips and tongue take up much more of this map than the back or legs. S1 is made of four narrow strips, areas 3a, 3b, 1 and 2, each with its own body map. In monkeys, area 3a responds mainly to muscle stretch and joint movement, areas 3b and 1 mainly to touch on the skin, and area 2 to both, with larger receptive fields and some neurons tuned to object shape. Most neurons combine several types of input.",
         fact: "Wilder Penfield mapped this area by electrically stimulating the cortex of awake patients during epilepsy surgery; patients reported sensations in specific body parts.",
       },
       {
+        key: "posterior-parietal",
         region: "parietal",
         title: "Posterior parietal cortex",
         body: "[[parietal|Posterior parietal cortex]] combines touch with vision and body position to track where objects are relative to the body. This information is used for actions such as reaching and grasping.",
         fact: "Damage to parietal cortex, usually on the right, can cause neglect: the person does not attend to one side of space, sometimes including their own body. The damage that causes it usually lies in the inferior parietal lobule or the nearby temporoparietal junction, below the area highlighted here.",
       },
       {
+        key: "secondary-somatosensory-cortex",
         region: "s2",
         title: "Secondary somatosensory cortex (S2)",
         body: "[[s2|Secondary somatosensory cortex]] lies on the parietal operculum, the upper bank of the lateral sulcus, just below the lower end of S1. It receives input from all four areas of S1 and directly from the thalamus. In monkeys, its neurons respond to touch over larger areas of skin than S1 neurons, often on both hands. In human brain imaging, touch on the right hand activates S2 in both hemispheres. S2 also responds to painful stimuli, and briefly disrupting it with magnetic stimulation made people worse at judging how intense a pain was.",
@@ -225,6 +239,7 @@ export const pathways: Pathway[] = [
         signal: [[["s1", "s2"]]],
       },
       {
+        key: "pain-crossing",
         region: "dorsalHorn",
         title: "Pain and temperature cross in the spinal cord",
         body: "Pain, temperature and itch are detected by free nerve endings with thin fibres. Thinly myelinated Aδ fibres carry the first, sharp pain; the slower, burning pain that follows comes mainly from unmyelinated C fibres. These fibres end in the [[dorsalHorn|dorsal horn]] of the spinal cord. Neurons there send their axons across to the other side of the cord, close to the level where the signal entered, and up the spinothalamic tract to the thalamus. Touch and position fibres stay on the same side until the medulla, so damage to one half of the spinal cord removes fine touch on the same side of the body and pain and temperature on the opposite side.",
@@ -232,6 +247,7 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "posterior-insula",
         region: "postInsula",
         title: "Posterior insula: pain, temperature and the body’s condition",
         body: "Spinothalamic fibres end in several thalamic nuclei. Some end in the VPL, which projects to S1; others end in posterior and medial nuclei that project to S2, the [[postInsula|posterior insula]] and the [[cingulate|cingulate cortex]]. The posterior insula, deep in the lateral sulcus, responds to painful heat and to cooling, with a rough map of the body. Craig proposed that it is the primary cortical area for interoception, the sense of the body’s internal condition, and that it passes this information forward to the [[insula|anterior insula]]. He also described a separate thalamic nucleus (VMpo) that relays pain and temperature to it; other anatomists argue that this region is part of neighbouring nuclei.",
@@ -246,6 +262,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "pain-unpleasantness",
         region: "cingulate",
         title: "Cingulate cortex: how unpleasant pain feels",
         body: "Pain has a sensory side, where it is and how strong it is, and an emotional side, how unpleasant it is. Spinothalamic signals reach the [[cingulate|anterior cingulate cortex]] through nuclei in the middle of the thalamus, and activity here follows how unpleasant a painful stimulus feels. Much of the response to brief painful stimuli in the cingulate cortex, insula and S2 also appears with other sudden stimuli, such as touches, sounds or flashes, which links these areas to the salience network (see the Attention topic). Whether any cortical area responds to pain alone is debated.",
@@ -340,6 +357,7 @@ export const pathways: Pathway[] = [
       "The main ascending routes are shown on both sides. The belt, the two streams and the descending route are drawn only from the left hemisphere; they exist on both sides, and locating sounds often relies more on the right hemisphere. The cochlea, auditory nerve, cochlear nuclei, inferior colliculi and geniculate bodies use atlas geometry; the superior olives are approximate positions inside the pons. The atlas does not segment the belt or the anterior superior temporal gyrus; their markers are typical positions from group studies. The “where” route ends at the parietal marker used by other topics (superior parietal lobule); in human studies, locating sounds mainly activates the inferior parietal lobule, just below it. The descending route is drawn through the inferior colliculus; auditory cortex also projects directly to the superior olive (shown in rats). Lateral olivocochlear fibres, the lateral lemniscus and routes that bypass the superior olive are not shown. Routes are drawn as curves, not traced fibres.",
     steps: [
       {
+        key: "frequency-sorting",
         region: "cochlea",
         title: "Sound is sorted by frequency",
         body: "In the [[cochlea|cochlea]], the basilar membrane vibrates at different points for different frequencies: high frequencies near the base, low frequencies near the tip. Inner hair cells convert this movement into nerve signals. Outer hair cells change length to amplify quiet sounds and sharpen frequency tuning.",
@@ -347,42 +365,49 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "cochlear-nuclei",
         region: "brainstem",
         title: "Cochlear nuclei",
         body: "Each auditory nerve ends in the [[brainstem|cochlear nuclei]] on the same side of the brainstem. Different cell types here extract different features, such as precise timing, loudness and frequency content, and send them along separate pathways.",
         fact: "Input from the two ears first comes together at the next stage, the superior olive. From there on, both hemispheres receive input from both ears.",
       },
       {
+        key: "comparing-ears",
         region: "soc",
         title: "Comparing the two ears",
         body: "The [[soc|superior olivary complex]] is the first place where input from both ears is combined. The medial superior olive compares arrival times; the lateral superior olive compares loudness, which differs between the ears because the head blocks some of the sound. These differences are used to locate a sound horizontally.",
         fact: "People can detect arrival-time differences between the ears as small as about 10 microseconds (0.01 milliseconds).",
       },
       {
+        key: "inferior-colliculus",
         region: "ic",
         title: "Inferior colliculus",
         body: "Nearly all ascending auditory pathways synapse in the [[ic|inferior colliculus]] in the midbrain. It combines timing, loudness and frequency information and sends signals to the superior colliculus, which helps turn the eyes and head toward a sound.",
         fact: "Because almost all ascending auditory signals pass through it, the inferior colliculus is described as a near-obligatory relay.",
       },
       {
+        key: "mgn-relay",
         region: "mgn",
         title: "Relay in the MGN",
         body: "The [[mgn|medial geniculate nucleus]] (MGN) is the auditory relay of the thalamus. Its ventral part keeps the frequency map and projects to primary auditory cortex. Its other parts project to surrounding auditory areas and to the amygdala.",
         fact: "Like the LGN, the MGN receives large feedback projections from the cortex it sends to.",
       },
       {
+        key: "primary-auditory-cortex",
         region: "a1",
         title: "Primary auditory cortex (A1)",
         body: "[[a1|Primary auditory cortex]] is on Heschl’s gyrus, inside the lateral sulcus. It is part of the auditory core, the first stage of auditory cortex, which receives its main input from the ventral part of the [[mgn|MGN]]. In humans, the core covers roughly the inner two-thirds of Heschl’s gyrus. Like the cochlea, it is organized by frequency (tonotopy), and pure tones activate it strongly.",
         fact: "Because pathways cross at several levels, each hemisphere receives input from both ears. Damage to auditory cortex on one side rarely causes deafness in one ear.",
       },
       {
+        key: "belt-and-parabelt",
         region: "belt",
         title: "Belt and parabelt",
         body: "Around the core lies a ring of [[belt|belt areas]], and just outside the belt, on the superior temporal gyrus, the parabelt. In monkeys, the core feeds eight proposed belt areas, and the belt feeds a parabelt with at least two divisions, giving three stages of processing. Belt neurons respond more to complex sounds, such as bands of noise and frequency sweeps, than to pure tones, and many prefer particular monkey calls. Human brain imaging shows a similar order: pure tones activate mainly the core, noise bands the cortex around it, and vowel sounds areas further forward and outward on the superior temporal gyrus. The stages also work in parallel: belt areas receive some input directly from the thalamus, and in human recordings the superior temporal gyrus responds to speech as early as primary auditory cortex (see the Speech topic).",
         fact: "In monkeys, tracer injected into the parabelt labelled few neurons in the core but many in the belt, evidence that the parabelt receives core output mainly by way of the belt.",
       },
       {
+        key: "two-streams",
         region: "astg",
         title: "Two streams leave auditory cortex",
         body: "In monkeys, neurons in the front part of the belt are more selective for the type of call, and neurons in the back part are more selective for where the sound comes from. The front part connects forward along the [[astg|superior temporal gyrus]] and to [[vlpfc|ventrolateral prefrontal cortex]], a proposed “what” stream for identifying sounds. The back part connects with [[parietal|posterior parietal cortex]] and dorsolateral prefrontal cortex, a proposed “where” stream for locating them. Human imaging and brain-damage studies support a similar division. Researchers disagree about how to describe the back route, because it is also used for speech and for linking sounds to movements (see the Speech topic).",
@@ -396,6 +421,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "feedback-to-ear",
         region: "soc",
         title: "Feedback to the ear",
         body: "The brain also sends signals back to the ear. Medial olivocochlear neurons in the [[soc|superior olivary complex]] send fibres to the [[cochlea|cochleae]], mostly to the ear on the opposite side, where they end on outer hair cells and reduce their amplification of quiet and moderate sounds. Sound in either ear activates them as a reflex; in animals, this helps the auditory nerve signal brief sounds in background noise and protects the ear from loud noise. [[a1|Auditory cortex]] sends fibres to the [[ic|inferior colliculus]] and, in rats, directly to these olive neurons, and in chinchillas stimulating auditory cortex changes how the cochlea responds. Whether this system helps people understand speech in noise, and how much attention changes the human cochlea, is still debated.",
@@ -565,6 +591,7 @@ export const pathways: Pathway[] = [
       "A simplified version of the dual-stream model. Only left-hemisphere regions are drawn, although early speech processing happens in both hemispheres. Area Spt and Broca’s area are placed where they are usually found; their borders vary. The order of steps follows repeating a word; in normal speech these regions are active at the same time and exchange signals in both directions.",
     steps: [
       {
+        key: "hearing-speech",
         region: "a1",
         title: "Hearing speech",
         body: "Speech first reaches [[a1|auditory cortex]] like any other sound. Recordings from the brain surface show that the nearby [[temporal|superior temporal gyrus]] receives speech input at the same time as primary auditory cortex, not after it.",
@@ -572,6 +599,7 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "speech-sounds",
         region: "temporal",
         title: "Recognizing speech sounds",
         body: "Neurons in the [[temporal|superior temporal gyrus]] respond to features of speech sounds, such as whether a consonant is made with the lips or the tongue. From here, the ventral stream links sounds to [[meaning|meaning]] in both hemispheres.",
@@ -579,18 +607,21 @@ export const pathways: Pathway[] = [
         signal: [[["a1", "temporal"]], [["temporal", "meaning"]]],
       },
       {
+        key: "sound-to-movement",
         region: "spt",
         title: "Linking sound and movement",
         body: "[[spt|Area Spt]], at the back end of the Sylvian fissure, links the sound of a word to the movements needed to say it. It responds both when hearing speech and when silently rehearsing it.",
         fact: "Damage along this dorsal route is associated with conduction aphasia: comprehension and fluent speech are preserved, but repeating words is impaired.",
       },
       {
+        key: "planning-speech",
         region: "frontal",
         title: "Planning speech",
         body: "[[frontal|Broca’s area]], in the left inferior frontal gyrus, is involved in planning speech. Recordings show it is most active just before speaking, while the sequence of sounds is prepared, and less active during speaking.",
         fact: "Its exact role is debated. Some research groups place speech planning here; others point to the middle precentral gyrus, just behind it, as the main region for sequencing syllables.",
       },
       {
+        key: "articulation",
         region: "motor",
         title: "Controlling articulation",
         body: "[[motor|Speech motor cortex]], at the lower end of the precentral gyrus, controls the lips, jaw, tongue and larynx through the brainstem. While speaking, people hear their own voice and use this feedback to correct errors.",
@@ -649,6 +680,7 @@ export const pathways: Pathway[] = [
       "This example uses vision. The rate-dependent switch between reducing and increasing relay activity was shown in the mouse touch (somatosensory) thalamus, not measured in human vision. Synapse counts come from cats. Most evidence for the layer 5 route through the thalamus comes from mice, and the behavioural test used their whiskers; in cats and monkeys, the evidence is mainly anatomical. The atlas does not include a separate TRN or pulvinar, so their highlights show the whole thalamus. Layers 5 and 6 share V1’s location, within about 2 millimetres of the surface. Layer 5 of higher visual areas also projects to the pulvinar; only the route from V1 is drawn.",
     steps: [
       {
+        key: "lgn-input",
         region: "lgn",
         title: "Input to the LGN",
         body: "[[lgn|LGN]] relay cells receive signals from the retina and pass them to the cortex. Retinal inputs are called “drivers” because they carry the visual information that is relayed.",
@@ -656,12 +688,14 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "cortex-input",
         region: "v1",
         title: "Input to the cortex",
         body: "LGN axons arrive mainly in layer 4 of [[v1|V1]], the main input layer of the cortex. Activity then spreads to the other five layers.",
         fact: "In general, layer 4 receives thalamic input, layers 2–3 connect to other cortical areas, and layers 5–6 send output to the thalamus and other structures.",
       },
       {
+        key: "layer-6-feedback",
         region: "l6",
         title: "Feedback from layer 6",
         body: "Neurons in [[l6|layer 6]] send axons back to the LGN, where they excite the relay cells. This feedback is called a “modulator”: it does not carry visual information itself, but it changes how relay cells respond to it.",
@@ -669,6 +703,7 @@ export const pathways: Pathway[] = [
         signal: [[["v1", "l6"]], [["l6", "lgn"]]],
       },
       {
+        key: "trn-inhibition",
         region: "trn",
         title: "Inhibition through the TRN",
         body: "The same layer 6 axons have branches to the [[trn|thalamic reticular nucleus]] (TRN), a thin layer of inhibitory neurons around the thalamus. TRN neurons inhibit the relay cells. This allows the cortex to both increase and decrease activity in its own input.",
@@ -676,6 +711,7 @@ export const pathways: Pathway[] = [
         signal: [[["l6", "trn"]], [["trn", "lgn"]]],
       },
       {
+        key: "layer-5-route",
         region: "l5",
         title: "A second route through the thalamus",
         body: "Neurons in [[l5|layer 5]], just above layer 6, send a second kind of output to the thalamus. Their axons end in higher-order nuclei such as the [[pulvinar|pulvinar]], whose main input comes from the cortex. In cats and monkeys, these axons have large terminals, a typical feature of driver inputs such as the retinal input to the LGN. The pulvinar relays the signal to [[extrastriate|higher visual areas]], in parallel with the direct connections from V1. Many of the same layer 5 axons also branch to brainstem centres that control movement, such as the superior colliculus.",
@@ -745,6 +781,7 @@ export const pathways: Pathway[] = [
       "A simplified example with three senses. The gold links show that these networks interact; they are not a fixed sequence or traced fibres. Most regions are drawn in the left hemisphere, although all of them exist on both sides; the temporoparietal junction is drawn on the right, where the ventral attention network is stronger. The frontal eye fields and temporoparietal junction are markers at typical positions from group studies and vary by around a centimetre between people. The superior colliculus, locus coeruleus and pulvinar are not in the atlas; their markers are approximate positions inside the midbrain, pons and thalamus. The basal forebrain, the main source of acetylcholine for the cortex, is not drawn. Dopamine, the basal ganglia, memory systems and the default mode network are not shown. The numbers in the Streams tab come from a simplified model, not measurements.",
     steps: [
       {
+        key: "holding-a-goal",
         region: "pfc",
         title: "Holding a goal",
         body: "When you search for something, such as a friend in a crowd, [[pfc|prefrontal cortex]] keeps the goal active. Together with the [[fef|frontal eye fields]] and [[parietal|parietal cortex]], it sends signals to sensory areas that favour the features and locations that match the goal. This is called goal-driven, or top-down, attention.",
@@ -752,12 +789,14 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "eye-fields",
         region: "fef",
         title: "Steering the eyes and attention",
         body: "The [[fef|frontal eye fields]] (FEF), in the precentral sulcus, move the eyes toward chosen locations. They also shift attention to a location without moving the eyes, which is called covert attention. Each FEF site corresponds to one part of the visual field. In monkeys, stimulating an FEF site with a current too weak to move the eyes improved performance on an attention task, but only when the attended object was in that site's part of the field. In humans, magnetic stimulation (TMS) of the right FEF changed activity in visual areas V1 to V4 and made stimuli in the periphery look higher in contrast than central ones.",
         fact: "In monkeys, the same weak FEF stimulation increased the responses of V4 neurons to stimuli at the matching location. Stimulating FEF sites for other locations could reduce them.",
       },
       {
+        key: "priority-map",
         region: "parietal",
         title: "Priority map",
         body: "[[parietal|Parietal cortex]] around the intraparietal sulcus represents where things are and how much each one matters at the moment. In monkeys, activity in the lateral intraparietal area (LIP) has been described as a priority map: it combines a fast response to whatever appears with top-down signals such as a planned eye movement, and the location with the highest activity is used to guide attention and the next eye movement. With the [[fef|frontal eye fields]], this region forms the dorsal attention network, which directs attention voluntarily and is active in both hemispheres.",
@@ -771,6 +810,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "reorienting",
         region: "tpj",
         title: "Reorienting to the unexpected",
         body: "When something unexpected but relevant happens, such as a sound behind you or a movement at the edge of view, attention has to leave its current focus. This engages the ventral attention network: the [[tpj|temporoparietal junction]] (TPJ) and the inferior frontal cortex, mainly in the right hemisphere. The TPJ responds to changes in what you see, hear and feel. Its activity drops during focused attention, which may help keep distractions out. When a relevant event occurs, it is thought to interrupt the dorsal network so that attention can move to the event.",
@@ -784,6 +824,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "salience",
         region: "insula",
         title: "Detecting important events",
         body: "The anterior [[insula|insula]] and [[cingulate|anterior cingulate cortex]] form the salience network. It responds to events that are important at the moment, such as a sudden change in a sound, sight or touch, or pain, and can shift attention away from the current task. It overlaps with the ventral attention network: the right anterior insula is active when attention is reoriented, and at rest the [[tpj|TPJ]]'s activity rises and falls with the insula and cingulate cortex. Some researchers treat the two as one network; others keep them separate. One hypothesis, still debated, is that the salience network switches the brain between internally focused and task-focused states.",
@@ -791,6 +832,7 @@ export const pathways: Pathway[] = [
         signal: [],
       },
       {
+        key: "adjusting-control",
         region: "cingulate",
         title: "Adjusting control",
         body: "The [[cingulate|anterior cingulate cortex]] is active when responses conflict or when an error is made. It works with prefrontal cortex to increase control on the next attempt. In monkeys, it also sends direct input to the [[lc|locus coeruleus]].",
@@ -798,6 +840,7 @@ export const pathways: Pathway[] = [
         signal: [[["insula", "cingulate"]], [["cingulate", "pfc"]]],
       },
       {
+        key: "arousal",
         region: "lc",
         title: "Arousal and neuromodulators",
         body: "How alert you are affects how well you can attend. The [[lc|locus coeruleus]], a small nucleus in the upper pons, is the main source of noradrenaline (norepinephrine) for the cortex. According to the adaptive gain theory, brief bursts of its activity help carry out the current task, while a steadier, tonic pattern goes with disengaging and looking for alternatives. Acetylcholine, a second chemical involved in attention, reaches the cortex mainly from the basal forebrain, which is not shown in the model. In monkey V1, adding small amounts of acetylcholine increased the effect of attention on neurons, and blocking its muscarinic receptors reduced it.",
@@ -811,6 +854,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "midbrain-priority-map",
         region: "sc",
         title: "Priority map in the midbrain",
         body: "The [[sc|superior colliculus]] (SC), on the roof of the midbrain, contains a map of the space around you. It receives signals directly from the eyes and from the [[fef|frontal eye fields]] and [[parietal|parietal cortex]], and it turns the eyes and head toward targets. In monkeys, it is also needed for covert attention. When part of the SC was temporarily silenced, monkeys largely ignored motion in the matching part of the visual field if a distractor with conflicting information appeared elsewhere; with an uninformative distractor, their performance was largely unaffected. Weak stimulation of an SC site improved visual performance at the matching location without moving the eyes.",
@@ -823,6 +867,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "thalamic-coordination",
         region: "pulvinar",
         title: "Thalamic coordination",
         body: "The [[pulvinar|pulvinar]] is the largest nucleus of the primate thalamus and connects visual areas with each other. It also relays signals from the [[sc|superior colliculus]] to the cortex: in monkeys, some pulvinar neurons receive input from the SC and project to [[mt|area MT]]. In monkeys, pulvinar activity synchronized connected visual areas according to where the animal was attending.",
@@ -835,6 +880,7 @@ export const pathways: Pathway[] = [
         ],
       },
       {
+        key: "sensory-effects",
         region: "extrastriate",
         title: "Effects in sensory cortex",
         body: "In sensory cortex, attention increases the responses of neurons that represent the attended item and makes them more consistent. Responses to other items are reduced. In monkeys, the increase is about 25% in visual area V4 and under 10% in V1. Unattended signals are still processed and can still draw attention.",

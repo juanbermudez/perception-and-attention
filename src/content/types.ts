@@ -68,6 +68,8 @@ export interface Region {
 export type Signal = [RegionId, RegionId][][];
 
 export interface Step {
+  /** Stable slug, unique within its topic: `step:<topic>/<key>` survives renumbering. Store this, not the step number. */
+  key: string;
   region: RegionId;
   title: string;
   body: string;
