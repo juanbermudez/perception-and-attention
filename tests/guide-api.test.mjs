@@ -208,7 +208,8 @@ test("typical results stay under 2 KB", () => {
   }
   for (const id of REGION_IDS) typical.push([`read region:${id}`, read(`region:${id}`)], [`outline region:${id}`, outline(`region:${id}`)]);
   for (const [label, result] of typical) {
-    const limit = label.includes("reference card") ? 3072 : 2048;
+    // The reference card lists every tool, so it grows with the tool set (11 tools today).
+    const limit = label.includes("reference card") ? 3584 : 2048;
     assert(bytes(result) < limit, `${label}: ${bytes(result)} bytes`);
   }
 });

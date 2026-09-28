@@ -18,7 +18,7 @@ async function bundle(source) {
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
 }
 const m = await bundle(`
-  export { agentTools, quizTools, tools } from "./src/agent/tools/index.ts";
+  export { agentTools, tools } from "./src/agent/tools/index.ts";
   export { createToolRunner, inputSchema } from "./src/agent/webmcp.ts";
   export { createGuideApi } from "./src/api/guide-api.ts";
   export { createActivityLog } from "./src/api/activity.ts";
@@ -32,7 +32,7 @@ const m = await bundle(`
   export { createState } from "./src/state.ts";
   export { pathways } from "./src/content/pathways.ts";
 `);
-const { agentTools, quizTools, tools, createToolRunner, inputSchema, createGuideApi, createActivityLog, createQuizApi, createDocsApi } = m;
+const { agentTools, tools, createToolRunner, inputSchema, createGuideApi, createActivityLog, createQuizApi, createDocsApi } = m;
 const { openEngine, createStore, directCall, createQuizSession, createPickMode, routeRegionClicks, createShortcutHandler, createState, pathways } = m;
 const sqlite3 = await sqlite3InitModule();
 
@@ -130,18 +130,17 @@ const VISION_QUIZ = {
 
 /* ---------- The tool ---------- */
 
-test("the quiz tool registers after the Stage 1–2 tools, which stay as they were", () => {
-  assert.deepEqual(
-    agentTools.map((tool) => tool.name),
-    ["get_context", "outline", "read", "search", "go", "walkthrough", "set_view", "quiz"],
-  );
-  assert.equal(tools.length, 7);
-  const [quiz] = quizTools;
+test("the quiz tool registers last, with one object schema whose questions cover all five kinds", () => {
+  assert.equal(agentTools.at(-1).name, "quiz");
+  assert.equal(agentTools, tools);
+  const quiz = tools.find((tool) => tool.name === "quiz");
   assert.equal(quiz.readOnly, false);
   const schema = inputSchema(quiz.input);
-  const create = schema.oneOf.find((option) => option.properties.action.const === "create");
+  assert.equal(schema.type, "object");
+  assert.deepEqual(schema.properties.action.enum, ["create", "open", "close", "reset"]);
+  const kinds = schema.properties.questions.items.oneOf ?? schema.properties.questions.items.anyOf;
   assert.deepEqual(
-    create.properties.questions.items.oneOf.map((option) => option.properties.kind.const),
+    kinds.map((option) => option.properties.kind.const),
     ["choice", "truefalse", "region", "order", "recall"],
   );
   assert(JSON.stringify(schema).length < 6144, `quiz schema is ${JSON.stringify(schema).length} bytes`);
@@ -155,7 +154,7 @@ test("quiz inputs are checked before they reach the page, with messages that say
       return { said: "ok" };
     },
   };
-  const runner = createToolRunner({ tools: quizTools, api, control: { on: true } });
+  const runner = createToolRunner({ tools: tools.filter((tool) => tool.name === "quiz"), api, control: { on: true } });
   const message = async (args) => {
     const result = await runner.call("quiz", args);
     assert(isError(result, "bad_input"), JSON.stringify(args));

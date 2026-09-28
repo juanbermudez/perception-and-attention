@@ -5,8 +5,10 @@
 //
 // The store boots on the first call, so the guide is untouched until someone makes a doc.
 
-import { blockToMarkdown, describeView, exportDocument, markdownToBlocks } from "../model/markdown";
+import { blockToMarkdown, describeView, exportDocument, markdownToBlocks, parseDocument } from "../model/markdown";
 import { summarizeResults, validateQuestion } from "../model/quiz";
+import { resolveRef } from "../model/refs";
+import { stayingIds } from "../model/sequence";
 import { LIMITS } from "../store/limits";
 import { storageBanner } from "../store/mode";
 import type {
@@ -18,6 +20,7 @@ import type {
   BlockContent,
   BlockData,
   BlockOp,
+  BlockOpsResult,
   BlockType,
   MemoryReason,
   Store,
@@ -145,7 +148,7 @@ export interface DocsApiOptions {
   /** Opens or focuses the artifact's window (Stage 4 window manager). */
   open?: (ref: string) => void;
   /** Saves a file. Returns false when the browser blocked it (the window then offers a button). */
-  download?: (filename: string, text: string) => boolean;
+  download?: (filename: string, text: string, ref: string) => boolean;
   now?: () => Date;
 }
 
@@ -170,8 +173,9 @@ const quoted = (title: string) => `“${title}”`;
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 function artifactId(ref: unknown): string | null {
-  const match = typeof ref === "string" ? /^(?:doc|quiz):([0-9a-z]+)$/i.exec(ref.trim()) : null;
-  return match ? match[1].toLowerCase() : null;
+  if (typeof ref !== "string") return null;
+  const resolved = resolveRef(ref);
+  return "ref" in resolved && (resolved.ref.kind === "doc" || resolved.ref.kind === "quiz") ? resolved.ref.id : null;
 }
 
 /** Block ids may come bare (`b7x2k`) or as refs (`block:b7x2k`); `start` and `end` pass through. */
@@ -229,6 +233,45 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Ops that undo an agent's `edit_blocks` batch (spec §6.9: "block Undo works from the agent toast"):
+ * delete what it inserted, restore what it deleted, put moved blocks back and revert changed text
+ * and data to the revisions they had. `after` is the block order once the batch applied.
+ */
+export function undoOps(before: readonly Block[], after: readonly string[], result: BlockOpsResult): BlockOp[] {
+  const ops: BlockOp[] = [];
+  const order = [...after];
+  const place = (id: string, anchor: string) => order.splice(anchor === "start" ? 0 : order.indexOf(anchor) + 1, 0, id);
+  for (const block of result.inserted) {
+    ops.push({ op: "delete", id: block.id });
+    order.splice(order.indexOf(block.id), 1);
+  }
+  const beforeIds = before.map((block) => block.id);
+  const anchorFor = (id: string) => {
+    for (let index = beforeIds.indexOf(id) - 1; index >= 0; index--) if (order.includes(beforeIds[index])) return beforeIds[index];
+    return "start";
+  };
+  for (const id of [...result.deleted].reverse()) {
+    const anchor = anchorFor(id);
+    ops.push({ op: "restore", id, after: anchor });
+    place(id, anchor);
+  }
+  const stay = stayingIds(order, beforeIds);
+  let previous = "start";
+  for (const id of beforeIds) {
+    if (!stay.has(id) && order.includes(id)) ops.push({ op: "move", id, after: previous });
+    previous = id;
+  }
+  // A whole-block update (not a revert) also brings back a type the batch changed.
+  const earlier = new Map(before.map((block) => [block.id, block]));
+  for (const { id, rev } of result.changed) {
+    const was = earlier.get(id);
+    if (was && was.rev !== rev)
+      ops.push({ op: "update", id, block: { type: was.type, indent: was.indent, text: was.text, ...(was.data ? { data: was.data } : {}) } });
+  }
+  return ops;
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────────────────────
 
 export function createDocsApi(options: DocsApiOptions) {
@@ -236,6 +279,7 @@ export function createDocsApi(options: DocsApiOptions) {
   let opened: Store | null = null;
   let unavailable = false;
   const listeners = new Set<(change: StoreChange) => void>();
+  const openListeners = new Set<(store: Store) => void>();
 
   async function store(): Promise<Store> {
     if (opened) return opened;
@@ -248,6 +292,7 @@ export function createDocsApi(options: DocsApiOptions) {
     opened.onChange((change) => {
       for (const listener of listeners) listener(change);
     });
+    for (const listener of openListeners) listener(opened);
     return opened;
   }
 
@@ -306,7 +351,7 @@ export function createDocsApi(options: DocsApiOptions) {
         case "download": {
           const file = `${slug(found.title)}.md`;
           const text = exportDocument(ref, found.title, found.blocks, now());
-          const saved = options.download?.(file, text) ?? false;
+          const saved = options.download?.(file, text, ref) ?? false;
           return { ref, file, said: saved ? `Downloaded ${file}` : "Download ready in the window" };
         }
         default:
@@ -320,7 +365,10 @@ export function createDocsApi(options: DocsApiOptions) {
   function createArtifact(kind: ArtifactKind, title: string, markdown: string, open: boolean, actor: Actor, blocks?: BlockContent[]): Result<DocCreated> {
     return withStore(async (db) => {
       if (typeof markdown !== "string") return fail("bad_input", "markdown must be a string.");
-      const content = blocks ?? markdownToBlocks(markdown);
+      let content = blocks ?? markdownToBlocks(markdown);
+      // Agents often start the markdown with the title as a heading; the window already shows it.
+      const first = content[0];
+      if (!blocks && first?.type === "h1" && "text" in first && first.text.trim().toLowerCase() === title.trim().toLowerCase()) content = content.slice(1);
       const invalid = checkQuestions(content);
       if (invalid) return invalid;
       const artifact = await db.createArtifact({ kind, title, blocks: content }, actor);
@@ -577,12 +625,58 @@ export function createDocsApi(options: DocsApiOptions) {
     });
   }
 
+  /** A whole artifact with its live blocks, for the editor and for undo. */
+  function load(ref: string): Result<Artifact & { ref: string }> {
+    return withStore(async (db) => {
+      const artifact = await findArtifact(db, ref);
+      return isApiError(artifact) ? artifact : { ...artifact, ref: refOf(artifact) };
+    });
+  }
+
+  /**
+   * Store-level block ops from the user's editor or from an Undo (spec §9.3): no markdown, no rev check.
+   * Batches over the per-call limit are split, so each part is its own transaction.
+   */
+  function saveBlocks(ref: string, ops: BlockOp[], actor: Actor = "user"): Result<BlockOpsResult> {
+    return withStore(async (db) => {
+      const id = artifactId(ref);
+      if (!id) return fail("unknown_ref", `Expected doc:<id> or quiz:<id>, got "${ref}".`);
+      if (!ops.length) return fail("bad_input", "Nothing to save.");
+      let result: BlockOpsResult = { rev: 0, changed: [], inserted: [], deleted: [] };
+      for (let start = 0; start < ops.length; start += LIMITS.opsPerCall) {
+        const part = await db.applyBlockOps(id, ops.slice(start, start + LIMITS.opsPerCall), actor);
+        result = {
+          rev: part.rev,
+          changed: [...result.changed, ...part.changed],
+          inserted: [...result.inserted, ...part.inserted],
+          deleted: [...result.deleted, ...part.deleted],
+        };
+      }
+      return result;
+    });
+  }
+
   /** Storage mode for `get_context` and the banner, without booting the store. */
   function status(): StoreStatus {
     if (unavailable) return { store: "unavailable" };
     if (!opened) return { store: "unopened" };
     const banner = storageBanner(opened.mode, opened.reason);
     return banner ? { store: opened.mode, reason: opened.reason, banner } : { store: opened.mode, reason: opened.reason };
+  }
+
+  /** Runs once the store has opened (for example to mirror the activity log into it); does not open it. */
+  function onOpen(listener: (store: Store) => void): () => void {
+    if (opened) listener(opened);
+    openListeners.add(listener);
+    return () => openListeners.delete(listener);
+  }
+
+  /** A markdown file as a new doc: a file this guide exported keeps its title, others take the file name. */
+  function importDoc(text: string, fileName: string, actor: Actor = "user"): Result<DocCreated> {
+    if (typeof text !== "string") return Promise.resolve(fail("bad_input", "The file is not text."));
+    const parsed = parseDocument(text);
+    const title = parsed.title ?? (fileName.replace(/\.(md|markdown|txt)$/i, "").trim() || "Imported notes");
+    return createArtifact("doc", title.slice(0, LIMITS.titleChars), "", true, actor, parsed.blocks);
   }
 
   /** Change events for the UI. Attaches when the store opens; does not open it. */
@@ -594,6 +688,10 @@ export function createDocsApi(options: DocsApiOptions) {
   return {
     doc,
     editBlocks,
+    load,
+    saveBlocks,
+    importDoc,
+    onOpen,
     outlineDocs,
     outlineArtifact,
     read,

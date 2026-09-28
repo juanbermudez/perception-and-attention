@@ -391,8 +391,11 @@ function guideDocs(): SearchDoc[] {
 }
 
 let guideIndex: SearchIndex | undefined;
-/** Built on first use: about 330 entries. */
-export function searchGuide(query: string, limit = SEARCH_LIMIT.default) {
+/** Ranked guide hits with their scores, so they can be merged with doc hits. Built on first use: about 330 entries. */
+export function guideHits(query: string, limit = SEARCH_LIMIT.default) {
   guideIndex ??= createSearchIndex(guideDocs());
-  return guideIndex.search(query, { limit }).map((hit) => ({ ref: hit.ref, title: hit.title, snip: hit.snip }));
+  return guideIndex.search(query, { limit });
+}
+export function searchGuide(query: string, limit = SEARCH_LIMIT.default) {
+  return guideHits(query, limit).map((hit) => ({ ref: hit.ref, title: hit.title, snip: hit.snip }));
 }

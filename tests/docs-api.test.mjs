@@ -48,7 +48,7 @@ const err = (value, code) => {
   return value.error;
 };
 
-const NOTES = `# Attention notes
+const NOTES = `# Notes on attention
 
 The pulvinar coordinates activty between cortical areas.
 
@@ -110,6 +110,14 @@ test("doc create parses markdown into blocks and opens a window", async () => {
   );
   err(await api.doc({ action: "create", title: "" }), "bad_input");
   err(await api.doc({ action: "explode", ref: created.ref }), "bad_input");
+  // A leading heading that repeats the title is dropped, since the window already shows the title.
+  const titled = ok(await api.doc({ action: "create", title: "LGN notes", markdown: "# LGN notes\n\nRelay to V1." }));
+  assert.deepEqual(
+    titled.blocks.map((block) => block.type),
+    ["p"],
+  );
+  const other = ok(await api.doc({ action: "create", title: "Notes", markdown: "# The LGN\n\nRelay." }));
+  assert.equal(other.blocks[0].type, "h1", "a different heading stays");
 });
 
 test("acceptance prompt 7: fix the typo in the second paragraph (outline, then replace with rev)", async () => {

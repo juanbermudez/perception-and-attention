@@ -46,12 +46,14 @@ const CONTROLS: [action: string, input: string][] = [
   ["Previous / next step", "<kbd>←</kbd><kbd>→</kbd>"],
   ["Pause animation", "<kbd>Space</kbd>"],
   ["Switch topic", "<kbd>1</kbd>–<kbd>6</kbd>"],
+  ["Write notes", "Notes in the top bar; type <kbd>/</kbd> for block types"],
+  ["Move a note window", "Drag its title, or <kbd>Alt</kbd><kbd>Shift</kbd> + arrows"],
 ];
 
 /** The kill switch (spec §12). Assistants can always read the guide; this decides whether they can change what you see. */
 function assistantsSection(control: AgentControl) {
   return `<h3>Assistants</h3>
-    <p>In browsers that offer site tools (WebMCP), such as the ChatGPT desktop app, an assistant can read this guide. When this switch is on, it can also open topics, steps and regions and play walkthroughs. Its actions appear next to an “Assistant” label at the top left of the 3D view.</p>
+    <p>In browsers that offer site tools (WebMCP), such as the ChatGPT desktop app, an assistant can read this guide. When this switch is on, it can also open topics, steps and regions, play walkthroughs, change the 3D view, and write and arrange notes in their windows. Its actions appear next to an “Assistant” label at the top left of the 3D view.</p>
     <button class="agent-switch" id="agent-control" role="switch" aria-checked="${control.on}"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>Let assistants control this guide</button>`;
 }
 

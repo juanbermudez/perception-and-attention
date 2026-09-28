@@ -612,6 +612,8 @@ With reduced motion, the springs snap (`stepWeight(..., reduced)` already does t
 
 **Known v1 limit:** windows can cover callout labels. `layoutCallouts` does not know about windows yet.
 
+*As built (Stage 4):* slots start 96 px below the stage top so windows clear the dock at every width. Windows from an earlier visit come back on idle, and only for visitors who used docs before (a localStorage flag), so the store never boots for anyone else. The entry point for users is a **Notes** button in the dock, with a small list (new, open, delete with Undo, import). Docs are not in the URL hash; open windows come back from the store instead.
+
 ---
 
 ## 9. Docs (markdown in blocks)
@@ -687,6 +689,8 @@ This matches `richText` and `linkedText` in `ui/dom.ts`.
 **Title:** editable at the top. It maps to `artifacts.title`.
 
 **Question blocks inside docs** render as small inline quiz cards. This comes free from D5.
+
+*As built (Stage 4):* Tiptap core with the flat schema in `src/editor/schema.ts`; the textarea fallback was not needed. Store changes by others are applied as the smallest step (attributes in place, only the changed stretch of text), so the cursor keeps its place even in the block that changed. The lock covers unsaved blocks and the block the user typed in within 5 s. Esc selects the block; a second Esc minimizes the window (ProseMirror swallows Escape, so the editor passes it on). Question blocks show a read-only preview until Stage 5's inline card replaces it (`renderQuestion`).
 
 ---
 
@@ -874,7 +878,7 @@ interface Store {
 - about 40 KB for marked (**measured: 45 KB**, plus 25 KB for the Stage 3 modules)
 - about 15–60 KB for zod
 
-`dist/index.html` goes from about 5.6 MB today to about 7.3 MB. Heavy modules are instantiated lazily. **Measured after Stage 3:** 5,648 KiB → 6,477 KiB (+829 KiB). The store worker starts only on the first docs call.
+`dist/index.html` goes from about 5.6 MB today to about 7.3 MB. Heavy modules are instantiated lazily. **Measured after Stage 3:** 5,648 KiB → 6,477 KiB (+829 KiB). The store worker starts only on the first docs call. **Measured after Stage 4:** 6,815 KiB → 7,199 KiB (+384 KiB; Tiptap core and ProseMirror are about 285 KiB of it).
 
 **Frame loop:**
 

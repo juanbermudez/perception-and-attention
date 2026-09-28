@@ -13,6 +13,7 @@ import { createState } from "./state";
 import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { createPresence } from "./ui/agent-presence";
+import { createDocsUi, type DocsUi } from "./ui/docs-ui";
 import { byId, toast } from "./ui/dom";
 import { createExplorer } from "./ui/explorer";
 import { setupKeyboard } from "./ui/keyboard";
@@ -95,14 +96,34 @@ for (const type of ["pointerdown", "wheel", "keydown"] as const)
     },
     { capture: true, passive: true },
   );
-// Docs and quizzes. The store boots on first use, so the guide is unchanged until a doc or quiz is made.
+// Docs and quizzes (Stages 3–5). The store boots on first use (the Notes button, an agent's doc or quiz
+// tool, or windows saved on an earlier visit), so the guide is unchanged for visitors who never make one.
+let docsUi: DocsUi | undefined;
+let agent: ReturnType<typeof startAgentSurface> | undefined;
 const docs = createDocsApi({
   store: browserStore,
-  // Quizzes open in the card. Stage 4: route doc refs to the window manager here too.
+  currentView: () => view?.capture() ?? null,
+  isLocked: (blockId) => docsUi?.isLocked(blockId) ?? false,
+  // Quizzes open in the card; docs open in a floating window.
   open: (ref) => {
     if (ref.startsWith("quiz:")) void quizCard?.open(ref);
+    else docsUi?.open(ref);
   },
+  download: (file, text, ref) => docsUi?.download(file, text, ref) ?? false,
 });
+docs.onOpen((store) => activity.connect(store));
+docsUi = createDocsUi({
+  docs,
+  stage: byId("scene-title").closest<HTMLElement>(".brain-stage")!,
+  notesButton: byId<HTMLButtonElement>("notes-button"),
+  view,
+  explorer,
+  activity,
+  agentActive: () => agent?.runner.running ?? false,
+  storage: browserStorage(),
+});
+docsUi.restoreWindows();
+
 /** "Show me" after a quiz answer: go to the question's place, then apply its view. */
 function showMe(question: Question) {
   const ref = showMeRef(question);
@@ -122,11 +143,23 @@ quizCard = createQuizCard({
     activity.append({ by: "user", kind: event.kind === "answered" ? "answered" : `quiz_${event.kind}`, ref: event.ref, ok: event.ok, said: event.said }),
 });
 const quizzes = createQuizApi({ docs, card: quizCard });
-const api = createGuideApi({ explorer, about, activity, playing: () => state.playing, agentControl: () => agentControl.on, view, tour, quizzes });
-const agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
+const api = createGuideApi({
+  explorer,
+  about,
+  activity,
+  playing: () => state.playing,
+  agentControl: () => agentControl.on,
+  view,
+  tour,
+  quizzes,
+  docs,
+  windows: docsUi.port,
+  docsPresent: docsUi.present,
+});
+agent = startAgentSurface({ api, control: agentControl, presence, activity, search: location.search });
 explorer.onEvent((event) => {
   // Agent navigation is logged once, as its tool call (or its tour); autoplay is not a user action.
-  if (!event.auto && !agent.runner.running && !tour.driving) activity.append({ by: "user", kind: event.kind, ref: event.ref });
+  if (!event.auto && !agent?.runner.running && !tour.driving) activity.append({ by: "user", kind: event.kind, ref: event.ref });
 });
 agentControl.onChange((on) => {
   activity.append({ by: "user", kind: "agent_control", on });
@@ -167,5 +200,5 @@ Object.defineProperty(window, "explorerDebug", {
   },
 });
 
-// The docs API by hand (Stage 3). The `doc`/`edit_blocks` tools and the windows wrap it in Stage 4.
+// The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
 Object.defineProperty(window, "docsDebug", { value: docs });

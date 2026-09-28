@@ -512,28 +512,31 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     tabs[next].focus();
   });
 
-  // Hovering a region name in the panel previews it in 3D; leaving returns the view.
+  // Hovering a region name in the panel (or in a doc window) previews it in 3D; leaving returns the view.
   const regionTarget = (node: EventTarget | null) =>
     (node as HTMLElement | null)?.closest<HTMLElement>(".region-mention, .step-region-link, .region-row") ?? null;
-  inspector.addEventListener("pointerover", (event) => {
-    if (event.pointerType !== "mouse") return;
-    const target = regionTarget(event.target);
-    const id = (target?.dataset.region ?? target?.dataset.openRegion) as RegionId | undefined;
-    if (!id) return;
-    clearTimeout(hoverTimer);
-    if (previewing === id) return;
-    hoverTimer = setTimeout(() => {
-      previewing = id;
-      scene?.previewRegion(id);
-    }, 140);
-  });
-  inspector.addEventListener("pointerout", (event) => {
-    const target = regionTarget(event.target);
-    if (!target || target.contains(event.relatedTarget as Node | null)) return;
-    clearTimeout(hoverTimer);
-    // A short grace period lets the pointer move to a neighbouring name without a round trip.
-    hoverTimer = setTimeout(() => cancelPreview(true), 160);
-  });
+  function watchRegionHover(container: HTMLElement) {
+    container.addEventListener("pointerover", (event) => {
+      if (event.pointerType !== "mouse") return;
+      const target = regionTarget(event.target);
+      const id = (target?.dataset.region ?? target?.dataset.openRegion) as RegionId | undefined;
+      if (!id) return;
+      clearTimeout(hoverTimer);
+      if (previewing === id) return;
+      hoverTimer = setTimeout(() => {
+        previewing = id;
+        scene?.previewRegion(id);
+      }, 140);
+    });
+    container.addEventListener("pointerout", (event) => {
+      const target = regionTarget(event.target);
+      if (!target || target.contains(event.relatedTarget as Node | null)) return;
+      clearTimeout(hoverTimer);
+      // A short grace period lets the pointer move to a neighbouring name without a round trip.
+      hoverTimer = setTimeout(() => cancelPreview(true), 160);
+    });
+  }
+  watchRegionHover(inspector);
 
   return {
     attachScene(next: BrainScene) {
@@ -568,6 +571,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     },
     goTo,
     selection,
+    watchRegionHover,
     showIntro,
     selectPath,
     selectRegion,

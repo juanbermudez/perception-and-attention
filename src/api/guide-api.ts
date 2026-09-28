@@ -18,7 +18,9 @@ import {
 } from "../model/refs";
 import { pathwayById, WALK_SECONDS } from "../model/topics";
 import { normalizeViewPatch } from "../model/view";
+import type { Layout, SizeName, Slot } from "../ui/window-geometry";
 import type { ActivityLog } from "./activity";
+import { createDocsTools, type DocInput, type DocsApi, type EditBlocksInput } from "./docs-tools";
 import { type Detail, DOCS_LATER, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
 import type { QuizApi, QuizInput } from "./quiz-api";
 import { fail, isFailure, type Result, type WriteResult } from "./result";
@@ -59,6 +61,35 @@ export interface AboutPort {
   tab(): AboutTab | null;
 }
 
+/** A floating window as agents see it (spec §6.1 `windows`). */
+export interface WindowInfo {
+  ref: string;
+  title: string;
+  state: "open" | "minimized";
+  focused?: true;
+}
+export type WindowCommand = "close" | "minimize" | "restore" | "focus";
+export interface WindowInput {
+  action: WindowCommand | "open" | "place" | "arrange";
+  ref?: string;
+  at?: Slot;
+  size?: SizeName;
+  layout?: Layout;
+}
+
+/** The floating windows (Stage 4, `ui/windows.ts` through `ui/docs-ui.ts`). Refs are `doc:*` or `quiz:*`. */
+export interface WindowsPort {
+  list(): WindowInfo[];
+  /** The block the user's cursor is in, while a doc editor has focus. */
+  editing(): string | null;
+  /** Open or focus the artifact's window; with `block`, scroll to that block and flash it. */
+  open(ref: string, options?: { at?: Slot; size?: SizeName; block?: string }): Promise<Result<{ ref: string; title: string }>>;
+  command(action: WindowCommand, ref: string): Result<{ ref: string; title: string }>;
+  place(ref: string, at?: Slot, size?: SizeName): Result<{ ref: string; title: string }>;
+  /** Arranges every open window; returns how many. */
+  arrange(layout: Layout): number;
+}
+
 export interface GuideApiDeps {
   explorer: ExplorerPort;
   about: AboutPort;
@@ -73,6 +104,12 @@ export interface GuideApiDeps {
   tour?: TourRunner;
   /** Quizzes and the quiz card (Stage 5); missing where docs are not available. */
   quizzes?: Pick<QuizApi, "quiz" | "read" | "status">;
+  /** Docs and quizzes (Stage 3). Without it, doc refs return not_available as before. */
+  docs?: DocsApi;
+  /** Floating windows (Stage 4). */
+  windows?: WindowsPort;
+  /** Whether docs may exist, so `search(all)` and `outline(guide)` open the store only then. */
+  docsPresent?: () => boolean;
   now?: () => number;
 }
 
@@ -99,7 +136,21 @@ interface PlannedStop extends TourStop {
 const SELECTION_CHARS = 500;
 const PANELS: Record<Panel, string> = { guide: "walkthrough", region: "region", streams: "streams" };
 
-export function createGuideApi({ explorer, about, activity, playing, agentControl, view, tour, quizzes, now = Date.now }: GuideApiDeps) {
+export function createGuideApi({
+  explorer,
+  about,
+  activity,
+  playing,
+  agentControl,
+  view,
+  tour,
+  quizzes,
+  docs,
+  windows,
+  docsPresent,
+  now = Date.now,
+}: GuideApiDeps) {
+  const docsTools = docs ? createDocsTools({ docs, windows, present: docsPresent ?? (() => docs.status().store !== "unopened") }) : null;
   const context = () => {
     const snapshot = explorer.snapshot();
     return { snapshot, path: snapshot.overview ? null : snapshot.path };
@@ -137,6 +188,7 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
       selection: selection ? { ref: selection.place ? placeText(selection.place) : undefined, text: selection.text.slice(0, SELECTION_CHARS) } : undefined,
       tour: tour?.status() ?? undefined,
       quiz: quizzes?.status() ?? undefined,
+      ...docsTools?.context(),
       control: agentControl() ? undefined : "off",
       activity: log.entries.map((entry) => ({
         seq: entry.seq,
@@ -153,7 +205,8 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
     };
   }
 
-  function search(query: string, scope: "guide" | "docs" | "all" = "all", limit = SEARCH_LIMIT.default): Result<object> {
+  function search(query: string, scope: "guide" | "docs" | "all" = "all", limit = SEARCH_LIMIT.default): Result<object> | Promise<Result<object>> {
+    if (docsTools && scope !== "guide") return docsTools.search(query, scope, limit);
     if (scope === "docs") return fail("not_available", DOCS_LATER);
     return { scope: "guide", hits: searchGuide(query, limit) };
   }
@@ -184,7 +237,7 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
     return `${topic.title} step ${index + 1} of ${topic.steps.length}: ${topic.steps[index].title}`;
   }
 
-  function go(refText: string, camera = true): Result<WriteResult> {
+  function go(refText: string, camera = true): Result<WriteResult> | Promise<Result<WriteResult>> {
     const resolved = resolveRef(refText);
     if (isFailure(resolved)) return resolved;
     const { ref } = resolved;
@@ -198,6 +251,7 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
       return fail("not_available", "Sources have no page of their own. Read the source, or go to a topic or region that cites it.", cited.cited ?? []);
     }
     const place = refPlace(ref);
+    if (!place && docsTools && (ref.kind === "doc" || ref.kind === "quiz" || ref.kind === "block" || ref.kind === "docs")) return docsTools.go(ref);
     if (!place) return fail("not_available", DOCS_LATER);
     const before = explorer.snapshot().place;
     const ended = endTour();
@@ -386,19 +440,23 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
     return view.apply(patch);
   }
 
-  /* ---------- Quizzes (Stage 5) ---------- */
+  /* ---------- Docs, windows and quizzes ---------- */
 
-  /** Quiz refs, and "results" for a doc with questions, are read from the docs store; everything else from the guide. */
+  const noDocs = () => fail("not_available", DOCS_LATER);
+
+  /** Quiz refs, and "results" for a doc with questions, go to the quiz layer; other doc refs to the docs tools; the rest to the guide. */
   function readRef(ref: string, detail?: Detail): Result<object> | Promise<Result<object>> {
     if (quizzes) {
       const resolved = resolveRef(ref);
       if (!isFailure(resolved) && (resolved.ref.kind === "quiz" || (resolved.ref.kind === "doc" && detail === "results"))) {
         if (detail === "sources")
           return fail("bad_input", "Quizzes have no sources. Use brief, full, markdown or results.", ["brief", "full", "markdown", "results"]);
+        if (resolved.ref.kind === "quiz" && detail !== "results" && docsTools)
+          return docsTools.read(ref, detail) ?? quizzes.read(formatRef(resolved.ref), detail);
         return quizzes.read(formatRef(resolved.ref), detail);
       }
     }
-    return read(ref, detail, { path: context().path });
+    return docsTools?.read(ref, detail) ?? read(ref, detail, { path: context().path });
   }
 
   function quiz(input: QuizInput): Result<WriteResult> | Promise<Result<WriteResult>> {
@@ -408,13 +466,16 @@ export function createGuideApi({ explorer, about, activity, playing, agentContro
 
   return {
     context: getContext,
-    outline: (ref?: string, page?: Page) => outline(ref, page),
+    outline: (ref?: string, page?: Page) => docsTools?.outline(ref, page) ?? outline(ref, page),
     read: readRef,
     search,
     go,
     walkthrough,
     setView,
     quiz,
+    doc: (input: DocInput) => docsTools?.doc(input) ?? noDocs(),
+    editBlocks: (input: EditBlocksInput) => docsTools?.editBlocks(input) ?? noDocs(),
+    window: (input: WindowInput) => docsTools?.window(input) ?? noDocs(),
   };
 }
 

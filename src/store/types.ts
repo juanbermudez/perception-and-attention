@@ -17,13 +17,15 @@ export type BlockData = Record<string, unknown>;
 
 /** A block's content, without identity or bookkeeping. `text` is inline markdown (the source, for code and table). */
 export interface BlockContent {
+  /** Inserts only: an id chosen by the user's editor. The store uses it when it is free (5 base36 characters) and assigns another otherwise. */
+  id?: string;
   type: BlockType;
   indent?: number;
   text: string;
   data?: BlockData;
 }
 
-export interface Block extends Required<Omit<BlockContent, "data">> {
+export interface Block extends Required<Omit<BlockContent, "data" | "id">> {
   id: string;
   data?: BlockData;
   rev: number;

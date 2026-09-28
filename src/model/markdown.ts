@@ -9,9 +9,8 @@
 // those backslashes, so export → import returns the same blocks.
 
 import { Lexer, type Token, type Tokens } from "marked";
-import { regions } from "../content/regions";
-import type { RegionId } from "../content/types";
 import type { BlockContent, BlockData, CalloutTone } from "../store/types";
+import { regionById } from "./inline";
 
 const TONES: readonly CalloutTone[] = ["note", "tip", "warning"];
 const CODE_LANG = /^[\w+#.-]{1,32}$/;
@@ -95,11 +94,6 @@ function parseObject(json: string): BlockData | null {
   }
 }
 
-const regionIds = new Map(Object.keys(regions).map((id) => [id.toLowerCase(), id as RegionId]));
-function regionById(id: string) {
-  const known = regionIds.get(id.toLowerCase());
-  return known ? regions[known] : undefined;
-}
 const shortName = (id: unknown) => (typeof id === "string" ? (regionById(id)?.short.split(" · ")[0] ?? id) : "?");
 
 function listWords(words: string[]): string {
@@ -372,131 +366,5 @@ export function parseDocument(markdown: string): { title?: string; blocks: Block
 
 // ── Inline rendering ──────────────────────────────────────────────────────────────────────────
 
-const ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (char) => ENTITIES[char]);
-const PUNCTUATION = /[!-/:-@[-`{-~]/;
-const HTTP_URL = /^https?:\/\/[^\s<>"'`\\]+$/i;
-const REGION_URL = /^region:([A-Za-z0-9]+)$/;
-
-/** Index of the next backtick run of exactly `length` at or after `from`, or -1. */
-function closingRun(text: string, length: number, from: number): number {
-  const runs = /`+/g;
-  runs.lastIndex = from;
-  for (let match = runs.exec(text); match; match = runs.exec(text)) if (match[0].length === length) return match.index;
-  return -1;
-}
-
-/** Index of the `]` that closes the `[` at `open`, or -1. */
-function closingBracket(text: string, open: number): number {
-  let depth = 0;
-  for (let index = open; index < text.length; index++) {
-    const char = text[index];
-    if (char === "\\") index++;
-    else if (char === "[") depth++;
-    else if (char === "]" && --depth === 0) return index;
-  }
-  return -1;
-}
-
-/** Index of a closing delimiter `mark` after `from` that is not preceded by whitespace, or -1. */
-function closingMark(text: string, mark: string, from: number): number {
-  for (let index = from; index < text.length; index++) {
-    const char = text[index];
-    if (char === "\\") {
-      index++;
-      continue;
-    }
-    if (char === "`") {
-      const run = /^`+/.exec(text.slice(index))![0];
-      const end = closingRun(text, run.length, index + run.length);
-      index = end > 0 ? end + run.length - 1 : index + run.length - 1;
-      continue;
-    }
-    if (char !== mark[0]) continue;
-    // Look at the whole run of delimiter characters. In a longer run ("***") the closer is its
-    // last characters; a single * or _ does not close on a run of two (a nested strong span).
-    let run = 1;
-    while (text[index + run] === char) run++;
-    const close = index + run - mark.length;
-    const opensOnly = /\s/.test(text[index - 1] ?? " ");
-    const intraword = char === "_" && /[\p{L}\p{N}]/u.test(text[index + run] ?? "");
-    if (opensOnly || intraword || run < mark.length || (mark.length === 1 && run % 2 === 0)) {
-      index += run - 1;
-      continue;
-    }
-    return close;
-  }
-  return -1;
-}
-
-function renderSpan(text: string, links: boolean): string {
-  let html = "";
-  let index = 0;
-  while (index < text.length) {
-    const char = text[index];
-    if (char === "\\" && PUNCTUATION.test(text[index + 1] ?? "")) {
-      html += escapeHtml(text[index + 1]);
-      index += 2;
-      continue;
-    }
-    if (char === "\n") {
-      html += "<br>";
-      index++;
-      continue;
-    }
-    if (char === "`") {
-      const run = /^`+/.exec(text.slice(index))![0];
-      const end = closingRun(text, run.length, index + run.length);
-      if (end > 0) {
-        let code = text.slice(index + run.length, end).replace(/\n/g, " ");
-        if (/^ .*[^ ].* $/.test(code)) code = code.slice(1, -1);
-        html += `<code>${escapeHtml(code)}</code>`;
-        index = end + run.length;
-        continue;
-      }
-      html += escapeHtml(run);
-      index += run.length;
-      continue;
-    }
-    if (char === "[" && links) {
-      const close = closingBracket(text, index);
-      // One level of parentheses is allowed inside the URL, as in Wikipedia links.
-      const target = close > 0 && text[close + 1] === "(" ? /^\(((?:[^()\s]|\([^()\s]*\))*)\)/.exec(text.slice(close + 1)) : null;
-      if (target) {
-        const label = renderSpan(text.slice(index + 1, close), false);
-        const url = target[1];
-        const region = REGION_URL.exec(url);
-        const known = region ? regionById(region[1]) : undefined;
-        if (HTTP_URL.test(url)) html += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-        else if (known) html += `<button class="region-mention" data-region="${known.id}" aria-label="Show ${escapeHtml(known.label)}">${label}</button>`;
-        else html += label;
-        index = close + 1 + target[0].length;
-        continue;
-      }
-    }
-    const pair = char === "~" && text[index + 1] === "~" ? "~~" : (char === "*" || char === "_") && text[index + 1] === char ? char + char : null;
-    const mark = pair ?? (char === "*" || char === "_" ? char : null);
-    const opens = mark && !/\s/.test(text[index + mark.length] ?? " ") && !(char === "_" && /[\p{L}\p{N}]/u.test(text[index - 1] ?? ""));
-    if (mark && opens) {
-      const close = closingMark(text, mark, index + mark.length + 1);
-      if (close > 0) {
-        const tag = mark === "~~" ? "s" : mark.length === 2 ? "strong" : "em";
-        html += `<${tag}>${renderSpan(text.slice(index + mark.length, close), links)}</${tag}>`;
-        index = close + mark.length;
-        continue;
-      }
-    }
-    html += escapeHtml(char);
-    index++;
-  }
-  return html;
-}
-
-/**
- * Renders a block's inline markdown as HTML. Everything is escaped first; only bold, italic,
- * code, strike, line breaks, http(s) links and region links become tags. Region links render as
- * the guide's `.region-mention` buttons; links with any other scheme keep only their text.
- */
-export function renderInline(text: string): string {
-  return renderSpan(text, true);
-}
+/** Inline markdown as escaped, allow-listed HTML (the parser lives in `model/inline.ts`). */
+export { renderInline } from "./inline";

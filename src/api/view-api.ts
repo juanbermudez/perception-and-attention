@@ -15,6 +15,7 @@ import {
   type LabelMode,
   type LayerEffect,
   type LayerId,
+  MAX_FRAME,
   type NormalizedPatch,
   nearestSide,
   normalizeViewPatch,
@@ -279,9 +280,38 @@ export function createViewApi(state: ExplorerState, scene: ViewScene) {
     );
   }
 
+  /**
+   * The live view as a ViewPatch, for doc `view` blocks (`insert { view: "current" }`, spec §6.9).
+   * The camera keeps its region (the agent's focus, else the selected region, else the isolated set)
+   * plus the exact angles and zoom; layers, isolate, labels, spotlight and x-ray follow the settings.
+   */
+  function capture(): Record<string, unknown> {
+    const pose = scene.pose();
+    const camera: Record<string, unknown> = {};
+    const isolated = state.isolate?.regions ?? [];
+    const focus = state.viewFocus ?? (state.overview ? null : state.selected);
+    if (focus) camera.focus = focus;
+    else if (isolated.length && isolated.length <= MAX_FRAME) camera.frame = [...isolated];
+    else camera.reset = true;
+    camera.yaw = round(pose.yaw);
+    camera.pitch = round(pose.pitch);
+    camera.zoom = round(scene.homeDistance / pose.distance, 2);
+    const patch: Record<string, unknown> = { camera };
+    const layers: Partial<Record<LayerId, number>> = {};
+    for (const id of LAYER_IDS) if (state.layers[id] !== 1) layers[id] = round(state.layers[id], 2);
+    if (Object.keys(layers).length) patch.layers = layers;
+    if (state.layerEffect === "fade") patch.effect = "fade";
+    if (state.isolate) patch.isolate = { regions: [...state.isolate.regions], keep: state.isolate.keep };
+    if (state.labelMode !== "auto") patch.labels = state.labelMode;
+    if (!state.spotlight) patch.spotlight = false;
+    if (!state.xray) patch.xray = false;
+    return patch;
+  }
+
   return {
     apply,
     undo,
+    capture,
     /** The view as rendered once it settles: effective layer presence and every gated layer (for get_context). */
     current(): ViewReport {
       return report(scene.pose(), { effective: true });
