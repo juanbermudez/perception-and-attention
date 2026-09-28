@@ -14,7 +14,8 @@ const provenance = JSON.parse(await readFile("provenance/anatomy.json", "utf8"))
 const MNI_MIN = [-70, -104, -45];
 const MNI_MAX = [70, 70, 78];
 
-// Left hemisphere, to match the rest of the vision route.
+// Left hemisphere to match the routes, except the TPJ: the ventral attention
+// network it belongs to is stronger in the right hemisphere.
 const areas = {
   mt: {
     mni: [-44, -72, 6],
@@ -45,6 +46,44 @@ const areas = {
     mni: [-44, -56, -15],
     mesh: "Occipitotemporal_sulcus_(Lateral_part*)l",
     basis: "Left lateral occipitotemporal sulcus (Cohen et al., 2000; Dehaene & Cohen, 2011).",
+  },
+  fef: {
+    mni: [-32, -4, 50],
+    mesh: "Precentral_sulcus_(Superior_part)*l",
+    basis:
+      "Precentral sulcus near the caudal end of the superior frontal sulcus; Talairach (−32, −2, 46) from a meta-analysis of 8 PET studies (Paus, 1996; Vernet et al., 2014), converted to MNI.",
+  },
+  tpj: {
+    mni: [62, -44, 12],
+    mesh: "Supramarginal_gyrusr",
+    basis: "Right TPJ peak from an ALE meta-analysis of 25 reorienting-of-attention experiments (Krall et al., 2015).",
+  },
+  s2: {
+    mni: [-54, -26, 20],
+    mesh: "Supramarginal_gyrusl",
+    basis: "Left parietal operculum, area OP1 (putative S2); ALE peak for right-hand touch (Lamp et al., 2019).",
+  },
+  postInsula: {
+    mni: [-40, -19, 14],
+    mesh: "Circular_sulcus_of_insulal",
+    basis: "Dorsal posterior insula, mean single-subject peak for painful heat on the right hand (Brooks et al., 2005).",
+  },
+  belt: {
+    mni: [-57, -20, 2],
+    mesh: "Superior_temporal_gyrus_(Lateral_part)l",
+    basis:
+      "Lateral superior temporal gyrus next to Heschl’s gyrus, where vowel sounds activate parabelt-like cortex (Chevillet et al., 2011; Talairach −56, −19, 3).",
+  },
+  astg: {
+    mni: [-57, -10, -5],
+    mesh: "Superior_temporal_gyrus_(Lateral_part)l",
+    basis: "Left anterior superior temporal gyrus, peak for word-length speech (DeWitt & Rauschecker, 2012; Talairach −56, −10, −4).",
+  },
+  vlpfc: {
+    mni: [-51, 22, 14],
+    mesh: "Triangular_part_of_inferior_frontal_gyrusl",
+    basis:
+      "Left inferior frontal gyrus, triangular part (BA 45), peak in a meta-analysis of speech recognition (DeWitt & Rauschecker, 2012; Talairach −50, 22, 12).",
   },
 };
 

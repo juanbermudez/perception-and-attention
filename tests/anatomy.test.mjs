@@ -81,7 +81,8 @@ check("each cochlear input first enters its ipsilateral nucleus, then reaches bo
     }
     assert(seen.has("a1") && seen.has("a1R"));
   }
-  for (const e of edges) assert(Number.isInteger(e.stage) && e.stage >= 0 && e.stage <= 4);
+  // Ascending relay routes fire in stages; detail routes (streams, feedback to the ear) are not staged.
+  for (const e of edges.filter((e) => !e.detail)) assert(Number.isInteger(e.stage) && e.stage >= 0 && e.stage <= 4);
 });
 check("every animated curve is finite and anchored to its atlas endpoints", () => {
   for (const path of pathways)

@@ -53,9 +53,15 @@ for (const edge of attention.edges) assert.equal(attentionWeight("attention", ed
 const touch = pathways.find((path) => path.id === "touch");
 assert.deepEqual(
   touch.steps.map((step) => step.region),
-  ["medulla", "vpl", "s1", "parietal"],
+  ["medulla", "vpl", "s1", "parietal", "s2", "dorsalHorn", "postInsula", "cingulate"],
 );
 assert(regions.medulla.position[2] < 0 && regions.vpl.position[2] > 0, "Right medulla to left thalamus must cross the midline.");
+assert(
+  regions.dorsalHorn.position[2] < 0 && regions.dorsalHorn.position[1] < regions.medulla.position[1],
+  "Pain route starts on the right, below the medulla.",
+);
+// The ventral attention network is drawn on the right, where it is stronger.
+assert(regions.tpj.position[2] < 0, "TPJ should be in the right hemisphere.");
 console.log(
   "PASS attention follows divisive normalization: priority boosts one stream, damps but keeps the others, and removing a stream frees capacity; body route crosses at the medulla.",
 );
@@ -131,6 +137,11 @@ assert.deepEqual(
   }
   for (const edge of core) assert.equal(routeWeight("vision", edge, view(true, "vision")), 0.7);
   console.log(`PASS ${detail.length} detail routes show only inside Vision; ${core.length} core routes still show in the overview.`);
+  // Expanded Touch and Hearing keep their overview routes unchanged.
+  for (const id of ["touch", "hearing"]) {
+    const path = pathways.find((p) => p.id === id);
+    for (const edge of path.edges.filter((e) => e.detail)) assert.equal(routeWeight(id, edge, view(true, id)), 0, `${id}: detail route in the overview.`);
+  }
 }
 
 // Proximity: 1 on the label's centre line, easing to 0 at the radius; a stacked

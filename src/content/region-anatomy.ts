@@ -13,9 +13,9 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   vpl: { parts: ["Thalamusl"], label: "Left thalamus", context: "Parent structure highlighted; VPL remains an unsegmented reference." },
   s1: { parts: ["Postcentral_gyrusl"], label: "Left postcentral gyrus", context: "Surface reference for S1; individual body maps are not segmented." },
   insula: {
-    parts: ["Insula_(Subcentral_gyrus_and_ant_and_post_sulci*)l"],
-    label: "Left insular region",
-    context: "Parent surface reference; anterior insula is not separately segmented.",
+    parts: ["Circular_sulcus_of_insulal"],
+    label: "Left insula (circular sulcus)",
+    context: "Parent surface reference; the circular sulcus outlines the insula. The insular gyri and the anterior insula are not segmented separately.",
   },
   cingulate: {
     parts: ["Cingulate_gyrus_and_sulcus_(Middle_anterior_part)l"],
@@ -28,6 +28,7 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   lgn: { parts: ["Lateral_geniculate_bodyl"], label: "Left lateral geniculate body" },
   v1: { parts: ["Calcarine_sulcusl"], label: "Left calcarine region", context: "Surface reference for V1; functional borders vary." },
   l6: { parts: ["Calcarine_sulcusl"], label: "Left calcarine region", context: "Cortical surface reference; microscopic layer 6 is not segmented." },
+  l5: { parts: ["Calcarine_sulcusl"], label: "Left calcarine region", context: "Cortical surface reference; microscopic layer 5 is not segmented." },
   trn: { parts: ["Thalamusl"], label: "Left thalamus", context: "Parent structure highlighted; TRN remains an unsegmented landmark." },
   pfc: { parts: ["Middle_frontal_gyrusl"], label: "Left middle frontal gyrus", context: "Anatomical reference for this prefrontal landmark." },
   parietal: { parts: ["Superior_parietal_lobulel"], label: "Left superior parietal lobule", context: "Anatomical reference for this parietal landmark." },
@@ -92,4 +93,48 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   },
   motor: { parts: ["Precentral_gyrusl"], label: "Left precentral gyrus", context: "Anatomical reference for this motor landmark." },
   meaning: { parts: ["Middle_temporal_gyrusl"], label: "Left middle temporal gyrus", context: "Anatomical reference for this semantic landmark." },
+  fef: {
+    parts: ["Precentral_sulcus_(Superior_part)*l"],
+    label: "Left superior precentral sulcus",
+    context: "Parent surface reference; the FEF lies in this sulcus near its junction with the superior frontal sulcus and is not segmented.",
+  },
+  sc: { parts: ["Midbrainl"], label: "Left midbrain", context: "Parent structure highlighted; superior colliculus remains an unsegmented landmark." },
+  tpj: {
+    parts: ["Supramarginal_gyrusr"],
+    label: "Right supramarginal gyrus",
+    context:
+      "Parent surface reference; the TPJ spans the back of this gyrus, the angular gyrus and the end of the superior temporal gyrus, and is not segmented.",
+  },
+  lc: { parts: ["Ponsl"], label: "Left pons", context: "Parent structure highlighted; locus coeruleus remains an unsegmented landmark." },
+  dorsalHorn: {
+    parts: ["Medulla_oblongatar"],
+    label: "Right medulla (spinal cord not in model)",
+    context:
+      "Parent structure highlighted; the spinal cord is not in the atlas, so the dorsal horn is an unsegmented landmark at the lower end of the medulla.",
+  },
+  s2: {
+    parts: ["Supramarginal_gyrusl"],
+    label: "Left supramarginal gyrus",
+    context: "Parent surface reference; S2 lies on the parietal operculum, the part of this region folded into the lateral sulcus, and is not segmented.",
+  },
+  postInsula: {
+    parts: ["Circular_sulcus_of_insulal"],
+    label: "Left circular sulcus of the insula",
+    context: "Surface reference; the insular gyri are not segmented, and the posterior insula lies along the back of this sulcus.",
+  },
+  belt: {
+    parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
+    label: "Left superior temporal gyrus",
+    context: "Parent surface reference; the belt around Heschl’s gyrus and the parabelt are not segmented.",
+  },
+  astg: {
+    parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
+    label: "Left superior temporal gyrus",
+    context: "Parent surface reference; the anterior region involved in identifying sounds is not segmented.",
+  },
+  vlpfc: {
+    parts: ["Triangular_part_of_inferior_frontal_gyrusl"],
+    label: "Left inferior frontal gyrus · triangular part",
+    context: "Parent surface reference; ventrolateral prefrontal cortex also includes the orbital part of this gyrus and is not segmented.",
+  },
 };

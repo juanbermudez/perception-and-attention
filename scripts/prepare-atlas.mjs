@@ -157,6 +157,14 @@ const anchors = {
   pulvinar: [landmarkMeshes.Thalamusl.max[0] - 0.14, 0.0, 0.38],
 };
 anchors.l6 = anchors.v1;
+anchors.l5 = anchors.v1;
+// Hand-placed landmarks for nuclei the atlas does not include (see docs/science-factcheck.md):
+// superior colliculus on the dorsal midbrain just above the inferior colliculus body;
+// locus coeruleus beside the floor of the fourth ventricle in the rostral pons (Keren et al., 2009);
+// dorsal horn at the lower end of the right medulla, standing in for the spinal cord below the model.
+anchors.sc = [0.25, -0.52, 0.14];
+anchors.lc = [0.35, -1.0, 0.13];
+anchors.dorsalHorn = [0.65, -2.62, -0.12];
 const manifest = {
   atlas: "Z-Anatomy / BodyParts3D",
   source: "https://github.com/LluisV/Z-Anatomy/tree/PC-Version/Resources/Models/FBX",

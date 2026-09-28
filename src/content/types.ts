@@ -41,7 +41,18 @@ export type RegionId =
   | "vpl"
   | "s1"
   | "insula"
-  | "cingulate";
+  | "cingulate"
+  | "fef"
+  | "sc"
+  | "tpj"
+  | "lc"
+  | "dorsalHorn"
+  | "s2"
+  | "postInsula"
+  | "belt"
+  | "astg"
+  | "vlpfc"
+  | "l5";
 
 /** label: full name · short: callout text · name: used in running text · where: location line. */
 export interface Region {

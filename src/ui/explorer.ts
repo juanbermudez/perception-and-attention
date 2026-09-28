@@ -156,7 +156,9 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   }
 
   function selectRegion(id: RegionId, focusCamera = true) {
-    const index = current().steps.findIndex((step) => step.region === id);
+    // A region can appear in more than one step; stay on the current one if it matches.
+    const steps = current().steps;
+    const index = steps[state.step]?.region === id ? state.step : steps.findIndex((step) => step.region === id);
     if (index >= 0 && !state.overview) {
       setStep(index, { camera: focusCamera });
       return;

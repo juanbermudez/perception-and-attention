@@ -53,5 +53,8 @@ for (const [left, right] of [
 }
 assert.deepEqual(regionAnatomy.v1.parts, regionAnatomy.l6.parts);
 assert.match(regionAnatomy.l6.context, /not segmented/);
-for (const id of ["trn", "pulvinar", "soc", "socR"]) assert.match(regionAnatomy[id].context, /Parent structure highlighted.*unsegmented landmark/);
+for (const id of ["trn", "pulvinar", "soc", "socR", "sc", "lc", "dorsalHorn"])
+  assert.match(regionAnatomy[id].context, /Parent structure highlighted.*unsegmented landmark/);
+assert.deepEqual(regionAnatomy.l5.parts, regionAnatomy.l6.parts);
+assert.deepEqual(regions.l5.position, regions.v1.position);
 console.log("PASS bilateral selections stay on their own side; unsegmented nuclei and cortical layers identify the parent reference.");

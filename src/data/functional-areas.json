@@ -88,5 +88,110 @@
     "mesh": "Occipitotemporal_sulcus_(Lateral_part*)l",
     "basis": "Left lateral occipitotemporal sulcus (Cohen et al., 2000; Dehaene & Cohen, 2011).",
     "snappedMillimetres": 1.5
+  },
+  "fef": {
+    "position": [
+      -0.251,
+      1.267,
+      0.882
+    ],
+    "mni": [
+      -32,
+      -4,
+      50
+    ],
+    "mesh": "Precentral_sulcus_(Superior_part)*l",
+    "basis": "Precentral sulcus near the caudal end of the superior frontal sulcus; Talairach (−32, −2, 46) from a meta-analysis of 8 PET studies (Paus, 1996; Vernet et al., 2014), converted to MNI.",
+    "snappedMillimetres": 6.2
+  },
+  "tpj": {
+    "position": [
+      0.956,
+      0.267,
+      -1.717
+    ],
+    "mni": [
+      62,
+      -44,
+      12
+    ],
+    "mesh": "Supramarginal_gyrusr",
+    "basis": "Right TPJ peak from an ALE meta-analysis of 25 reorienting-of-attention experiments (Krall et al., 2015).",
+    "snappedMillimetres": 6.5
+  },
+  "s2": {
+    "position": [
+      0.301,
+      0.424,
+      1.58
+    ],
+    "mni": [
+      -54,
+      -26,
+      20
+    ],
+    "mesh": "Supramarginal_gyrusl",
+    "basis": "Left parietal operculum, area OP1 (putative S2); ALE peak for right-hand touch (Lamp et al., 2019).",
+    "snappedMillimetres": 3.3
+  },
+  "postInsula": {
+    "position": [
+      -0.032,
+      0.356,
+      1.141
+    ],
+    "mni": [
+      -40,
+      -19,
+      14
+    ],
+    "mesh": "Circular_sulcus_of_insulal",
+    "basis": "Dorsal posterior insula, mean single-subject peak for painful heat on the right hand (Brooks et al., 2005).",
+    "snappedMillimetres": 2.2
+  },
+  "belt": {
+    "position": [
+      0.074,
+      -0.017,
+      1.647
+    ],
+    "mni": [
+      -57,
+      -20,
+      2
+    ],
+    "mesh": "Superior_temporal_gyrus_(Lateral_part)l",
+    "basis": "Lateral superior temporal gyrus next to Heschl’s gyrus, where vowel sounds activate parabelt-like cortex (Chevillet et al., 2011; Talairach −56, −19, 3).",
+    "snappedMillimetres": 1.2
+  },
+  "astg": {
+    "position": [
+      -0.217,
+      -0.239,
+      1.596
+    ],
+    "mni": [
+      -57,
+      -10,
+      -5
+    ],
+    "mesh": "Superior_temporal_gyrus_(Lateral_part)l",
+    "basis": "Left anterior superior temporal gyrus, peak for word-length speech (DeWitt & Rauschecker, 2012; Talairach −56, −10, −4).",
+    "snappedMillimetres": 2.4
+  },
+  "vlpfc": {
+    "position": [
+      -1.213,
+      0.308,
+      1.488
+    ],
+    "mni": [
+      -51,
+      22,
+      14
+    ],
+    "mesh": "Triangular_part_of_inferior_frontal_gyrusl",
+    "basis": "Left inferior frontal gyrus, triangular part (BA 45), peak in a meta-analysis of speech recognition (DeWitt & Rauschecker, 2012; Talairach −50, 22, 12).",
+    "snappedMillimetres": 1.2
   }
 }

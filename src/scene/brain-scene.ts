@@ -45,7 +45,9 @@ const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl"
 const ZOOM_FADE_START = 0.92;
 const ZOOM_FADE_END = 0.5;
 /** Opacity kept at full zoom, per layer. Deep relays and brainstem stay more visible. */
+const LAYER_MARKERS = new Set<RegionId>(["l5", "l6"]);
 const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
+const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
 const ZOOM_KEEP = { skull: 0.12, cortex: 0.3, lower: 0.35, inner: 0.65 };
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
 const SPOT_DIM_ROUTE = 0.14;
@@ -407,7 +409,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     vec3.set(lookAt, region[0] * 0.35, lerp(state.skull ? skullCenterY : -0.1, region[1], 0.35), region[2] * 0.35);
     // Each region has a viewing direction that keeps it in front of the skull.
     if (id.startsWith("retina") || id === "chiasm") viewFrom.set(-1, 0.18, side * 0.6);
-    else if (id === "v1" || id === "l6" || id === "extrastriate") viewFrom.set(0.75, 0.22, side);
+    else if (id === "v1" || id === "l5" || id === "l6" || id === "extrastriate") viewFrom.set(0.75, 0.22, side);
     else if (id === "cingulate" || id === "motor" || id === "s1") viewFrom.set(-0.15, 0.75, side);
     else if (id === "medulla" || id.startsWith("brainstem")) viewFrom.set(0.5, -0.16, side);
     // Areas on the underside of the temporal lobe are seen from below and to the side.
@@ -558,6 +560,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const corticalIds = new Set<RegionId>([
     "v1",
     "l6",
+    "l5",
+    "fef",
+    "tpj",
+    "s2",
+    "postInsula",
+    "belt",
+    "astg",
+    "vlpfc",
     "pfc",
     "parietal",
     "extrastriate",
@@ -579,7 +589,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     "cingulate",
   ]);
   // Areas a few millimetres apart get tighter patches so neighbours stay distinct.
-  const smallAreas = new Set<RegionId>(["mt", "ffa", "ppa", "eba", "vwfa"]);
+  const smallAreas = new Set<RegionId>(["mt", "ffa", "ppa", "eba", "vwfa", "fef", "tpj", "s2", "postInsula", "belt", "astg", "vlpfc"]);
   const clusters: ActivityCluster[] = [];
   for (const id of Object.keys(regions) as RegionId[]) {
     const anchor = regions[id].position,
@@ -810,7 +820,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let frameCount = 0;
   let destroyed = false;
   const activeRegionIds = new Set<RegionId>();
-  const attentionLabels = new Set<RegionId>(["pfc", "parietal", "pulvinar", "extrastriate", "v1", "a1", "s1"]);
+  const attentionLabels = new Set<RegionId>(["pfc", "fef", "parietal", "tpj", "sc", "lc", "pulvinar", "extrastriate", "v1", "a1", "s1"]);
   const visibleMarkers: Marker[] = new Array(markers.length);
   // A few hundred surface points stand in for the head outline when placing callouts.
   function outlineSample(values: ArrayLike<number>, count: number) {
@@ -1066,7 +1076,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const pathColor = pathwayColors.get(state.path)!;
     clusters.forEach((cluster, index) => {
       let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id);
-      if ((cluster.id === "l6" && shown !== "l6") || (cluster.id === "v1" && shown === "l6")) energy = 0;
+      if ((LAYER_MARKERS.has(cluster.id) && shown !== cluster.id) || (cluster.id === "v1" && LAYER_MARKERS.has(shown))) energy = 0;
       const activityColor = regionColors.get(cluster.id) ?? pathColor,
         level = Math.min(energy, 1.2);
       vec3.set(cluster.target, activityColor.r * level, activityColor.g * level, activityColor.b * level);
@@ -1091,7 +1101,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const active = (!state.overview || preview !== null) && marker.id === shown;
       marker.label.classList.toggle("selected", active);
       marker.label.setAttribute("aria-pressed", String(active));
-      const targetVisible = (active || activeRegionIds.has(marker.id)) && !(marker.id === "l6" && !active) && !(marker.id === "v1" && shown === "l6");
+      // Layer 5 and 6 share V1's position, so only the one being shown gets a marker.
+      const targetVisible =
+        (active || activeRegionIds.has(marker.id)) && !(LAYER_MARKERS.has(marker.id) && !active) && !(marker.id === "v1" && LAYER_MARKERS.has(shown));
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
       const spot = stepWeight(marker.spot, regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
@@ -1164,13 +1176,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     layoutCallouts(visibleMarkers, visibleCount, head, calloutBounds, dt, reduced);
     for (const marker of markers) if (marker.label.hidden) marker.leader.setAttribute("d", "");
     // Labels near the mouse scale up and come forward. Off while dragging, since
-    // labels slide under the pointer, and with reduced motion.
+    // labels slide under the pointer, and with reduced motion. A press without
+    // movement only eases the lift slightly, as click feedback.
+    let dragging = pointers.size > 1;
+    for (const down of pointers.values()) if (down.moved) dragging = true;
     const hoverX = hover ? hover.x - origin.left : 0,
       hoverY = hover ? hover.y - origin.top : 0,
-      proximityOn = hover !== null && pointers.size === 0 && !reduced;
+      proximityOn = hover !== null && !dragging && !reduced,
+      pressScale = pointers.size ? LABEL_PRESS : 1;
     for (let i = 0; i < visibleCount; i++) {
       const marker = visibleMarkers[i];
-      const lift = stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) : 0, dt, reduced, 0.12);
+      const lift = stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) * pressScale : 0, dt, reduced, 0.12);
       marker.label.style.setProperty("--lift", lift.toFixed(3));
       marker.label.style.zIndex = lift > 0.01 ? String(3 + Math.round(lift * 6)) : "";
       marker.label.style.left = `${marker.labelX.toFixed(1)}px`;

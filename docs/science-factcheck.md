@@ -381,3 +381,302 @@ Added for the expanded Vision topic. Several items check claims from a draft out
 - **Details (fMRI, 7 people, hours of narrative listening):** Semantic selectivity tiles large areas of **both** hemispheres fairly symmetrically.
 - **Reconciling with #41:** Meaning and concept representations are broad and bilateral. The combinatorial language network is left-lateralised and narrower.
 - **Citation:** Huth AG et al. (2016) Nature 532:453–458. https://doi.org/10.1038/nature17637
+
+---
+
+## ATTENTION, EXPANDED (added 2026-09-27)
+
+### 58. FEF stimulation improves attention and gates V4 (macaque)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Moore & Fallah 2001: FEF microstimulation below the eye-movement threshold improved performance on a spatial attention task "when, but only when" the attended object was in the space represented by the stimulation site.
+- Moore & Armstrong 2003: the same kind of stimulation enhanced V4 visual responses at retinotopically corresponding locations. The enhancement depended on the receptive-field stimulus and on competing stimuli outside the receptive field. Stimulating non-corresponding FEF sites could suppress V4 responses.
+- **Citations:** Moore T, Fallah M (2001) PNAS 98:1273–1276. https://doi.org/10.1073/pnas.98.3.1273 · Moore T, Armstrong KM (2003) Nature 421:370–373. https://doi.org/10.1038/nature01341
+
+### 59. Human FEF location and causal evidence
+- **Verdict:** CONFIRMED, with variability stated. **Confidence:** high.
+- The PET meta-analysis (8 studies, 62 people) places the FEF near the precentral sulcus and/or the depth of the caudal superior frontal sulcus. Talairach Y −6 to 1 and Z 44–51 are consistent across studies; X varies more (−24 to −40 left). The mean is [−32 ± 11; −2 ± 4; 46 ± 4] (Vernet et al. 2014, Table 2). Location depends on method (Amiez & Petrides 2009).
+- TMS of the right FEF (Ruff et al. 2006) increased activity for peripheral and decreased it for central visual-field representations in V1–V4, independent of visual input, and increased perceived contrast of peripheral relative to central stimuli.
+- **Citations:** Paus T (1996) Neuropsychologia 34:475–483. https://doi.org/10.1016/0028-3932(95)00134-4 · Vernet M et al. (2014) Front Integr Neurosci 8:66. https://doi.org/10.3389/fnint.2014.00066 · Ruff CC et al. (2006) Curr Biol 16:1479–1488. https://doi.org/10.1016/j.cub.2006.06.057
+
+### 60. Are attention and saccade planning the same mechanism?
+- **Verdict:** CONTESTED. **Confidence:** moderate.
+- Moore & Armstrong interpret attentional gain as reflecting "nascent saccadic eye movement commands". Gregoriou et al. 2012 found that in covert attention only visual and visuomovement FEF neurons showed enhanced responses. Movement neurons were unchanged, and only visual cells showed enhanced gamma synchronization with V4. They concluded that attentional modulation is not mediated by movement neurons. Gregoriou et al. 2009: FEF–V4 gamma coupling with attention, apparently initiated by FEF, time-shifted by about 8–13 ms.
+- **Wording used:** "Whether attention simply reuses eye-movement plans is debated."
+- **Citations:** Gregoriou GG, Gotts SJ, Desimone R (2012) Neuron 73:581–594. https://doi.org/10.1016/j.neuron.2011.12.019 · Gregoriou GG et al. (2009) Science 324:1207–1210. https://doi.org/10.1126/science.1171402
+
+### 61. LIP priority map (macaque)
+- **Verdict:** CONFIRMED as the authors' proposal. **Confidence:** moderate-high.
+- LIP ensemble activity across the visual field describes the spatial and temporal dynamics of attention. Activity at one location gives priority there but does not predict where the monkey will attend or look (Bisley & Goldberg 2003). They propose LIP as a priority map combining bottom-up and top-down inputs, whose peak guides saccades and attention (2010).
+- **Citations:** Bisley JW, Goldberg ME (2003) Science 299:81–86. https://doi.org/10.1126/science.1077395 · Bisley JW, Goldberg ME (2010) Annu Rev Neurosci 33:1–21. https://doi.org/10.1146/annurev-neuro-060909-152823
+
+### 62. Superior colliculus and covert attention (macaque; human fMRI)
+- **Verdict:** CONFIRMED. **Confidence:** high. (Extends entry 12.)
+- Lovejoy & Krauzlis 2010: muscimol inactivation of intermediate/deep SC caused "profound inattention" for stimuli in the affected field, but only when distractors carried counter-informative signals. With uninformative distractors, performance was largely unaffected.
+- Müller et al. 2005: SC microstimulation lowered thresholds at the location represented by the site, not at a control location in the opposite hemifield, with gaze fixed.
+- Zénon & Krauzlis 2012: attention effects in MT and MST were unchanged despite large attention deficits during SC inactivation.
+- Schneider & Kastner 2009 (human fMRI): attention enhanced SC activity, more strongly than in the LGN.
+- **Citations:** https://doi.org/10.1038/nn.2470 · https://doi.org/10.1073/pnas.0408311101 · https://doi.org/10.1038/nature11497 · https://doi.org/10.1523/JNEUROSCI.4452-08.2009
+
+### 63. SC anatomy and connections (primate)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- **Layers and map:** superficial layers get direct retinal and striate input and map stimulus position. Intermediate/deep layers get extrastriate input, respond to other modalities, and are mostly related to orienting movements. Each SC maps the contralateral field with an enlarged centre (Krauzlis et al. 2013, full text).
+- **Stimulation:** stimulation evokes combined eye–head gaze shifts whose amplitude depends on the site (Freedman et al. 1996).
+- **Inputs:** from FEF (largest FEF terminal fields in midbrain/pons; Stanton et al. 1988) and LIP (Paré & Wurtz 1997).
+- **Outputs:** to MT through pulvinar relay neurons (Berman & Wurtz 2010) and to LIP via the lateral pulvinar. A route through the mediodorsal thalamus reaches prefrontal cortex including FEF and carries corollary discharge (Krauzlis 2013; Sommer & Wurtz 2002).
+- **Citations:** https://doi.org/10.1146/annurev-neuro-062012-170249 · https://doi.org/10.1152/jn.1996.76.2.927 · https://doi.org/10.1002/cne.902710403 · https://doi.org/10.1152/jn.1997.78.6.3493 · https://doi.org/10.1523/JNEUROSCI.6176-09.2010 · https://doi.org/10.1126/science.1069590
+
+### 64. Ventral attention network and the right TPJ
+- **Verdict:** CONFIRMED; the TPJ's exact computation is debated (see entry 6). **Confidence:** high.
+- **Original model:** TPJ + inferior frontal cortex, largely right-lateralized, specialised for detecting behaviourally relevant stimuli, particularly salient or unexpected ones; a "circuit breaker" for the dorsal system (Corbetta & Shulman 2002). Suppressed during focused attention (Corbetta et al. 2008).
+- **Sensory changes:** changes in visual, auditory and tactile input engage right TPJ, IFG and insula, plus left cingulate/SMA (Downar et al. 2000).
+- **Goal dependence:** target-coloured distractors capture attention with concurrent TPJ and ventral frontal activation (Serences et al. 2005).
+- **Meta-analysis:** reorienting across 25 experiments peaks in right TPJ at MNI (62, −44, 12). The anterior rTPJ is shared with false-belief tasks; the posterior rTPJ is more social (Krall et al. 2015).
+- **Causal (human):** cTBS over anterior rTPJ impaired reorienting (Krall et al. 2016).
+- **Citations:** https://doi.org/10.1038/nrn755 · https://doi.org/10.1016/j.neuron.2008.04.017 · https://doi.org/10.1038/72991 · https://doi.org/10.1111/j.0956-7976.2005.00791.x · https://doi.org/10.1007/s00429-014-0803-z · https://doi.org/10.1002/hbm.23068
+
+### 65. Ventral attention network vs salience network
+- **Verdict:** CONTESTED (terminology and whether they are one system). **Confidence:** moderate-high.
+- **Overlap:** at rest, right and left TPJ connect with anterior insula, dlPFC and mid-cingulate, which Kucyi et al. (2012) call the "salience/ventral attention network"; the connection is stronger for right TPJ. The reorienting meta-analysis includes the right insula (Krall 2015).
+- **Disagreement:** Uddin, Yeo & Spreng (2019) note that some investigators treat the two as one system (Kucyi 2012) and others as distinct (Power 2011; Cole 2013). They propose that the VAN is "an instantiation of the larger, bilateral midcingulo-insular network".
+- **Wording used:** "It overlaps with the ventral attention network… Some researchers treat the two as one network; others keep them separate."
+- **Citations:** https://doi.org/10.1152/jn.00674.2012 · https://doi.org/10.1007/s10548-019-00744-6
+
+### 66. Where damage causes spatial neglect
+- **Verdict:** Right-hemisphere predominance CONFIRMED; the critical site is CONTESTED. **Confidence:** high / moderate.
+- **Candidate sites:** Corbetta & Shulman (2011) list IPL, STG and IFG as classic egocentric-neglect sites and add white-matter disconnection. Mort et al. (2003) name the angular gyrus. Karnath et al. (2001) name the superior temporal cortex.
+- **Network account:** ventral lesions also disrupt the structurally intact dorsal network (Corbetta & Shulman 2011).
+- **Consequence for the model:** the superior parietal lobule, which the `parietal` marker highlights, is not among the classic sites. The neglect fact was moved from the "Priority map" step to the TPJ step.
+- **Citations:** https://doi.org/10.1146/annurev-neuro-061010-113731 · https://doi.org/10.1093/brain/awg200 · https://doi.org/10.1038/35082075
+
+### 67. Locus coeruleus and adaptive gain
+- **Verdict:** Recordings CONFIRMED (monkey); adaptive gain is a THEORY. **Confidence:** high for data, moderate for theory.
+- **Recordings:** in an oddball vigilance task (targets on 10–20% of trials), all LC neurons examined responded phasically and selectively to targets. Mean latency was 90.7 ms, about 200 ms before lever release. Responses were attenuated during poor performance and after more than 90 min (Aston-Jones et al. 1994).
+- **Theory:** phasic mode supports exploitation and tonic mode goes with exploration; ACC and OFC project directly to LC (Aston-Jones & Cohen 2005).
+- **Pupil:** pupil changes follow LC activity but also IC, SC, ACC and PCC activity (Joshi et al. 2016), so pupil size is not a pure LC readout.
+- **Link to the ventral network:** Corbetta et al. (2008) proposed LC input to the ventral attention network.
+- **Citations:** https://doi.org/10.1523/JNEUROSCI.14-07-04467.1994 · https://doi.org/10.1146/annurev.neuro.28.061604.135709 · https://doi.org/10.1016/j.neuron.2015.11.028 · https://doi.org/10.1038/s41583-020-0360-9
+
+### 68. Human LC location
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Adjacent to the floor of the fourth ventricle in the rostral pons, extending up to the level of the inferior colliculi. In MRI of 44 adults (19–79 years), the signal ran from MNI z −18 to −33, with mean left x −2.5 to −6.9 mm and y ≈ −36 to −39. It was most frequent at z −24/−27, matching post-mortem cell density.
+- **Citation:** Keren NI et al. (2009) NeuroImage 47:1261–1267. https://doi.org/10.1016/j.neuroimage.2009.06.012
+
+### 69. Acetylcholine: source and role in attention
+- **Verdict:** CONFIRMED, species flagged. **Confidence:** high.
+- **Source (rat):** Ch4 (nucleus basalis and parts of the diagonal band) provides the major cholinergic input to the cortex. Ch5–Ch6 (pedunculopontine and laterodorsal tegmental nuclei) provide the major input to the thalamus and only a minor cortical component (Mesulam et al. 1983). The companion rhesus-monkey study confirms basal forebrain → cortex (title level; no abstract).
+- **V1 (macaque):** low-dose ACh enhanced attentional modulation; scopolamine (muscarinic) reduced it; mecamylamine (nicotinic) had no systematic effect (Herrero et al. 2008).
+- **Rat prefrontal cortex:** detected cues evoked second-scale ACh transients in mPFC and missed cues did not (Parikh et al. 2007).
+- **Brief's premise:** acetylcholine for cortical attention comes mainly from the basal forebrain, not the brainstem. Confirmed for rat anatomy.
+- **Citations:** https://doi.org/10.1016/0306-4522(83)90108-2 · https://doi.org/10.1002/cne.902140206 · https://doi.org/10.1038/nature07141 · https://doi.org/10.1016/j.neuron.2007.08.025
+
+### 70. Marker placement for FEF, TPJ, SC and LC
+- **FEF:** Paus 1996 mean Talairach (−32, −2, 46) → MNI (−32, −4, 50) (Brett transform), snapped to `Precentral_sulcus_(Superior_part)*l` at 6.2 mm.
+- **TPJ:** Krall 2015 reorienting peak MNI (62, −44, 12), snapped to `Supramarginal_gyrusr` at 6.5 mm. Drawn on the right because the network is right-lateralized.
+- **SC and LC:** these nuclei are not in the atlas. Anchors [0.25, −0.52, 0.14] (inside `Midbrainl`, above the IC body, ~2 mm under the tectal surface) and [0.35, −1.0, 0.13] (inside `Ponsl`, ~2 mm under the floor of the fourth ventricle, 4.5 mm from the midline, per Keren 2009). All positions are illustrative.
+
+### 71. Insula highlight mesh (correction)
+- **Verdict:** NEEDS CORRECTION. **Confidence:** moderate-high.
+- **Current mesh:** `Insula_(Subcentral_gyrus_and_ant_and_post_sulci*)l` has a median vertex distance from the midline of 55 mm (5th–95th percentile 44–64 mm; its centre, used as the marker, is 54 mm). It reaches the lateral surface of the brain (max 68 mm). This matches the subcentral gyrus (central operculum), not the insula, which is hidden inside the lateral sulcus.
+- **Better mesh:** `Circular_sulcus_of_insulal`, which outlines the insula, has a median of 37 mm. Typical insula activation peaks lie about 30–44 mm from the midline; for example, the right insula peak in Krall et al. 2015 is at x = 44.
+- A test coordinate on the anterior insula snapped 21 mm to the current mesh and 5.5 mm to the circular sulcus.
+
+
+---
+
+## BODY SENSATION: PAIN, TEMPERATURE, S2 AND INSULA (added 2026-09-27)
+
+### 72. Spinothalamic crossing level and dorsal horn laminae
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Nociceptor fibres end mainly in laminae I, II and V (Dubin & Patapoutian 2010). Spinothalamic cells lie mainly in lamina I and laminae IV–VI (monkey, cat, rat), and their axons "often decussate through the ventral white commissure at a very short distance from the cell body" (Willis & Westlund 1997). Dorsal column fibres cross only in the medulla.
+- **Citations:** Willis WD, Westlund KN (1997) J Clin Neurophysiol 14:2–31. https://doi.org/10.1097/00004691-199701000-00002 · Dubin AE, Patapoutian A (2010) J Clin Invest 120:3760–3772. https://doi.org/10.1172/JCI42843
+
+### 73. Thin fibres, first and second pain
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- C fibres conduct at 0.4–1.4 m/s; A-fibre nociceptors at about 5–30 m/s, mostly in the Aδ range. First, pricking pain comes from A fibres; second, burning pain from C fibres and type I A-fibre mechano-heat nociceptors.
+- **Citation:** Dubin & Patapoutian (2010). https://doi.org/10.1172/JCI42843
+
+### 74. Anterolateral cordotomy (human)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- 19 patients with one-sided cancer pain had the spinothalamic tract lesioned at C1/C2 on the side opposite the pain. Pain, temperature and itch were profoundly impaired: thermal sense was abolished in most patients and cowhage itch was abolished. Touch pleasantness, including the C-tactile velocity tuning, was unchanged. Monofilament detection thresholds were unchanged, while ratings of touch intensity fell.
+- Consequence: pleasant (C-tactile) touch does not depend on the spinothalamic tract. This conflicts with the "dual pathway" model. Do not describe the anterolateral system as the route for crude or affective touch.
+- **Citation:** Marshall AG et al. (2019) eLife 8:e51642. https://doi.org/10.7554/eLife.51642
+
+### 75. Itch travels with pain and temperature
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Cat: a class of lamina I spinothalamic neurons is selectively excited by histamine (Andrew & Craig 2001). Human: cordotomy abolished cowhage itch (entry 74).
+- **Citation:** Andrew D, Craig AD (2001) Nat Neurosci 4:72–77. https://doi.org/10.1038/82924
+
+### 76. Thalamic targets and the VMpo debate
+- **Verdict:** CONTESTED. **Confidence:** high that it is contested.
+- Spinothalamic terminations are reported in VPL (caudal and oral), VPI, POm, CL and other medial nuclei (Willis & Westlund 1997).
+- Craig describes lamina I input concentrated in VMpo and MDvc, with only isolated boutons in VPL/VPM (macaque; Craig 2004). He also describes VMpo as a pain- and temperature-specific nucleus in macaques and humans (Craig et al. 1994) that projects topographically to the dorsal posterior insula (Craig 2014).
+- Graziano & Jones (2004, monkey) found widespread lamina I terminations and argue VMpo is part of VPM, not an independent relay.
+- Wording used: "other anatomists argue that this region is part of neighbouring nuclei."
+- **Citations:** Craig AD et al. (1994) Nature 372:770–773. https://doi.org/10.1038/372770a0 · Craig AD (2004) J Comp Neurol 477:119–148. https://doi.org/10.1002/cne.20240 · Craig AD (2014) J Comp Neurol 522:36–63. https://doi.org/10.1002/cne.23425 · Graziano A, Jones EG (2004) J Neurosci 24:248–256. https://doi.org/10.1523/JNEUROSCI.4122-03.2004
+
+### 77. Cortical targets of the spinothalamic system
+- **Verdict:** CONFIRMED, with scope. **Confidence:** moderate–high.
+- Cebus monkey (transneuronal virus): the major targets are granular insula, S2 and cingulate sulcus areas (Dum et al. 2009). The abstract does not list S1 as a major target.
+- Human imaging meta-analysis: the acute pain network includes S1, S2, insula, ACC, PFC and thalamus (Apkarian et al. 2005).
+- The text therefore says the pathway "reaches S1 and S2", and names the insula and cingulate as the targets of the posterior and medial thalamic nuclei.
+- **Citations:** Dum RP, Levinthal DJ, Strick PL (2009) J Neurosci 29:14223–14235. https://doi.org/10.1523/JNEUROSCI.3398-09.2009 · Apkarian AV et al. (2005) Eur J Pain 9:463–484. https://doi.org/10.1016/j.ejpain.2004.11.001
+
+### 78. Posterior insula: temperature, pain map, interoception
+- **Verdict:** CONFIRMED (findings); interoceptive-cortex framing is Craig's proposal. **Confidence:** high.
+- Human PET: graded cooling correlated with activity only in the dorsal margin of the contralateral middle/posterior insula. Perceived intensity correlated with the right anterior insula (Craig et al. 2000).
+- Human 3T fMRI, 14 subjects: painful heat to the right face, hand and foot mapped somatotopically in the contralateral posterior insula. Hand peak at MNI (−40, −19, 14) (Brooks et al. 2005).
+- Craig (2003) calls the dorsal posterior insula the "primary interoceptive representation", with a re-representation in the right anterior insula.
+- **Citations:** Craig AD et al. (2000) Nat Neurosci 3:184–190. https://doi.org/10.1038/72131 · Brooks JCW et al. (2005) NeuroImage 27:201–209. https://doi.org/10.1016/j.neuroimage.2005.03.041 · Craig AD (2003) Curr Opin Neurobiol 13:500–505. https://doi.org/10.1016/S0959-4388(03)00090-4 · Craig AD (2002) Nat Rev Neurosci 3:655–666. https://doi.org/10.1038/nrn894
+
+### 79. Cortical stimulation and pain (human)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- 4,160 intracerebral stimulations in 164 patients during presurgical epilepsy evaluation. Pain occurred in 1.4%, concentrated in the medial parietal operculum and neighbouring posterior insula, where pain was about 10% of responses. There were no pain responses elsewhere, including S1, lateral S2, and anterior and mid-cingulate cortex.
+- **Citation:** Mazzola L et al. (2012) Brain 135:631–640. https://doi.org/10.1093/brain/awr265
+
+### 80. Is any cortical area specific to pain?
+- **Verdict:** CONTESTED. **Confidence:** high that it is contested.
+- Segerdahl et al. (2015) proposed a specific role for the dorsal posterior insula. Davis et al. (2015) replied that the data do not justify specificity.
+- Human intracerebral recordings at 47 insular sites showed nociceptive, vibrotactile, auditory and visual stimuli all elicited responses in the posterior and anterior insula (Liberati et al. 2016).
+- fMRI responses to brief painful stimuli are largely explained by multimodal and somatosensory activity that scales with salience (Mouraux et al. 2011; Iannetti & Mouraux 2010).
+- Wording used: "Whether any cortical area responds to pain alone is debated."
+- **Citations:** Segerdahl AR et al. (2015) Nat Neurosci 18:499–500. https://doi.org/10.1038/nn.3969 · Davis KD et al. (2015) F1000Research 4:362. https://doi.org/10.12688/f1000research.6833.1 · Liberati G et al. (2016) PLoS Biol 14:e1002345. https://doi.org/10.1371/journal.pbio.1002345 · Mouraux A et al. (2011) NeuroImage 54:2237–2249. https://doi.org/10.1016/j.neuroimage.2010.09.084 · Iannetti GD, Mouraux A (2010) Exp Brain Res 205:1–12. https://doi.org/10.1007/s00221-010-2340-1
+
+### 81. C-tactile touch and the insula
+- **Verdict:** CONFIRMED (single patient); routing CONTESTED (entry 74). **Confidence:** moderate.
+- In a patient lacking large myelinated afferents, C-tactile stimulation produced faint pleasant touch and activated the insular region, but not S1 or S2 (fMRI).
+- **Citation:** Olausson H et al. (2002) Nat Neurosci 5:900–904. https://doi.org/10.1038/nn896
+
+### 82. Cingulate cortex and pain unpleasantness
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Hypnotic suggestion changed unpleasantness without changing perceived intensity. Pain-evoked ACC activity changed; S1 did not (human PET; Rainville et al. 1997).
+- A postcentral stroke patient showed dissociated discriminative and affective pain (Ploner et al. 1999).
+- The likely thalamic source of nociceptive input to ACC is the midline, mediodorsal and intralaminar nuclei (Shyu & Vogt 2009; mostly rodent physiology).
+- **Citations:** Rainville P et al. (1997) Science 277:968–971. https://doi.org/10.1126/science.277.5328.968 · Ploner M et al. (1999) Pain 81:211–214. https://doi.org/10.1016/S0304-3959(99)00012-3 · Shyu BC, Vogt BA (2009) Mol Pain 5:51. https://doi.org/10.1186/1744-8069-5-51
+
+### 83. S2
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Human parietal operculum: four cytoarchitectonic areas (OP1–4) in 10 brains, matching functional S2 from 57 studies (Eickhoff et al. 2006 I, II). OP1 is the putative homologue of macaque S2.
+- Monkeys: S2 sits in the upper bank of the lateral sulcus, with bilateral multi-digit receptive fields. It receives input from all four S1 areas and from VPI, VPS and anterior pulvinar (Delhaye et al. 2018).
+- Macaque serial dependence on S1 (Pons et al. 1987).
+- Human imaging meta-analysis: right-hand touch activates S1 on the left only, and S2 on both sides (Lamp et al. 2019).
+- Human TMS over S2 impaired pain-intensity judgements, not localisation (Lockwood et al. 2013).
+- **Citations:** Eickhoff SB et al. (2006) Cereb Cortex 16:254–267, https://doi.org/10.1093/cercor/bhi105; 16:268–279, https://doi.org/10.1093/cercor/bhi106 · Delhaye BP et al. (2018) Compr Physiol 8:1575–1602. https://doi.org/10.1002/cphy.c170033 · Pons TP et al. (1987) Science 237:417–420. https://doi.org/10.1126/science.3603028 · Lamp G et al. (2019) Front Neurol 9:1129. https://doi.org/10.3389/fneur.2018.01129 · Lockwood PL et al. (2013) Cortex 49:2201–2209. https://doi.org/10.1016/j.cortex.2012.10.006
+
+### 84. S1 areas 3a, 3b, 1, 2 (update to entry 34)
+- **Verdict:** CONFIRMED (monkey data). **Confidence:** high.
+- Response types by area: 3a proprioceptive, at the fundus of the central sulcus. 3b mostly cutaneous. Area 1 ≥90% cutaneous. Area 2 55% deep and 45% cutaneous in the hand representation.
+- Receptive fields grow from 3b to 1 to 2. Curvature tuning appears in area 2. Area 1 lesions impair texture but not shape discrimination.
+- The bulk of VP neurons project to 3b and 1. 3b is the homologue of S1 in other mammals.
+- Four complete body maps, with the foot medial and face and tongue lateral (Delhaye et al. 2018). Complete maps in 3b and 1 (Kaas et al. 1979).
+- **Citations:** Delhaye et al. (2018) https://doi.org/10.1002/cphy.c170033 · Kaas JH et al. (1979) Science 204:521–523. https://doi.org/10.1126/science.107591
+
+### 85. Existing `insula` marker is not on the insula
+- **Verdict:** NEEDS CORRECTION (model placement). **Confidence:** high.
+- See correction C1.
+
+### 86. Marker placement for S2, posterior insula and dorsal horn
+- S2 uses MNI (−54, −26, 20) from Lamp et al. 2019, snapped 3.3 mm to `Supramarginal_gyrusl`. The posterior insula uses (−40, −19, 14) from Brooks et al. 2005, snapped 2.2 mm to `Circular_sulcus_of_insulal`.
+- The dorsal horn is a stand-in anchor at the lower end of the right medulla, because the spinal cord is not in the atlas. Positions are illustrative.
+```
+
+
+---
+
+## HEARING, EXPANDED (added 2026-09-27)
+
+### 87. Core, belt and parabelt
+- **Verdict:** CONFIRMED for macaques; human homologs are supported. **Confidence:** high (monkey), moderate (human borders).
+- **Macaque:** The ventral MGN projects in parallel to a core of three areas (AI, R, RT). The core projects to "a surrounding array of eight proposed belt areas". The belt projects to a lateral parabelt "with at least rostral and caudal subdivisions". The parabelt projects to temporal areas and to "four functionally distinct regions of the frontal lobe" (Kaas & Hackett 2000). Tracer injections confined to the parabelt labelled few neurons in the core but large numbers in the belt (Hackett et al. 1998). Chimpanzees and humans have a histochemically similar core.
+- **Human:** Pure tones activate primarily the core, and belt areas prefer narrow-band noise (Wessinger et al. 2001). In 13 subjects, tones, band-passed noise and vowels defined three regions resembling core, belt and parabelt in each individual; the vowel regions lay anterior, lateral and ventral to the belt (Chevillet et al. 2011).
+- **Refinement:** The hierarchy is not strictly serial. Human intracranial data show the STG receiving speech input in parallel with A1 (entry 37). The draft says so in the belt step.
+- **Citations:** Kaas JH, Hackett TA (2000) PNAS 97:11793–11799. https://doi.org/10.1073/pnas.97.22.11793 · Hackett TA, Stepniewska I, Kaas JH (1998) J Comp Neurol 394:475–495. https://pubmed.ncbi.nlm.nih.gov/9590556/ · Wessinger CM et al. (2001) J Cogn Neurosci 13:1–7. https://doi.org/10.1162/089892901564108 · Chevillet M et al. (2011) J Neurosci 31:9345–9352. https://doi.org/10.1523/JNEUROSCI.1448-11.2011
+
+### 88. Belt neurons prefer complex sounds (macaque)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- Lateral belt neurons are tuned to the centre frequency and bandwidth of band-passed noise and are selective for the rate and direction of FM sweeps. "Many neurons showed a preference for a limited number of species-specific vocalizations."
+- **Citation:** Rauschecker JP, Tian B (2000) PNAS 97:11800–11806. https://doi.org/10.1073/pnas.97.22.11800
+
+### 89. "What" and "where" specialization in the lateral belt (macaque)
+- **Verdict:** CONFIRMED (a relative specialization). **Confidence:** high.
+- Neurons in the anterior belt (AL) are more selective for call type. Neurons in the caudal belt (CL) show the greatest spatial selectivity. Both kinds of selectivity exist in both areas; the wording says "more selective".
+- **Anatomy:** The anterior belt is reciprocally connected with the frontal pole (area 10), rostral principal sulcus (area 46) and ventral prefrontal areas 12 and 45. The caudal belt connects mainly with the caudal principal sulcus (area 46) and the frontal eye fields (area 8a).
+- **Citations:** Tian B et al. (2001) Science 292:290–293. https://doi.org/10.1126/science.1058911 · Romanski LM et al. (1999) Nat Neurosci 2:1131–1136. https://doi.org/10.1038/16056
+
+### 90. Human evidence for the two auditory streams, and the debate
+- **Verdict:** SUPPORTED, with an active debate about the dorsal stream. **Confidence:** moderate-high.
+- **Meta-analysis** (Arnott et al. 2004; 11 spatial and 27 nonspatial fMRI/PET studies): all but one spatial study reported inferior parietal activation, compared with 41% of nonspatial studies. Inferior frontal (BA 45/47) activity appeared in 9% of spatial studies and 56% of nonspatial studies.
+- **Lesions** (Clarke et al. 2002; 15 patients with right-hemisphere lesions): four were normal in recognition but severely impaired in localization, and three had difficulty recognizing sounds but localized them well.
+- **Debate:** Rauschecker & Scott (2009) state that assigning "an exclusively spatial function to the postero-dorsal auditory stream would be unwise". The planum temporale and inferior parietal cortex are also involved in speech and in sensorimotor transformations. Zatorre et al. (2002, PET) found that posterior auditory cortex responded to spatial variation only when several complex sounds were presented at once, which suggests it separates overlapping sources, while the right inferior parietal cortex was specifically recruited in localization tasks. Hickok & Poeppel's dorsal speech stream (Speech topic) is another reading of the same route. Spatial processing is often right-lateralized (Rauschecker & Scott 2009).
+- **Human ventral endpoint:** Rauschecker & Scott (2009, Fig. 3) take the anteroventral stream to inferior frontal cortex, area 45.
+- **Citations:** Arnott SR et al. (2004) NeuroImage 22:401–408. https://doi.org/10.1016/j.neuroimage.2004.01.014 · Clarke S et al. (2002) Exp Brain Res 147:8–15. https://doi.org/10.1007/s00221-002-1203-9 · Rauschecker JP, Scott SK (2009) Nat Neurosci 12:718–724. https://doi.org/10.1038/nn.2331 · Zatorre RJ et al. (2002) Nat Neurosci 5:905–909. https://doi.org/10.1038/nn904 · Alain C et al. (2001) PNAS 98:12301–12306. https://doi.org/10.1073/pnas.211209098
+
+### 91. Anterior STG and sound identity
+- **Verdict:** CONFIRMED. **Confidence:** moderate-high.
+- The meta-analysis covered more than 100 imaging experiments. Phoneme-length speech concentrates in left mid-STG and word-length speech in left anterior STG (DeWitt & Rauschecker 2012). Macaque fMRI found a "voice region" on the anterior superior temporal plane that prefers conspecific calls and is sensitive to individual identity; the authors place it in the anterior "what" pathway (Petkov et al. 2008). In monkeys, clusters of ventrolateral prefrontal neurons encode similar complex calls (as summarized in Rauschecker & Scott 2009).
+- **Citations:** DeWitt I, Rauschecker JP (2012) PNAS 109. https://doi.org/10.1073/pnas.1113427109 · Petkov CI et al. (2008) Nat Neurosci 11:367–374. https://doi.org/10.1038/nn2043
+
+### 92. Medial olivocochlear (MOC) anatomy and action
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- MOC fibres originate in the medial part of the SOC and end on outer hair cells. Activating them inhibits basilar-membrane responses to low-level sounds (Guinan 2006), or "low-to-moderate intensity" sounds (Lopez-Poveda 2018), by reducing cochlear-amplifier gain. LOC fibres come from the lateral superior olive region and end on type I afferent dendrites beneath inner hair cells. The efferents reach the cochlea through the vestibular nerve.
+- **Numbers:** Human counts average 1005 LOC fibres and 360 MOC fibres (cat: about 850 LOC, 500 MOC). "In most mammals … the majority of MOC fibers project to the contralateral cochlea." Acetylcholine is the main transmitter. In rats, MOC neurons lie in the ventral nucleus of the trapezoid body (Vetter et al. 1993).
+- **Reflex:** Sound in either ear elicits it. In humans it is measured as suppression of otoacoustic emissions by contralateral noise, typically about 1–2 dB (Lauer et al. 2022).
+- **Citations:** Guinan JJ (2006) Ear Hear 27:589–607. https://doi.org/10.1097/01.aud.0000240507.83072.e7 · Lopez-Poveda EA (2018) Front Neurol 9. https://doi.org/10.3389/fneur.2018.00197
+
+### 93. MOC functions: noise, protection, hearing in noise
+- **Verdict:** Antimasking in animals CONFIRMED (cat). Protection from acoustic trauma CONFIRMED (animals). Benefit for speech in noise in humans CONTESTED. **Confidence:** high / high / moderate.
+- In anesthetized or decerebrate cats, contralateral noise that activates the OC reflex raised auditory-nerve discharge rates to masked tone bursts and lowered rates to the masker. The largest effects were in fibres with CFs of 6–12 kHz (Kawase et al. 1993).
+- Lauer et al. (2022): protection against damaging noise "is clear"; attempts to show a role in hearing in noise "have yielded conflicting results in both animal and human studies". Lopez-Poveda (2018): human evidence for antimasking is "very controversial"; speech-in-noise recognition is worse in some but not all vestibular-neurectomy patients.
+- **Citations:** Kawase T, Delgutte B, Liberman MC (1993) J Neurophysiol 70:2533–2549. https://doi.org/10.1152/jn.1993.70.6.2533 · Lauer AM, Jimenez SV, Delano PH (2022) Hear Res 419:108207. https://doi.org/10.1016/j.heares.2021.108207
+
+### 94. Attention and the cochlea
+- **Verdict:** CONFIRMED in chinchillas; INCONSISTENT in humans. **Confidence:** high (animal), moderate (human picture).
+- **Chinchilla** (Delano et al. 2007): round-window recordings in a visual discrimination task with irrelevant clicks or tones. The five implanted visual-task animals showed CAP reductions during visual attention, with cochlear-microphonic increases in the two tested. The effects reached "up to 4 dB for CAP reductions and 6 dB for CM increases". They were absent in the auditory-task controls and larger with shorter target lights. Bowen et al. (2020, chinchilla) linked individual OC-reflex strength to performance with auditory distractors.
+- **Human, positive:** DPOAE levels fell during visual compared with auditory attention (Wittekindt et al. 2014). In cochlear-implant users (n = 16), theta-band (5–8 Hz) auditory-nerve activity was higher when attending to upcoming sound, and the attended modality could be decoded from single trials (Gehmacher et al. 2022). The authors note that this probably involves a different efferent route from the one measured with OAEs.
+- **Human, negative or mixed:** In 30 listeners, SFOAEs were 5.4 dB weaker during visual attention in the first 15 but showed no effect in the second 15. The pooled effect was 2.48 dB, with 12 of 30 individually significant (Beim et al. 2018). No systematic effect appeared across 45 listeners (Beim et al. 2019) or with visual oddball attention (Jedrzejczak et al. 2017). Ear-canal noise fell during a task because subjects moved less, a confound for OAE-based attention studies (Francis et al. 2018).
+- **Wording used:** "In people, one study measured sounds emitted by the ear: they were 5.4 dB weaker during visual attention in 15 listeners, with no effect in the next 15."
+- **Citations:** Delano PH et al. (2007) J Neurosci 27:4146–4153. https://doi.org/10.1523/JNEUROSCI.3702-06.2007 · Wittekindt A et al. (2014) J Neurosci 34:9995–10002. https://doi.org/10.1523/JNEUROSCI.4861-13.2014 · Beim JA et al. (2018) JASA 144:2882–2895. https://doi.org/10.1121/1.5079311 · Beim JA et al. (2019) JASA 146:1475–1491. https://doi.org/10.1121/1.5123391 · Jedrzejczak WW et al. (2017) PeerJ 5:e4199. https://doi.org/10.7717/peerj.4199 · Francis NA et al. (2018) Front Syst Neurosci 12. https://doi.org/10.3389/fnsys.2018.00042 · Gehmacher Q et al. (2022) J Neurosci 42:1343–1351. https://doi.org/10.1523/JNEUROSCI.0665-21.2021 · Bowen M et al. (2020) Sci Rep. https://doi.org/10.1038/s41598-020-71399-8
+
+### 95. Descending routes from cortex to the MOC neurons
+- **Verdict:** CONFIRMED (animal anatomy and stimulation). **Confidence:** moderate-high.
+- In rats, corticofugal terminals contact MOC neurons in the VNTB (Mulders & Robertson 2000). Also in rats, inferior colliculus axons densely innervate the VNTB and appose crossed and uncrossed MOC neurons; the projection is largely ipsilateral (Vetter et al. 1993). In chinchillas, auditory-cortex microstimulation changed cochlear microphonics and CAPs and changed OC-reflex strength independently (Dragicevic et al. 2015). The same abstract states that the cortex projects to the thalamus, IC, cochlear nucleus and SOC.
+- **Citations:** Mulders WH, Robertson D (2000) Hear Res 144:65–72. https://doi.org/10.1016/S0378-5955(00)00046-0 · Vetter DE, Saldaña E, Mugnaini E (1993) Hear Res 70:173–186. https://doi.org/10.1016/0378-5955(93)90156-U · Dragicevic CD et al. (2015) JARO 16:223–240. https://doi.org/10.1007/s10162-015-0509-9
+
+### 96. Marker placement for `belt` and `astg`
+- The atlas does not segment these areas, so I followed entry 57.
+  - `belt`: Talairach (−56, −19, 3) from Chevillet et al. (2011, Table 2, left vowels > noise, "within our reported parabelt region") → MNI ≈ (−57, −20, 2) → `Superior_temporal_gyrus_(Lateral_part)l`, snapped 1.2 mm.
+  - `astg`: Talairach (−56, −10, −4) from DeWitt & Rauschecker (2012, Table 1, repetition-suppression word-length left STG peak) → MNI ≈ (−57, −10, −5) → same mesh, snapped 2.4 mm.
+- Talairach→MNI used the inverse of Brett's mni2tal. The matrix is from memory; its error of about 1–3 mm is smaller than the box mapping and the snapping. Positions are illustrative.
+
+### 97. Prestin 40–60 dB is a mouse figure
+- **Verdict:** NEEDS SCOPE in the `cochlea` guide. **Confidence:** high.
+- The 40–60 dB loss of sensitivity comes from prestin-knockout mice (entry 25). The guide states it without species. New wording: "mice lacking prestin, the protein that drives this movement, lose 40–60 dB of sensitivity."
+
+---
+
+## CORTEX–THALAMUS FEEDBACK: LAYER 5 ROUTE (added 2026-09-27)
+
+### 98. Layer 5 → higher-order thalamus: drivers and branching axons
+- **Verdict:** CONFIRMED as the mainstream framework (this extends entry 5). **Confidence:** moderate-high.
+- First-order relays receive subcortical drivers (retina → LGN). Higher-order relays such as the pulvinar receive driver input from layer 5 and take part in transthalamic circuits. Direct corticocortical connections "are often paralleled by transthalamic ones". Driver inputs arrive on branching axons whose other branch "often innervates subcortical motor centers", which led to the efference-copy proposal (Sherman 2016). Drivers are few per cell and act through ionotropic receptors; modulators are many and also act through metabotropic receptors (Sherman & Guillery 1998).
+- **Species:** Sherman & Usrey (2024): "the vast majority of evidence for transthalamic processing derives from studies of sensory processing in mice". In cats and monkeys, morphological studies show layer 5 inputs to higher-order nuclei with large terminals "consistent with a driver function". In macaques, corticopulvinar axons from occipitotemporal cortex come in two types: a majority with many small endings, and some with 70–160 large beaded endings (Rockland 1996). Layer 5 thalamus-projecting cells are among the largest pyramidal cells. Many or most of the layer 5 axons that reach the thalamus also branch to subcortical motor centres (mouse motor-cortex data).
+- **Citations:** Sherman SM (2016) Nat Neurosci 19:533–541. https://doi.org/10.1038/nn.4269 · Sherman SM, Guillery RW (1998) PNAS 95:7121–7126. https://doi.org/10.1073/pnas.95.12.7121 · Sherman SM, Usrey WM (2024) J Neurosci 44:e0909242024. https://doi.org/10.1523/JNEUROSCI.0909-24.2024 · Rockland KS (1996) J Comp Neurol 368:57–87. https://pubmed.ncbi.nlm.nih.gov/8725294/
+
+### 99. Mo, McKinnon & Sherman 2024 (mouse)
+- **Verdict:** CONFIRMED. **Confidence:** high.
+- **Methods:** Rbp4-Cre mice with the inhibitory opsin Jaws in S1 layer 5. A 633 nm laser through an optic fibre in anterior-dorsal POm suppressed the S1 L5 → POm terminals. The task was head-fixed go/no-go texture discrimination with the whiskers; the main behavioural sample was 9 mice.
+- **Results:** Inhibition during texture presentation "severely impaired performance despite intact direct corticocortical projections", raising error, lapse and guess rates. Inhibition during the delay period also impaired performance, but less. Detection was also affected (threshold shift). Two-photon imaging of layer 2/3 showed that overall responsiveness was not reduced, but texture selectivity was disrupted, more in S2 than in S1.
+- **Limits noted by the authors:** Rbp4-Cre does not label all layer 5 cells, and Jaws efficiency is incomplete.
+- **Note:** This is the touch (whisker) system of mice, not vision. The step fact says so.
+- **Citation:** Mo C, McKinnon C, Sherman SM (2024) Nat Commun 15. https://doi.org/10.1038/s41467-024-50163-w (PMC11282105)
+
+### 100. Supporting evidence for transthalamic routes
+- **Verdict:** CONFIRMED (mouse). **Confidence:** high.
+- **Slices** (Theyel et al. 2010): with the direct S1 → S2 path cut, S2 still responded to S1 stimulation. The response disappeared after cutting the thalamus and after chemically inhibiting it, returning after washout. Stimulating layer 5B, and not layer 6, drove the corticothalamocortical activation.
+- **Visual system** (Blot et al. 2021): mouse LP neurons projecting to higher visual areas likely combine feedforward V1 input with input from many areas, including the superior colliculus. Their signals are tuned to specific stimulus features and locomotor context, and differ from direct V1 projections.
+- **Citations:** Theyel BB, Llano DA, Sherman SM (2010) Nat Neurosci 13:84–88. https://doi.org/10.1038/nn.2449 · Blot A et al. (2021) Neuron 109:1996–2008. https://doi.org/10.1016/j.neuron.2021.04.017
+
+### 101. Depth of layers 5 and 6 ("a few millimetres below the surface")
+- **Verdict:** NEEDS CORRECTION (minor). **Confidence:** high.
+- Human cortex is 1–4.5 mm thick, averaging about 2.5 mm. Sensory areas are among the thinnest, and sulcal regions average 2.2 ± 0.3 mm (Fischl & Dale 2000). V1 lies largely in the calcarine sulcus, so layers 5 and 6 are within about 2 mm of the surface. New wording: "within about 2 millimetres of the surface".
+- **Citation:** Fischl B, Dale AM (2000) PNAS 97:11050–11055. https://doi.org/10.1073/pnas.200033797
+

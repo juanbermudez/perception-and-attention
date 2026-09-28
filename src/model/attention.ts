@@ -19,6 +19,7 @@ const senseRegions: Partial<Record<RegionId, SenseId>> = {
   lgn: "vision",
   v1: "vision",
   l6: "vision",
+  l5: "vision",
   extrastriate: "vision",
   mt: "vision",
   it: "vision",
@@ -39,9 +40,15 @@ const senseRegions: Partial<Record<RegionId, SenseId>> = {
   mgnR: "hearing",
   a1: "hearing",
   a1R: "hearing",
+  belt: "hearing",
+  astg: "hearing",
+  vlpfc: "hearing",
   medulla: "touch",
   vpl: "touch",
   s1: "touch",
+  s2: "touch",
+  dorsalHorn: "touch",
+  postInsula: "touch",
 };
 export function senseForRegion(id: RegionId) {
   return senseRegions[id];

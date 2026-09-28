@@ -3,11 +3,11 @@
 An open-source, interactive review of some basics of human perception and attention. A 3D brain built from a reference anatomy atlas shows six topics, each as a short step-by-step walkthrough:
 
 1. **Vision**: from the eye to visual cortex, then the two streams that identify objects (including areas for faces, places, bodies and words) and guide action
-2. **Touch**: from skin and muscles to touch cortex
-3. **Hearing**: from the ear to auditory cortex
+2. **Touch**: the touch and position route and the pain and temperature route, through the thalamus to S1, S2, the posterior insula and the cingulate cortex
+3. **Hearing**: from the ear to auditory cortex, the belt and parabelt, the "what" and "where" streams, and the feedback that turns down the ear's amplification
 4. **Speech and language**: hearing and producing speech
-5. **Cortex–thalamus feedback**: how the cortex adjusts its own input
-6. **Attention**: how the brain sets priorities
+5. **Cortex–thalamus feedback**: layer 6 feedback that adjusts the thalamic relay, and the layer 5 route through the pulvinar
+6. **Attention**: goal-driven networks (prefrontal cortex, frontal eye fields, parietal cortex), networks for unexpected and important events, arousal from the locus coeruleus, the superior colliculus and the thalamus
 
 The four perception topics come first; the last two cover how the brain controls its own input, ending with attention.
 
@@ -35,7 +35,7 @@ This is a first version; I expect to keep adding detail.
 
 The text summarizes published research and textbooks. It was checked against primary papers and review articles in September 2026; [`docs/science-factcheck.md`](docs/science-factcheck.md) lists each claim with its verdict, confidence, species and citation. Every DOI in the content was resolved against Crossref. When a finding comes from animal studies, the text says so; when researchers disagree, the text says so.
 
-Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei) are shown as markers at approximate positions. Functional areas it does not segment (MT, IT, FFA, PPA, EBA, VWFA) are placed from typical group-average MNI coordinates and snapped onto the gyrus or sulcus they lie in; individual locations vary by several millimetres. This is an educational resource, not a clinical reference.
+Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei, superior colliculus, locus coeruleus) are shown as markers at approximate positions, and the spinal cord is represented by a marker at the lower end of the medulla. Functional areas it does not segment (for example MT, the FFA, the frontal eye fields, S2 and the auditory belt) are placed from typical group-average MNI coordinates and snapped onto the gyrus or sulcus they lie in; individual locations vary by several millimetres. This is an educational resource, not a clinical reference.
 
 ## Getting started
 
