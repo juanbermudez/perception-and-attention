@@ -17,7 +17,7 @@ The build is a single self-contained HTML file. It makes no network requests at 
 
 Neuroscience is not my field of work. I like reading about human behaviour and performance, and when I came across Robert Sapolsky's work some years ago, I started going deeper into the topic.
 
-I made this guide as a refresher on some details of human attention that I wanted to look into. I think learning about behavioural biology and neuroscience can provide a lot of insight into systems design. After all, if we look at it from the point of view of [the bitter lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html), human intelligence is the result of a multi-billion-year research effort that produced all kinds of adaptations.
+I made this guide as a refresher on some details of human attention that I wanted to look into. I think learning about behavioural biology and neuroscience can provide a lot of insight into systems design. After all, if we extend the logic of [the bitter lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html), human intelligence is the result of a multi-billion-year research effort that produced all kinds of adaptations.
 
 I also wanted to try [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)). It is good. The guide was built with it using Claude Opus 5.5 and GPT-6 Sol. More of my thoughts are at [zeph.computer](https://zeph.computer) and on [X](https://x.com/jbermudez5).
 
@@ -35,9 +35,9 @@ This is a first version; I expect to keep adding detail.
 
 ## Accuracy
 
-The text summarizes published research and textbooks. It was checked against primary papers and review articles in September 2026; [`docs/science-factcheck.md`](docs/science-factcheck.md) lists each claim with its verdict, confidence, species and citation. Every DOI in the content was resolved against Crossref. When a finding comes from animal studies, the text says so; when researchers disagree, the text says so.
+The text summarizes published research and textbooks. It was checked against primary papers and review articles in September 2026; [`docs/science-factcheck.md`](docs/science-factcheck.md) lists the claims that were checked, each with its verdict, confidence, species and citation. Every DOI in the content was resolved against Crossref. The text aims to say when a finding comes from animal studies and when researchers disagree.
 
-Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei, superior colliculus, locus coeruleus) are shown as markers at approximate positions, and the spinal cord is represented by a marker at the lower end of the medulla. Functional areas it does not segment (for example MT, the FFA, the frontal eye fields, S2 and the auditory belt) are placed from typical group-average MNI coordinates and snapped onto the gyrus or sulcus they lie in; individual locations vary by several millimetres. This is an educational resource, not a clinical reference.
+Routes, particle motion and brightness are illustrations, not measurements. Small nuclei that the atlas does not segment (TRN, pulvinar, superior olive, VPL, dorsal column nuclei, locus coeruleus) are shown as markers at approximate positions. The spinal cord is not loaded, so it is represented by a marker at the lower end of the medulla. Functional areas it does not segment (for example MT, the FFA, the frontal eye fields, S2 and the auditory belt) are placed by scaling typical group-average MNI coordinates to the atlas’s bounding box, then snapping each to the gyrus or sulcus it usually lies in; individual locations vary by a centimetre or more (up to about 2–3 cm for MT). This is an educational resource, not a clinical reference.
 
 ## Getting started
 
@@ -106,7 +106,7 @@ docs/                  Science fact-check notes
 
 ## How it works
 
-**State and loop.** `ExplorerState` holds the current topic, step, selected region and a few view flags. The UI writes it; the scene reads it on every frame and eases toward it with critically damped springs, so changes never jump.
+**State and loop.** `ExplorerState` holds the current topic, step, selected region and a few view flags. The UI writes it; the scene reads it on every frame and eases toward it, mostly with critically damped springs, so changes do not jump (with reduced motion, camera moves are instant).
 
 **Signals.** Each step can declare a `signal`: a list of hops, each a list of `[from, to]` region pairs that travel together. Without one, a step sends a single hop from the previous step's region. Routes with the same `stage` fire together, so both eyes or both ears activate at once. Arriving signals add to a region's activity, which then decays exponentially (τ = 0.9 s).
 

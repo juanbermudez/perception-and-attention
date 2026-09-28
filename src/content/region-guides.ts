@@ -214,7 +214,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from V4 and other [[extrastriate|higher visual areas]]. Contains or borders regions that prefer particular categories, such as [[ffa|faces]] and [[ppa|places]]. In monkeys, it sends output to the medial temporal lobe (memory), the amygdala and prefrontal cortex.",
     limit:
-      "Monkey IT and human ventral temporal cortex are similar but not identical. The highlight is the inferior temporal sulcus; the region itself is larger and has no sharp borders.",
+      "Monkey IT and human ventral temporal cortex are similar but not identical. The highlight is the inferior temporal sulcus and gyrus; the region itself has no sharp borders.",
     sourceIds: ["object-recognition", "it-readout", "loc", "vtc-review", "ventral-framework"],
   },
   ffa: {
@@ -242,7 +242,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from earlier visual areas and connects with the retrosplenial cortex and hippocampus, which are involved in navigation and memory.",
     limit:
-      "The highlight is the collateral sulcus; the PPA covers part of it and nearby parahippocampal cortex. It is found in both hemispheres; only the left is shown.",
+      "The highlight is the collateral sulcus and the parahippocampal gyrus; the PPA covers only part of them. It is found in both hemispheres; only the left is shown.",
     sourceIds: ["ppa", "opa-affordances", "vtc-review", "ppa-navigation"],
   },
   eba: {
@@ -464,7 +464,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     },
     connections: "Connects the [[temporal|superior temporal gyrus]] with [[frontal|Broca’s area]] and [[motor|speech motor cortex]].",
     limit:
-      "Spt is defined by its function in each person; it lies inside the back of the Sylvian fissure, where the temporal and parietal lobes meet. The marker is placed on the nearby surface of the superior temporal gyrus, and the highlight is the whole left superior temporal gyrus, the same as for speech-sound cortex.",
+      "Spt is defined by its function in each person. The marker sits at the back of the left planum temporale, inside the Sylvian fissure, where Spt usually lies; the highlight is the whole planum temporale.",
     sourceIds: ["sound-movement", "spt-hypothesis", "spt-planum", "conduction-aphasia"],
   },
   frontal: {
@@ -635,8 +635,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     },
     connections:
       "Receives input from the retina, [[v1|V1]], the [[fef|frontal eye fields]] and [[parietal|parietal cortex]], and auditory signals from the [[ic|inferior colliculus]]. Sends commands to brainstem circuits for eye and head movements. Through the [[pulvinar|pulvinar]] it reaches visual cortex, including [[mt|area MT]], and parietal cortex. Through the mediodorsal thalamus it reaches the frontal eye fields; in monkeys this route carries a copy of upcoming eye movements.",
-    limit:
-      "The atlas does not include the superior colliculus, so the marker is an approximate position on the back of the midbrain, just above the inferior colliculus, and the highlight shows the left half of the midbrain. The right SC is not marked.",
+    limit: "The highlight is the left superior colliculus from the atlas, and the marker sits at its centre. The right SC is not marked.",
     sourceIds: [
       "sc-attention",
       "sc-inactivation",
@@ -757,7 +756,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from the [[a1|core]] and some directly from the [[mgn|MGN]]; in monkeys, the parabelt’s thalamic input comes mainly from the dorsal and medial parts of the MGN, with little from the ventral part. In monkeys, the front of the belt and parabelt connects with the [[astg|anterior superior temporal gyrus]] and ventrolateral prefrontal cortex, and the back connects with [[parietal|posterior parietal cortex]], dorsolateral prefrontal cortex and the frontal eye fields. The parabelt also projects to other auditory and multisensory areas of the temporal lobe.",
     limit:
-      "The atlas does not segment the belt or parabelt. The marker is on the lateral superior temporal gyrus next to Heschl’s gyrus, at the group peak for vowel sounds in one imaging study, which fell in parabelt-like cortex; the belt itself lies mostly on the upper surface of the temporal lobe, inside the lateral sulcus, around A1. The highlight is the outer (lateral) surface of the left superior temporal gyrus; the atlas has no separate part for the upper surface. Positions vary between people, and only the left hemisphere is shown.",
+      "The atlas does not segment the belt or parabelt. The marker is on the lateral superior temporal gyrus next to Heschl’s gyrus, at the group peak for vowel sounds in one imaging study, which fell in parabelt-like cortex; the belt itself lies mostly on the upper surface of the temporal lobe, inside the lateral sulcus, around A1. The highlight is the outer surface of the left superior temporal gyrus and the planum temporale behind Heschl’s gyrus; the planum polare in front of it is not in the atlas. Positions vary between people, and only the left hemisphere is shown.",
     sourceIds: [
       "auditory-cortex-streams",
       "parabelt-connections",
@@ -1974,7 +1973,8 @@ export const guideSources: { id: string; title: string; url: string }[] = [
   },
   {
     id: "conduction-aphasia",
-    title: "Buchsbaum et al. (2011) · Conduction aphasia, sensory-motor integration, and phonological short-term memory",
+    title:
+      "Buchsbaum et al. · Conduction aphasia, sensory-motor integration, and phonological short-term memory – an aggregate analysis of lesion and fMRI data (2011)",
     url: "https://doi.org/10.1016/j.bandl.2010.12.001",
   },
   {

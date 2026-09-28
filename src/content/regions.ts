@@ -71,7 +71,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Thalamic reticular nucleus (TRN)",
     short: "TRN · inhibition",
     name: "the TRN",
-    where: "A thin sheet wrapped around the outside of the thalamus",
+    where: "A thin sheet covering the front and outer side of the thalamus",
     position: at("trn"),
   },
   pfc: {
@@ -79,7 +79,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Prefrontal cortex",
     short: "Prefrontal cortex",
     name: "prefrontal cortex",
-    where: "Frontal lobe, middle frontal gyrus",
+    where: "Front of the frontal lobe; the marker is on the middle frontal gyrus",
     position: at("pfc"),
   },
   parietal: {
@@ -112,7 +112,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Inferior temporal cortex (IT)",
     short: "IT · objects",
     name: "inferior temporal cortex",
-    where: "Lower side of the temporal lobe",
+    where: "Lower part of the side of the temporal lobe, around the inferior temporal sulcus",
     position: area("it"),
   },
   ffa: {
@@ -120,7 +120,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Fusiform face area (FFA)",
     short: "FFA · faces",
     name: "the fusiform face area",
-    where: "Fusiform gyrus, on the underside of the temporal lobe",
+    where: "Fusiform gyrus, on the underside of the left temporal lobe",
     position: area("ffa"),
   },
   ppa: {
@@ -168,7 +168,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Cochlear nuclei (left)",
     short: "Cochlear nuclei",
     name: "the cochlear nuclei",
-    where: "Brainstem, where the pons meets the medulla",
+    where: "Brainstem, where the pons meets the medulla, left side",
     position: at("brainstem"),
   },
   brainstemR: {
@@ -211,7 +211,14 @@ export const regions: Record<RegionId, Region> = {
     where: "Roof of the midbrain, right side",
     position: at("icR"),
   },
-  mgn: { id: "mgn", label: "Medial geniculate nucleus (MGN)", short: "MGN · sound relay", name: "the MGN", where: "Thalamus, left side", position: at("mgn") },
+  mgn: {
+    id: "mgn",
+    label: "Medial geniculate nucleus (MGN, left)",
+    short: "MGN · sound relay",
+    name: "the MGN",
+    where: "Thalamus, left side",
+    position: at("mgn"),
+  },
   mgnR: {
     id: "mgnR",
     label: "Medial geniculate nucleus (right)",
@@ -244,7 +251,14 @@ export const regions: Record<RegionId, Region> = {
     where: "Upper gyrus of the left temporal lobe, on the side of the brain",
     position: at("temporal"),
   },
-  spt: { id: "spt", label: "Area Spt", short: "Area Spt", name: "area Spt", where: "Back end of the Sylvian fissure, left side", position: at("spt") },
+  spt: {
+    id: "spt",
+    label: "Area Spt",
+    short: "Area Spt",
+    name: "area Spt",
+    where: "Back of the planum temporale, inside the Sylvian fissure, left side",
+    position: at("spt"),
+  },
   frontal: {
     id: "frontal",
     label: "Broca’s area (inferior frontal gyrus)",
@@ -303,10 +317,10 @@ export const regions: Record<RegionId, Region> = {
   },
   cingulate: {
     id: "cingulate",
-    label: "Anterior cingulate cortex",
+    label: "Anterior cingulate cortex (dorsal)",
     short: "Cingulate cortex",
     name: "the cingulate cortex",
-    where: "Inner (medial) surface of the frontal lobe",
+    where: "Inner (medial) surface of the hemisphere, on the cingulate gyrus above the corpus callosum",
     position: center("Cingulate_gyrus_and_sulcus_(Middle_anterior_part)l"),
   },
   fef: {

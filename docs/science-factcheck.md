@@ -680,3 +680,20 @@ Added for the expanded Vision topic. Several items check claims from a draft out
 - Human cortex is 1–4.5 mm thick, averaging about 2.5 mm. Sensory areas are among the thinnest, and sulcal regions average 2.2 ± 0.3 mm (Fischl & Dale 2000). V1 lies largely in the calcarine sulcus, so layers 5 and 6 are within about 2 mm of the surface. New wording: "within about 2 millimetres of the surface".
 - **Citation:** Fischl B, Dale AM (2000) PNAS 97:11050–11055. https://doi.org/10.1073/pnas.200033797
 
+---
+
+## INDEPENDENT ACCURACY AUDIT (2026-09-28)
+
+Six reviewers who had not written the content re-checked every factual statement against the cited papers (Crossref for DOIs; Europe PMC or open full text for claims). Their full reports, with the evidence and replacement text for each finding, are in [`docs/audits/`](audits/). All findings were applied except where noted in the reports' own "not verified" sections.
+
+| Section | Statements checked | Findings | Wrong | Key corrections |
+| --- | --- | --- | --- | --- |
+| Vision | ~248 | 31 | 1 | Optic nerves carry signals one way; LGN synapse proportions are from cats; IT keeps object preference, not response size; debated models (two streams, Haxby, third pathway, EBA) stated as proposals. |
+| Attention | ~208 | 31 | 1 | Parietal highlight now includes the intraparietal sulcus; cross-sense normalization is an illustration; TPJ circuit breaker, conflict monitoring and persistent PFC activity stated with the disagreement. |
+| Touch | ~175 | 18 | 2 | Pain from insula stimulation is not limited to the posterior insula; the VPL feeds mainly S1 areas 3b and 1; neglect sites and their debate. |
+| Hearing and feedback | ~296 | 41 | 1 | Belt highlight scope; layer 6 as a modulator (it does carry visual signals); the 2024 awake-mouse result; A1 extent and tonotopic orientation debated. |
+| Speech | 89 | 29 | 3 | Broca's area is active after a heard word and silent during speaking; the middle precentral gyrus lies higher and further back; Spt lies in the planum temporale. |
+| Site-wide text | ~530 | 42 | 6 | The superior colliculus and planum temporale exist in the atlas and are now loaded; signal-speed comparison corrected; source notes and region locations. |
+
+The site-wide audit also found that the atlas includes meshes this model had not loaded. `scripts/prepare-atlas.mjs` now adds the planum temporale, the inferior temporal and parahippocampal gyri and the superior colliculi, after the cerebrum bounds and all point sampling, so every earlier mesh and placement is byte-identical. Area Spt now sits at the back of the planum temporale and the superior colliculus uses its own mesh.
+

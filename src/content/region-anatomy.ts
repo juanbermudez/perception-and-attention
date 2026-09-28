@@ -11,7 +11,11 @@ interface AtlasHighlight {
 export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   medulla: { parts: ["Medulla_oblongatar"], label: "Right medulla", context: "Parent structure reference; individual dorsal-column nuclei are not segmented." },
   vpl: { parts: ["Thalamusl"], label: "Left thalamus", context: "Parent structure highlighted; VPL remains an unsegmented reference." },
-  s1: { parts: ["Postcentral_gyrusl"], label: "Left postcentral gyrus", context: "Surface reference for S1; individual body maps are not segmented." },
+  s1: {
+    parts: ["Postcentral_gyrusl"],
+    label: "Left postcentral gyrus",
+    context: "Surface reference for S1. Areas 3a and 3b lie in the back wall of the central sulcus, a separate mesh; individual body maps are not segmented.",
+  },
   insula: {
     parts: ["Circular_sulcus_of_insulal"],
     label: "Left insula (circular sulcus)",
@@ -20,7 +24,8 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   cingulate: {
     parts: ["Cingulate_gyrus_and_sulcus_(Middle_anterior_part)l"],
     label: "Left middle-anterior cingulate region",
-    context: "Anatomical network reference; exact ACC borders are not segmented.",
+    context:
+      "Anatomical reference; this part of the cingulate gyrus is the anterior midcingulate cortex in Vogt’s scheme, which many studies call dorsal anterior cingulate cortex. Exact borders are not segmented.",
   },
   retina: { parts: ["Retinal"], label: "Left retina" },
   retinaR: { parts: ["Retinar"], label: "Right retina" },
@@ -48,8 +53,8 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     context: "Sulcal landmark near MT; MT itself is not segmented, and its position varies between people.",
   },
   it: {
-    parts: ["Inferior_temporal_sulcusl"],
-    label: "Left inferior temporal sulcus",
+    parts: ["Inferior_temporal_sulcusl", "Inferior_temporal_gyrusl"],
+    label: "Left inferior temporal sulcus and gyrus",
     context: "Anatomical reference for inferior temporal cortex; functional borders are not segmented.",
   },
   ffa: {
@@ -57,7 +62,11 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     label: "Left fusiform gyrus",
     context: "Parent surface reference; the FFA covers part of the middle of this gyrus and is not segmented.",
   },
-  ppa: { parts: ["Collateral_sulcusl"], label: "Left collateral sulcus", context: "Parent surface reference; the PPA is not segmented." },
+  ppa: {
+    parts: ["Collateral_sulcusl", "Medial_occipitotemporal_gyrus_(Parahippocampal*)l"],
+    label: "Left collateral sulcus and parahippocampal gyrus",
+    context: "Parent surface reference; the PPA covers part of the collateral sulcus and the neighbouring parahippocampal cortex and is not segmented.",
+  },
   eba: {
     parts: ["Middle_temporal_gyrusl"],
     label: "Left middle temporal gyrus",
@@ -78,22 +87,22 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   icR: { parts: ["Inferior_colliculusr"], label: "Right inferior colliculus" },
   mgn: { parts: ["Medial_geniculate_bodyl"], label: "Left medial geniculate body" },
   mgnR: { parts: ["Medial_geniculate_bodyr"], label: "Right medial geniculate body" },
-  a1: { parts: ["Transverse_temporal_gyril"], label: "Left Heschl gyri", context: "Anatomical reference for A1; functional borders vary." },
-  a1R: { parts: ["Transverse_temporal_gyrir"], label: "Right Heschl gyri", context: "Anatomical reference for A1; functional borders vary." },
+  a1: { parts: ["Transverse_temporal_gyril"], label: "Left Heschl’s gyrus", context: "Anatomical reference for A1; functional borders vary." },
+  a1R: { parts: ["Transverse_temporal_gyrir"], label: "Right Heschl’s gyrus", context: "Anatomical reference for A1; functional borders vary." },
   temporal: {
     parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
-    label: "Left superior temporal gyrus",
+    label: "Left superior temporal gyrus (outer surface)",
     context: "Anatomical reference for this speech landmark.",
   },
   spt: {
-    parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
-    label: "Left superior temporal gyrus",
-    context: "Parent surface reference; area Spt is not separately segmented.",
+    parts: ["Temporal_planel"],
+    label: "Left planum temporale",
+    context: "Area Spt occupies the back of the planum temporale, inside the Sylvian fissure, and is not segmented separately.",
   },
   frontal: {
     parts: ["Opercular_part_of_inferior_frontal_gyrusl"],
     label: "Left inferior frontal gyrus · opercular part",
-    context: "Anatomical reference for this speech landmark.",
+    context: "Anatomical reference for Broca’s area, which spans this opercular part and the triangular part in front of it.",
   },
   motor: { parts: ["Precentral_gyrusl"], label: "Left precentral gyrus", context: "Anatomical reference for this motor landmark." },
   meaning: { parts: ["Middle_temporal_gyrusl"], label: "Left middle temporal gyrus", context: "Anatomical reference for this semantic landmark." },
@@ -102,7 +111,7 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     label: "Left superior precentral sulcus",
     context: "Parent surface reference; the FEF lies in this sulcus near its junction with the superior frontal sulcus and is not segmented.",
   },
-  sc: { parts: ["Midbrainl"], label: "Left midbrain", context: "Parent structure highlighted; superior colliculus remains an unsegmented landmark." },
+  sc: { parts: ["Superior_colliculusl"], label: "Left superior colliculus", context: "Atlas structure; the marker sits at its centre." },
   tpj: {
     parts: ["Supramarginal_gyrusr"],
     label: "Right supramarginal gyrus",
@@ -114,7 +123,7 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     parts: ["Medulla_oblongatar"],
     label: "Right medulla (spinal cord not in model)",
     context:
-      "Parent structure highlighted; the spinal cord is not in the atlas, so the dorsal horn is an unsegmented landmark at the lower end of the medulla.",
+      "Parent structure highlighted; the spinal cord is not loaded in this model, so the dorsal horn is an unsegmented landmark at the lower end of the medulla.",
   },
   s2: {
     parts: ["Supramarginal_gyrusl"],
@@ -127,13 +136,14 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
     context: "Surface reference; the insular gyri are not segmented, and the posterior insula lies along the back of this sulcus.",
   },
   belt: {
-    parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
-    label: "Left superior temporal gyrus",
-    context: "Parent surface reference; the belt around Heschl’s gyrus and the parabelt are not segmented.",
+    parts: ["Superior_temporal_gyrus_(Lateral_part)l", "Temporal_planel"],
+    label: "Left superior temporal gyrus (outer surface) and planum temporale",
+    context:
+      "The belt surrounds Heschl’s gyrus on the upper surface of the temporal lobe, inside the fissure, and the parabelt extends onto the outer surface. Neither is segmented; the planum polare in front of Heschl’s gyrus is not in the atlas.",
   },
   astg: {
     parts: ["Superior_temporal_gyrus_(Lateral_part)l"],
-    label: "Left superior temporal gyrus",
+    label: "Left superior temporal gyrus (outer surface)",
     context: "Parent surface reference; the anterior region involved in identifying sounds is not segmented.",
   },
   vlpfc: {

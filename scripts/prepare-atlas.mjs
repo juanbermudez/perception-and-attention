@@ -112,6 +112,20 @@ for (const name of ["Optic_nerve_(II)l", "Optic_nerve_(II)r", "Optic_chiasml", "
 const cortex = meshes.filter((x) => x.group === "cortex").flatMap((x) => entries.get(x.name).values);
 const bounds = new Box3().setFromArray(cortex);
 const dimensions = bounds.getSize(new Vector3()).toArray();
+// Parts added after the cerebrum bounds are measured and after all point sampling, so the shared
+// frame and every earlier point cloud stay identical: the supratemporal plane (planum temporale,
+// where area Spt and most of the auditory belt lie), the inferior temporal and parahippocampal gyri
+// (outside the height filter above) and the superior colliculi.
+for (const name of [
+  "Temporal_planel",
+  "Temporal_planer",
+  "Inferior_temporal_gyrusl",
+  "Inferior_temporal_gyrusr",
+  "Medial_occipitotemporal_gyrus_(Parahippocampal*)l",
+  "Medial_occipitotemporal_gyrus_(Parahippocampal*)r",
+])
+  add(name, "cortex");
+for (const name of ["Superior_colliculusl", "Superior_colliculusr"]) add(name, "deep");
 function anchor(name, fractions = [0.5, 0.5, 0.5]) {
   const e = entries.get(name),
     target = e.min.map((v, i) => v + (e.max[i] - v) * fractions[i]);
@@ -146,7 +160,8 @@ const anchors = {
   a1: anchor("Transverse_temporal_gyril"),
   a1R: anchor("Transverse_temporal_gyrir"),
   temporal: anchor("Superior_temporal_gyrus_(Lateral_part)l", [0.65, 0.65, 0.9]),
-  spt: anchor("Superior_temporal_gyrus_(Lateral_part)l", [0.85, 0.9, 0.2]),
+  // Spt lies at the back of the planum temporale, near the parietal operculum.
+  spt: anchor("Temporal_planel", [0.85, 0.7, 0.5]),
   frontal: anchor("Opercular_part_of_inferior_frontal_gyrusl", [0.6, 0.6, 0.8]),
   motor: anchor("Precentral_gyrusl", [0.45, 0.12, 0.95]),
   meaning: anchor("Middle_temporal_gyrusl", [0.2, 0.6, 0.8]),
@@ -158,11 +173,10 @@ const anchors = {
 };
 anchors.l6 = anchors.v1;
 anchors.l5 = anchors.v1;
-// Hand-placed landmarks for nuclei the atlas does not include (see docs/science-factcheck.md):
-// superior colliculus on the dorsal midbrain just above the inferior colliculus body;
+anchors.sc = landmarkMeshes.Superior_colliculusl.center;
+// Hand-placed landmarks for nuclei and structures this model does not load (see docs/science-factcheck.md):
 // locus coeruleus beside the floor of the fourth ventricle in the rostral pons (Keren et al., 2009);
 // dorsal horn at the lower end of the right medulla, standing in for the spinal cord below the model.
-anchors.sc = [0.25, -0.52, 0.14];
 anchors.lc = [0.35, -1.0, 0.13];
 anchors.dorsalHorn = [0.65, -2.62, -0.12];
 const manifest = {

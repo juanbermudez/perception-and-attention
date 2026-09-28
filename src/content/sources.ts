@@ -27,7 +27,7 @@ export const sources: Source[] = [
     title: "Receptive fields of single neurones in the cat’s striate cortex",
     author: "Hubel & Wiesel · Journal of Physiology · 1959",
     url: "https://doi.org/10.1113/jphysiol.1959.sp006308",
-    note: "The discovery of orientation-selective neurons in primary visual cortex.",
+    note: "Cats: the discovery of orientation-selective neurons in primary visual cortex.",
   },
   {
     id: "parallel-pathways",
@@ -48,7 +48,7 @@ export const sources: Source[] = [
     title: "Structure and function of visual area MT",
     author: "Born & Bradley · Annual Review of Neuroscience · 2005",
     url: "https://doi.org/10.1146/annurev.neuro.26.041002.131052",
-    note: "Direction and speed tuning in MT and its role in motion perception.",
+    note: "Monkeys: direction and speed tuning in MT and its role in motion perception.",
   },
   {
     id: "object-recognition",
@@ -66,8 +66,8 @@ export const sources: Source[] = [
   },
   {
     id: "ear-anatomy",
-    title: "Neuroanatomy, auditory pathway",
-    author: "StatPearls · NCBI Bookshelf",
+    title: "Auditory pathway",
+    author: "Peterson, Reddy, Mayes & Hamel · StatPearls · NCBI Bookshelf",
     url: "https://www.ncbi.nlm.nih.gov/books/NBK532311/",
     note: "Cochlea, ipsilateral cochlear nuclei, bilateral brainstem routes, midbrain and thalamic relays.",
   },
@@ -188,7 +188,7 @@ export const sources: Source[] = [
     title: "Relative distribution of synapses in the A-laminae of the lateral geniculate nucleus of the cat",
     author: "Van Horn, Erişir & Sherman · Journal of Comparative Neurology · 2000",
     url: "https://pubmed.ncbi.nlm.nih.gov/10660881/",
-    note: "Electron microscopy: about 7% of synapses on relay cells are retinal.",
+    note: "Cats, electron microscopy: about 7% of synapses on relay cells are retinal.",
   },
   {
     id: "ct-awake",
@@ -202,14 +202,14 @@ export const sources: Source[] = [
     title: "Effects of attention on orientation-tuning functions of single neurons in macaque cortical area V4",
     author: "McAdams & Maunsell · Journal of Neuroscience · 1999",
     url: "https://doi.org/10.1523/JNEUROSCI.19-01-00431.1999",
-    note: "Attention scales responses: roughly 26% in V4 and 8% in V1.",
+    note: "Monkeys: attention scaled responses by roughly 26% in V4 and 8% in V1 (medians).",
   },
   {
     id: "trn-basal-ganglia",
     title: "Prefrontal cortex regulates sensory filtering through a basal ganglia-to-thalamus pathway",
     author: "Nakajima, Schmitt & Halassa · Neuron · 2019",
     url: "https://doi.org/10.1016/j.neuron.2019.05.026",
-    note: "Mice: the route from prefrontal cortex to the sensory TRN runs through the basal ganglia.",
+    note: "Mice: prefrontal cortex reaches the sensory TRN through a pathway via the basal ganglia; it has no direct projection there.",
   },
   {
     id: "speech-planning-debate",
@@ -342,7 +342,7 @@ export const sources: Source[] = [
     title: "Spinal signalling of C-fiber mediated pleasant touch in humans",
     author: "Marshall et al. · eLife · 2019",
     url: "https://doi.org/10.7554/eLife.51642",
-    note: "Cutting the spinothalamic tract in 19 patients removed pain, temperature and itch but left pleasant touch intact.",
+    note: "Cutting the spinothalamic tract on one side in 19 patients with cancer pain greatly reduced pain, temperature and itch on the affected side but left pleasant touch intact.",
   },
   {
     id: "pain-stimulation",
@@ -451,10 +451,10 @@ export const sources: Source[] = [
   },
   {
     id: "crossmodal-attention",
-    title: "Attention to simultaneous unrelated auditory and visual events",
+    title: "Attention to simultaneous unrelated auditory and visual events: behavioral and neural correlates",
     author: "Johnson & Zatorre · Cerebral Cortex · 2005",
     url: "https://doi.org/10.1093/cercor/bhi039",
-    note: "Attending to one sense increases activity in its sensory cortex and reduces it in the other's.",
+    note: "Human fMRI: attending to one sense increased activity in its sensory cortex and reduced it in the other’s.",
   },
   {
     id: "streams-critique",
@@ -489,7 +489,7 @@ export const sources: Source[] = [
     title: "Relative numbers of cortical and brainstem inputs to the lateral geniculate nucleus",
     author: "Erişir, Van Horn & Sherman · PNAS · 1997",
     url: "https://doi.org/10.1073/pnas.94.4.1517",
-    note: "Cats: cortical and brainstem terminals each make up about half of the non-retinal excitatory input to LGN relay cells.",
+    note: "Cats: brainstem and cortical terminals each make up roughly half of the non-retinal, round-vesicle (RD) terminals in the LGN.",
   },
   {
     id: "language-dominance",
@@ -500,10 +500,10 @@ export const sources: Source[] = [
   },
   {
     id: "conduction-aphasia",
-    title: "Conduction aphasia, sensory-motor integration, and phonological short-term memory",
+    title: "Conduction aphasia, sensory-motor integration, and phonological short-term memory – an aggregate analysis of lesion and fMRI data",
     author: "Buchsbaum et al. · Brain and Language · 2011",
     url: "https://doi.org/10.1016/j.bandl.2010.12.001",
-    note: "Lesions that cause conduction aphasia overlap with area Spt.",
+    note: "In 14 patients with conduction aphasia, the area of greatest lesion overlap matched area Spt.",
   },
   {
     id: "broca-lesions",

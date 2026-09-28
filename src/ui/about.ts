@@ -80,7 +80,7 @@ function papersTab() {
     .filter((source) => !listed.has(source.url))
     .map((source) => sourceItem(source.title, source.url))
     .join("");
-  return `<p>Papers, reviews and textbook chapters used for this review, grouped by topic. Each citation was checked against its DOI or PubMed record in September 2026.</p>${groups}<h3>Region details</h3><ul class="source-list">${regionOnly}</ul>`;
+  return `<p>Papers, reviews and textbook chapters used for this review, grouped by topic. Journal citations were checked against their DOI or PubMed records in September 2026; textbook chapters were checked on NCBI Bookshelf.</p>${groups}<h3>Region details</h3><ul class="source-list">${regionOnly}</ul>`;
 }
 
 function codeTab() {
