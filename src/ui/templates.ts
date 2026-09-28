@@ -6,6 +6,7 @@ import { overview } from "../content/site";
 import { sources } from "../content/sources";
 import type { Pathway, RegionId } from "../content/types";
 import { type AttentionSettings, MAX_ATTENTION_GAIN, NORMALIZATION_SIGMA, sensoryStreams, streamResponses } from "../model/attention";
+import { topicRegions } from "../model/topics";
 import { escapeHtml, linkedText } from "./dom";
 import { arrowIcon, chevronIcon, topicIcon } from "./icons";
 
@@ -70,13 +71,6 @@ export function pathAfterHtml(path: Pathway) {
     <details class="after-block"><summary>Sources</summary><ul class="source-list">${refs}</ul></details>`;
 }
 
-/** Regions a topic covers: walkthrough regions in step order, then others drawn on its routes. */
-export function topicRegions(path: Pathway) {
-  const inSteps = [...new Set(path.steps.map((step) => step.region))];
-  const onRoutes = [...new Set(path.edges.flatMap((edge) => [edge.from, edge.to]))].filter((id) => !inSteps.includes(id));
-  return { inSteps, onRoutes };
-}
-
 export function regionListHtml(path: Pathway, selected: RegionId) {
   const row = (id: RegionId) =>
     `<li><button class="region-row${id === selected ? " current" : ""}" data-open-region="${id}"><span class="region-row-name">${escapeHtml(regions[id].label)}</span><span class="region-row-text">${escapeHtml(stripLinks(regionGuides[id].summary))}</span></button></li>`;
@@ -91,7 +85,9 @@ export function regionHtml(id: RegionId, path: Pathway) {
   const region = regions[id];
   const guide = regionGuides[id];
   const role = guide.roles[path.id];
-  const section = (title: string, body: string) => `<section class="drawer-section"><h4>${title}</h4><p>${linkedText(body)}</p></section>`;
+  // data-section matches the ref sections (region:v1#mechanism), so `go` can scroll to one.
+  const section = (key: string, title: string, body: string) =>
+    `<section class="drawer-section" data-section="${key}"><h4>${title}</h4><p>${linkedText(body)}</p></section>`;
   const refs = guide.sourceIds
     .map((sourceId) => guideSources.find((source) => source.id === sourceId))
     .filter((source) => source !== undefined)
@@ -101,12 +97,12 @@ export function regionHtml(id: RegionId, path: Pathway) {
   return `<button class="back-link" data-region-list>${chevronIcon("back-chevron")}All regions</button>
     <div class="region-heading"><h3 id="drawer-title" tabindex="-1"><button class="region-title-button" data-region="${id}" aria-label="Focus ${escapeHtml(region.label)}">${escapeHtml(region.label)}</button></h3></div>
     <p class="region-kind">${escapeHtml(region.where)}</p>
-    <p class="drawer-intro">${linkedText(guide.summary)}</p>
-    ${section("How it works", guide.mechanism)}
-    ${role ? section(`In ${escapeHtml(path.title.toLowerCase())}`, role) : ""}
-    ${section("Connections", guide.connections)}
-    ${section("Anatomical accuracy", guide.limit)}
-    ${refs ? `<section class="drawer-section"><h4>Sources</h4><ul class="source-list">${refs}</ul></section>` : ""}
+    <p class="drawer-intro" data-section="summary">${linkedText(guide.summary)}</p>
+    ${section("mechanism", "How it works", guide.mechanism)}
+    ${role ? section("role", `In ${escapeHtml(path.title.toLowerCase())}`, role) : ""}
+    ${section("connections", "Connections", guide.connections)}
+    ${section("limit", "Anatomical accuracy", guide.limit)}
+    ${refs ? `<section class="drawer-section" data-section="sources"><h4>Sources</h4><ul class="source-list">${refs}</ul></section>` : ""}
     <div class="region-nav"><button data-back-guide>${stepIndex >= 0 ? `← Back to step ${stepIndex + 1}` : "← Back to walkthrough"}</button></div>`;
 }
 

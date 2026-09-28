@@ -1,0 +1,32 @@
+// The `help` reference card (spec §6.3): ref grammar, topics, every region id with its short name,
+// read details and limits. Generated from content, so it never lists a region or topic that does not exist.
+// It is reference data, written as facts, not instructions.
+import { pathways } from "../content/pathways";
+import { regions } from "../content/regions";
+import { REGION_IDS, REGION_SECTIONS } from "../model/refs";
+import { WALK_SECONDS } from "../model/topics";
+
+export const LIST_LIMIT = { default: 20, max: 100 };
+export const SEARCH_LIMIT = { default: 10, max: 50 };
+
+export function helpCard() {
+  return {
+    ref: "help",
+    refs: [
+      "guide | overview | help",
+      "about | about/papers | about/code | about/models",
+      "topic:<topic> | topic:attention/streams",
+      "step:<topic>/<n> (1-based, as in the UI) or step:<topic>/<key>. Results use the key form; it stays valid when steps are renumbered.",
+      `region:<id>[#${REGION_SECTIONS.join("|")}]`,
+      "source:<id>",
+    ],
+    caseInsensitive: true,
+    links: "Guide text links regions as [text](region:<id>). The ref works in read and go.",
+    topics: Object.fromEntries(pathways.map((path) => [path.id, `${path.title} · ${path.steps.length} steps`])),
+    regions: Object.fromEntries(REGION_IDS.map((id) => [id, regions[id].short])),
+    details: { brief: "default, short", full: "every section, key fact, signal route", sources: "citations with URLs" },
+    limits: { walkthroughSeconds: [WALK_SECONDS.min, WALK_SECONDS.max], listLimit: LIST_LIMIT.max, searchLimit: SEARCH_LIMIT.max },
+    control: "Write tools (go, walkthrough) return agent_control_off while the user has assistant control off in About. Read tools always work.",
+    errors: ["bad_input", "unknown_ref (with options)", "not_available (with a reason)", "agent_control_off"],
+  };
+}

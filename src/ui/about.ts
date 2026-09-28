@@ -1,12 +1,12 @@
 // About dialog: fixed tabs over one scrolling panel.
+import type { AgentControl } from "../agent/control";
 import { pathways } from "../content/pathways";
 import { guideSources } from "../content/region-guides";
 import { about, codeNotes, overview } from "../content/site";
 import { sources } from "../content/sources";
+import type { AboutTab } from "../model/refs";
 import { byId, escapeHtml, externalLink, nextTabIndex, richText } from "./dom";
 import { externalIcon } from "./icons";
-
-export type AboutTab = "about" | "papers" | "code" | "models";
 
 const MIT_LICENSE = `The MIT License
 
@@ -48,10 +48,17 @@ const CONTROLS: [action: string, input: string][] = [
   ["Switch topic", "<kbd>1</kbd>–<kbd>6</kbd>"],
 ];
 
-function aboutTab() {
+/** The kill switch (spec §12). Assistants can always read the guide; this decides whether they can change what you see. */
+function assistantsSection(control: AgentControl) {
+  return `<h3>Assistants</h3>
+    <p>In browsers that offer site tools (WebMCP), such as the ChatGPT desktop app, an assistant can read this guide. When this switch is on, it can also open topics, steps and regions and play walkthroughs. Its actions appear next to an “Assistant” label at the top left of the 3D view.</p>
+    <button class="agent-switch" id="agent-control" role="switch" aria-checked="${control.on}"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>Let assistants control this guide</button>`;
+}
+
+function aboutTab(control?: AgentControl) {
   const sections = about.sections.map((section) => `<h3>${escapeHtml(section.title)}</h3>${paragraphs(section.paragraphs)}`).join("");
   const controls = CONTROLS.map(([action, input]) => `<div><dt>${action}</dt><dd>${input}</dd></div>`).join("");
-  return `${sections}<h3>Controls</h3><dl class="help-controls">${controls}</dl>`;
+  return `${sections}<h3>Controls</h3><dl class="help-controls">${controls}</dl>${control ? assistantsSection(control) : ""}`;
 }
 
 function papersTab() {
@@ -125,15 +132,16 @@ function modelsTab() {
     <article class="credit-item"><h4>Changes made to the atlas</h4><p>Selected parts; one shared transform and uniform scale; quantized coordinates; surfaces sampled as particles; adjusted colours and opacity; added markers for functional areas and small nuclei, and illustrative route curves.</p></article>`;
 }
 
-const panels: Record<AboutTab, () => string> = { about: aboutTab, papers: papersTab, code: codeTab, models: modelsTab };
-
-export function setupAbout() {
+export function setupAbout(control?: AgentControl) {
   const dialog = byId<HTMLDialogElement>("info-dialog");
   const panel = byId("about-panel");
   const tabs = Array.from(dialog.querySelectorAll<HTMLButtonElement>(".about-tab"));
+  const panels: Record<AboutTab, () => string> = { about: () => aboutTab(control), papers: papersTab, code: codeTab, models: modelsTab };
   let returnFocus: HTMLElement | null = null;
+  let shownTab: AboutTab = "about";
 
   function select(tab: AboutTab, focus = false) {
+    shownTab = tab;
     for (const button of tabs) {
       const active = button.dataset.about === tab;
       button.setAttribute("aria-selected", String(active));
@@ -148,9 +156,9 @@ export function setupAbout() {
   }
 
   function open(tab: AboutTab = "about") {
-    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!dialog.open) returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     select(tab);
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
     tabs.find((button) => button.dataset.about === tab)?.focus({ preventScroll: true });
   }
 
@@ -167,6 +175,12 @@ export function setupAbout() {
     select(tabs[next].dataset.about as AboutTab, true);
   });
   byId("dialog-close").addEventListener("click", () => dialog.close());
+  panel.addEventListener("click", (event) => {
+    const toggle = (event.target as HTMLElement).closest<HTMLButtonElement>("#agent-control");
+    if (!toggle || !control) return;
+    control.set(!control.on);
+    toggle.setAttribute("aria-checked", String(control.on));
+  });
   dialog.addEventListener("close", () => returnFocus?.focus());
   // Clicking the backdrop closes the dialog.
   dialog.addEventListener("click", (event) => {
@@ -176,5 +190,11 @@ export function setupAbout() {
     if (outside) dialog.close();
   });
 
-  return { open, isOpen: () => dialog.open };
+  return {
+    open,
+    close: () => dialog.close(),
+    isOpen: () => dialog.open,
+    /** The open tab, or null while the dialog is closed. */
+    tab: () => (dialog.open ? shownTab : null),
+  };
 }
