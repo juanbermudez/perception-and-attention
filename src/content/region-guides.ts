@@ -410,7 +410,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "It is organized by frequency, with mirror-image gradients (high–low–high). Several high-field MRI studies find these gradients running across the gyrus; others place them along it. It belongs to the core, the areas that receive their main input from the ventral MGN; in humans, it lies along Heschl’s gyrus, mainly toward its inner end, and its borders vary between people. Pure tones activate the core strongly, while the surrounding belt and parabelt respond more to complex sounds such as speech, music and voices.",
     roles: {
       hearing: "The first cortical area for hearing. Each side receives input from both ears.",
-      speech: "Processes speech at the same time as the nearby [[temporal|superior temporal gyrus]].",
+      speech: "Processes speech in parallel with part of the nearby [[temporal|superior temporal gyrus]], which responds almost as early.",
       attention:
         "One of the sensory inputs whose strength attention adjusts. In human recordings, attended tones evoked larger responses in auditory cortex from about 20 ms after the sound.",
     },
@@ -427,6 +427,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "a1-variability",
       "tonotopy-orientation",
       "speech-parallel",
+      "auditory-latencies",
     ],
   },
   a1R: {
@@ -443,61 +444,65 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention", "music-speech-asymmetry", "asymmetry-debate"],
   },
   temporal: {
-    summary: "The superior temporal gyrus, along the top of the temporal lobe, is where speech sounds are recognized.",
+    summary: "The superior temporal gyrus, along the top of the temporal lobe, is a key area for recognizing speech sounds.",
     mechanism:
       "Neurons here respond to phonetic features, such as whether a consonant is made with the lips or the tongue, and follow speech as it unfolds. When two people speak, activity here mainly follows the one being attended to.",
     roles: {
       speech: "Converts sound into speech units and sends them to both the [[meaning|meaning]] (ventral) and [[spt|sound-to-movement]] (dorsal) streams.",
       attention: "An example of attention selecting one input over another.",
     },
-    connections: "Receives input at the same time as [[a1|A1]] and connects to [[meaning|meaning networks]] and [[spt|area Spt]].",
+    connections: "Receives speech input almost as early as [[a1|A1]] and connects to [[meaning|meaning networks]] and [[spt|area Spt]].",
     limit: "The highlight is the left superior temporal gyrus. Speech sounds are processed in both hemispheres.",
-    sourceIds: ["speech-features", "attended-speech", "parallel-speech"],
+    sourceIds: ["speech-features", "attended-speech", "parallel-speech", "speech-single-neurons"],
   },
   spt: {
-    summary: "Area Spt, at the back end of the Sylvian fissure, links the sound of a word with the movements needed to say it.",
+    summary: "Area Spt, at the back end of the Sylvian fissure, is thought to link the sound of a word with the movements needed to say it.",
     mechanism:
       "It responds both when a person hears speech and when they silently rehearse it, which suggests it converts between auditory and motor representations.",
     roles: {
       speech: "Part of the dorsal stream, used when repeating new words and holding them in short-term memory.",
     },
     connections: "Connects the [[temporal|superior temporal gyrus]] with [[frontal|Broca’s area]] and [[motor|speech motor cortex]].",
-    limit: "Spt is defined by its function in each person. The marker is placed on the nearby superior temporal surface.",
-    sourceIds: ["sound-movement"],
+    limit:
+      "Spt is defined by its function in each person; it lies inside the back of the Sylvian fissure, where the temporal and parietal lobes meet. The marker is placed on the nearby surface of the superior temporal gyrus, and the highlight is the whole left superior temporal gyrus, the same as for speech-sound cortex.",
+    sourceIds: ["sound-movement", "spt-hypothesis", "spt-planum", "conduction-aphasia"],
   },
   frontal: {
-    summary: "Broca’s area, in the left inferior frontal gyrus, is involved in planning speech.",
+    summary:
+      "Broca’s area, in the left inferior frontal gyrus, is involved in planning speech. It has several parts: some belong to the language network, which is active when people understand as well as produce sentences, and others to a general network used in many demanding tasks.",
     mechanism:
-      "Recordings show it is most active before speaking, while the sequence of sounds is prepared, and less active while motor cortex carries out the movements. Single neurons in nearby prefrontal cortex have been found to encode the sounds of upcoming words. How much planning happens here, compared with the precentral gyrus just behind it, is debated.",
+      "Recordings show it is most active before speaking, while the sequence of sounds is prepared, and less active while motor cortex carries out the movements. Single neurons in nearby prefrontal cortex have been found to encode the sounds of upcoming words. How much planning happens here, compared with the middle of the precentral gyrus above and behind it, is debated. In a study of 134 stroke survivors, damage to Broca’s area did not predict lasting speech problems.",
     roles: {
-      speech: "Coordinates the transition from sound representations to movement.",
+      speech: "One proposal is that it coordinates the step from the sound of a word to the movements that produce it; this is debated.",
     },
     connections: "Works with [[spt|area Spt]], the [[temporal|temporal lobe]] and [[motor|speech motor cortex]].",
     limit: "The highlight is the opercular part of the inferior frontal gyrus. Broca’s area also includes the triangular part in front of it.",
-    sourceIds: ["speech-planning", "speech-planning-network", "speech-sequencing", "word-planning"],
+    sourceIds: ["speech-planning", "speech-planning-network", "speech-sequencing", "word-planning", "broca-parts", "broca-lesions", "mprcg"],
   },
   motor: {
-    summary: "Speech motor cortex is the lower part of primary motor cortex, which controls the lips, jaw, tongue and larynx.",
+    summary:
+      "Speech motor cortex is the lower part of the precentral gyrus, together with the strip just behind it that processes touch. It controls the lips, jaw, tongue and larynx.",
     mechanism:
-      "These body parts are mapped in order along the precentral gyrus, with the larynx represented twice. Speaking activates them in fast, overlapping patterns. The sound of one’s own voice is used to correct errors during speech.",
+      "In recordings from three people, these body parts were mapped in order from top to bottom (larynx, lips, jaw, tongue, larynx) along the lower precentral and postcentral gyri, so the larynx appears twice; neighbouring maps partly overlap. Speaking activates them in fast, overlapping patterns. The sound of one’s own voice is used to correct errors during speech.",
     roles: {
       speech: "Carries out the speech plan and uses auditory feedback to adjust it.",
     },
     connections:
       "Receives input from [[frontal|Broca’s area]] and sends commands through the brainstem to the speech muscles. The resulting sound is processed by [[a1|auditory cortex]].",
     limit: "The highlight is the whole left precentral gyrus, which also controls the rest of the body.",
-    sourceIds: ["speech-movement"],
+    sourceIds: ["speech-movement", "feedback-adaptation", "feedback-integration"],
   },
   meaning: {
-    summary: "Word meaning is represented across large parts of both hemispheres, not in a single area.",
+    summary:
+      "Brain imaging shows word meaning represented across large parts of both hemispheres. One influential model adds a central hub in the front of both temporal lobes that links these parts, and studies of brain damage point to a larger role for the left side.",
     mechanism:
-      "Brain imaging while people listen to stories shows that different areas of temporal, parietal and frontal cortex respond to different categories of meaning, such as people, places or numbers.",
+      "In one brain-imaging study, seven people listened to more than two hours of stories. Different areas of temporal, parietal and frontal cortex responded to different categories of meaning, such as people, places or numbers.",
     roles: {
       speech: "The end point of the ventral stream, where sounds are linked to meaning.",
     },
     connections: "Receives input from the [[temporal|superior temporal gyrus]] and works with memory systems across the brain.",
     limit: "The highlight is the left middle temporal gyrus, one part of a distributed system.",
-    sourceIds: ["semantic-networks", "language-network"],
+    sourceIds: ["semantic-networks", "language-network", "semantic-hub"],
   },
   medulla: {
     summary: "The gracile and cuneate nuclei (dorsal column nuclei) in the lower medulla are the first relay in the brain for fine touch and body position.",
@@ -1961,5 +1966,80 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     title:
       "Golshani, Liu & Jones · Differences in quantal amplitude reflect GluR4 subunit number at corticothalamic synapses on two populations of thalamic neurons (2001)",
     url: "https://doi.org/10.1073/pnas.061013698",
+  },
+  {
+    id: "language-dominance",
+    title: "Knecht et al. (2000) · Handedness and hemispheric language dominance in healthy humans",
+    url: "https://doi.org/10.1093/brain/123.12.2512",
+  },
+  {
+    id: "conduction-aphasia",
+    title: "Buchsbaum et al. (2011) · Conduction aphasia, sensory-motor integration, and phonological short-term memory",
+    url: "https://doi.org/10.1016/j.bandl.2010.12.001",
+  },
+  {
+    id: "broca-lesions",
+    title: "Gajardo-Vidal et al. (2021) · Damage to Broca's area does not contribute to long-term speech production outcome after stroke",
+    url: "https://doi.org/10.1093/brain/awaa460",
+  },
+  {
+    id: "speech-planning-frontal",
+    title: "Castellucci et al. (2022) · A speech planning network for interactive language use",
+    url: "https://doi.org/10.1038/s41586-021-04270-z",
+  },
+  {
+    id: "feedback-adaptation",
+    title: "Houde & Jordan (1998) · Sensorimotor adaptation in speech production",
+    url: "https://doi.org/10.1126/science.279.5354.1213",
+  },
+  {
+    id: "delayed-feedback",
+    title: "Stuart et al. (2002) · Effect of delayed auditory feedback on normal speakers at two speech rates",
+    url: "https://doi.org/10.1121/1.1466868",
+  },
+  {
+    id: "speech-single-neurons",
+    title: "Leonard et al. (2024) · Large-scale single-neuron speech sound encoding across the depth of human cortex",
+    url: "https://doi.org/10.1038/s41586-023-06839-2",
+  },
+  {
+    id: "spt-hypothesis",
+    title: "Hickok et al. · Auditory–motor interaction revealed by fMRI: speech, music, and working memory in area Spt (2003)",
+    url: "https://doi.org/10.1162/089892903322307393",
+  },
+  {
+    id: "spt-planum",
+    title: "Hickok, Okada & Serences · Area Spt in the human planum temporale supports sensory-motor integration for speech processing (2009)",
+    url: "https://doi.org/10.1152/jn.91099.2008",
+  },
+  {
+    id: "speech-production-model",
+    title: "Hickok · Computational neuroanatomy of speech production (2012)",
+    url: "https://doi.org/10.1038/nrn3158",
+  },
+  {
+    id: "auditory-latencies",
+    title: "Nourski et al. · Functional organization of human auditory cortex: investigation of response latencies through direct recordings (2014)",
+    url: "https://doi.org/10.1016/j.neuroimage.2014.07.004",
+  },
+  {
+    id: "mprcg",
+    title: "Silva et al. · A neurosurgical functional dissection of the middle precentral gyrus during speech production (2022)",
+    url: "https://doi.org/10.1523/JNEUROSCI.1614-22.2022",
+  },
+  {
+    id: "broca-parts",
+    title: "Fedorenko & Blank · Broca’s area is not a natural kind (2020)",
+    url: "https://doi.org/10.1016/j.tics.2020.01.001",
+  },
+  {
+    id: "feedback-integration",
+    title: "Hickok, Houde & Rong · Sensorimotor integration in speech processing (2011)",
+    url: "https://doi.org/10.1016/j.neuron.2011.01.019",
+  },
+  {
+    id: "semantic-hub",
+    title: "Rice, Lambon Ralph & Hoffman · The roles of left versus right anterior temporal lobes in conceptual knowledge (2015)",
+    url: "https://doi.org/10.1093/cercor/bhv024",
   },
 ];

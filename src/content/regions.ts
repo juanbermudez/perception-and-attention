@@ -241,7 +241,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Superior temporal gyrus",
     short: "Speech-sound cortex",
     name: "the superior temporal gyrus",
-    where: "Temporal lobe, upper surface",
+    where: "Upper gyrus of the left temporal lobe, on the side of the brain",
     position: at("temporal"),
   },
   spt: { id: "spt", label: "Area Spt", short: "Area Spt", name: "area Spt", where: "Back end of the Sylvian fissure, left side", position: at("spt") },
