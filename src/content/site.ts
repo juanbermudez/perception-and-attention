@@ -26,19 +26,7 @@ export const about = {
         "Neuroscience is not my field of work. I like reading about human behaviour and performance, and when I came across Robert Sapolsky’s work some years ago, I started going deeper into the topic.",
         "I made this guide as a refresher on some details of human attention that I wanted to look into. I think learning about behavioural biology and neuroscience can provide a lot of insight into systems design. After all, if we look at it from the point of view of [the bitter lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html), human intelligence is the result of a multi-billion-year research effort that produced all kinds of adaptations. Paying attention and working towards long-term goals are capabilities that gave us a leg up on other Old World primates.",
         "I am not building neuromorphic agents, but a lot seems to point to composition as another axis for developing more capable AI systems. I share my thoughts on the topic on [my website](https://zeph.computer), and I have now started sharing a bit more on [X](https://x.com/jbermudez5).",
-      ],
-    },
-    {
-      title: "Built with",
-      paragraphs: [
         "I also wanted to try [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)) that looked very promising, and it is good. I built this guide with it using Claude Opus 5.5 and GPT-6 Sol.",
-      ],
-    },
-    {
-      title: "How the content was checked",
-      paragraphs: [
-        "The content summarizes published research and textbooks. It was checked against primary papers and review articles in September 2026. When a finding comes from animal studies, the species is stated. When researchers disagree, the text says so.",
-        "It is not a clinical or medical reference. Corrections and suggestions are welcome.",
       ],
     },
   ],
