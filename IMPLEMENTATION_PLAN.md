@@ -37,7 +37,17 @@ Spec: [`docs/agent-surface-spec.md`](docs/agent-surface-spec.md). Each stage shi
 - tool input validation fixtures.
 - kill switch blocks write tools only.
 
-**Status**: Not Started
+**Status**: Complete in code (branch `webmcp/stage1`); the ChatGPT spike and the acceptance prompts in the ChatGPT desktop browser are still pending (spec §2). 45 new tests (`refs`, `search`, `guide-api`, `agent-tools`); the 5 existing test files are unchanged.
+
+Notes for review:
+- Step refs in results use the key form (`step:vision/parallel-channels`) plus `n` and `of`; `step:vision/3` is accepted everywhere.
+- `go` toasts offer Undo (back to the previous place). The spec lists Undo only for views, blocks and docs.
+- `go(region:*)` opens the region in the current topic if the topic covers it, else in the first topic that teaches it.
+- `get_context` reports `at`, `title`, `panel`, `topic`, `step`, `n`, `of`, `selected`, `playing`, `walking`, `seconds`, `about`, `selection`, `control` and the activity page. View, windows and tour fields come in Stages 2–4.
+- Doc, quiz and block refs parse; the tools return `not_available` until Stage 3.
+- `read(about/papers, full)` lists source refs per topic, not all ~240 citations (that was 37 KB). Topics, steps and regions give titles and URLs with `detail: "sources"`.
+- Sizes: typical results are under 2 KB (tested); `help` is about 2.8 KB and a region's `full` read up to about 2.6 KB.
+- zod adds about 94 KiB (the spec estimated 15–60 KB); `dist/index.html` grows from 5635 to 5765 KiB.
 
 ## Stage 2: Canvas control
 

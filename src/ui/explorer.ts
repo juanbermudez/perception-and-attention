@@ -1,9 +1,12 @@
 // Controller for the overview, topic walkthroughs, region guides and attention streams.
 // It owns the side panel and dock, writes the shared state, and tells the scene what to show.
+import type { ExplorerSnapshot, Panel } from "../api/guide-api";
 import { pathways } from "../content/pathways";
 import { overview } from "../content/site";
-import type { PathId, Pathway, RegionId, SenseId, Signal } from "../content/types";
+import type { PathId, RegionId, SenseId } from "../content/types";
 import { attentionGain, sensoryStreams } from "../model/attention";
+import { formatRef, type Place, parseHash, placeHash, placeRef, type RegionSection } from "../model/refs";
+import { hostTopic, signalFor, topicHasRegion, WALK_SECONDS } from "../model/topics";
 import type { BrainScene } from "../scene/brain-scene";
 import type { ExplorerState } from "../state";
 import { byId, linkedText, nextTabIndex, toast } from "./dom";
@@ -20,23 +23,20 @@ import {
   streamRowsHtml,
 } from "./templates";
 
-type Panel = "guide" | "region" | "streams";
-
-/** Seconds each step stays on screen during autoplay. */
-const STEP_SECONDS = 5.5;
-
-/** A step's signal, or by default a single hop from the previous step's region. */
-export function signalFor(path: Pathway, index: number): Signal {
-  const step = path.steps[index];
-  if (step.signal) return step.signal;
-  return index > 0 ? [[[path.steps[index - 1].region, step.region]]] : [];
+/** A change the activity log may record. `auto` marks walkthrough autoplay, which is not a user action. */
+export interface ExplorerEvent {
+  kind: "navigated" | "played" | "paused";
+  ref: string;
+  auto: boolean;
 }
 
 export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryList, onOpenAbout: () => void) {
   const inspector = byId("inspector");
   const stepList = byId("path-steps");
   const stepDots = byId("step-progress");
-  stepDots.style.setProperty("--step-duration", `${STEP_SECONDS}s`);
+  /** Seconds per step while walking: the default for the Play button, or what an agent asked for. */
+  let stepSeconds = WALK_SECONDS.default;
+  stepDots.style.setProperty("--step-duration", `${stepSeconds}s`);
   const body = byId("inspector-body");
   const playButton = byId("step-play");
   let scene: BrainScene | undefined;
@@ -45,6 +45,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   /** Region shown in the Region tab; null shows the list of regions. */
   let shownRegion: RegionId | null = null;
   let walkTimer: ReturnType<typeof setTimeout> | undefined;
+  let onEvent: ((event: ExplorerEvent) => void) | undefined;
 
   const current = () => pathways.find((path) => path.id === state.path) ?? pathways[0];
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -59,7 +60,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   /* ---------- Overview ---------- */
 
-  function showIntro() {
+  function showIntro({ camera = true } = {}) {
     cancelPreview();
     stopWalk();
     state.overview = true;
@@ -72,7 +73,8 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("scene-title").textContent = overview.title;
     inspector.style.setProperty("--path-color", "var(--accent)");
     updateDock();
-    scene?.reset();
+    if (camera) scene?.reset();
+    routeChanged();
   }
 
   function updateDock() {
@@ -87,7 +89,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   /* ---------- Topics and steps ---------- */
 
-  function selectPath(id: PathId) {
+  function selectPath(id: PathId, { step = 0, camera = true } = {}) {
     cancelPreview();
     stopWalk();
     state.overview = false;
@@ -109,7 +111,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     updateAttention();
     setPanel("guide");
     updateDock();
-    setStep(0);
+    setStep(step, { camera });
     body.scrollTop = 0;
   }
 
@@ -125,6 +127,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     updateSteps();
     const open = stepList.children[state.step] as HTMLElement | undefined;
     if (open && panel === "guide") requestAnimationFrame(() => open.scrollIntoView({ block: "nearest", behavior: smooth() }));
+    routeChanged(keepWalking);
   }
 
   function updateSteps() {
@@ -171,28 +174,34 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   /* ---------- Autoplay: each step fires its own signal ---------- */
 
-  function stopWalk() {
+  function stopWalk(auto = false) {
+    const wasWalking = walkTimer !== undefined;
     clearTimeout(walkTimer);
     walkTimer = undefined;
     playButton.setAttribute("aria-pressed", "false");
     byId("step-play-label").textContent = "Play";
     stepDots.classList.remove("playing");
+    if (wasWalking) emit("paused", auto);
   }
 
   function scheduleWalk() {
     walkTimer = setTimeout(() => {
       if (state.step >= current().steps.length - 1) {
-        stopWalk();
+        stopWalk(true);
         toast("End of this topic.");
         return;
       }
       setStep(state.step + 1, { keepWalking: true });
       scheduleWalk();
-    }, STEP_SECONDS * 1000);
+    }, stepSeconds * 1000);
   }
 
-  function startWalk() {
+  function startWalk(seconds: number = WALK_SECONDS.default) {
     if (state.overview) return;
+    const wasWalking = walkTimer !== undefined;
+    clearTimeout(walkTimer);
+    stepSeconds = seconds;
+    stepDots.style.setProperty("--step-duration", `${seconds}s`);
     playButton.setAttribute("aria-pressed", "true");
     byId("step-play-label").textContent = "Pause";
     const atEnd = state.step >= current().steps.length - 1;
@@ -202,6 +211,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     void stepDots.offsetWidth;
     stepDots.classList.add("playing");
     scheduleWalk();
+    if (!wasWalking) emit("played");
   }
 
   /* ---------- Panel tabs ---------- */
@@ -222,16 +232,19 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     body.scrollTop = 0;
     if (next !== "region") shownRegion = null;
     if (next === "streams") updateAttention();
+    routeChanged();
   }
 
   function renderRegion(id: RegionId) {
     shownRegion = id;
     byId("drawer-content").innerHTML = regionHtml(id, current());
+    routeChanged();
   }
 
   function renderRegionList() {
     shownRegion = null;
     byId("drawer-content").innerHTML = regionListHtml(current(), state.selected);
+    routeChanged();
   }
 
   function showRegionList() {
@@ -239,18 +252,117 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     renderRegionList();
   }
 
-  function showRegion(id: RegionId = state.selected) {
+  function showRegion(id: RegionId = state.selected, { camera = true, section }: { camera?: boolean; section?: RegionSection } = {}) {
     if (state.overview) {
       // From the overview, open the first topic that features the region.
-      const host =
-        pathways.find((path) => path.steps.some((step) => step.region === id)) ??
-        pathways.find((path) => path.edges.some((edge) => edge.from === id || edge.to === id));
-      if (host) selectPath(host.id);
+      const host = hostTopic(id);
+      if (host) selectPath(host.id, { camera });
     }
-    selectRegion(id);
+    selectRegion(id, camera);
     setPanel("region");
     renderRegion(id);
     byId("drawer-title").focus({ preventScroll: true });
+    if (section && section !== "summary")
+      byId("drawer-content").querySelector(`[data-section="${section}"]`)?.scrollIntoView({ block: "start", behavior: smooth() });
+  }
+
+  /** Open the Attention topic's Streams tab. */
+  function showStreams() {
+    if (state.overview || state.path !== "attention") selectPath("attention");
+    setPanel("streams");
+  }
+
+  /* ---------- Places: the hash, agent navigation and the activity log ---------- */
+
+  function place(): Place {
+    if (state.overview) return { kind: "overview" };
+    if (panel === "streams") return { kind: "streams" };
+    if (panel === "region") return shownRegion ? { kind: "region", path: state.path, id: shownRegion } : { kind: "regions", path: state.path };
+    return { kind: "step", path: state.path, index: state.step };
+  }
+
+  /**
+   * Go to a place the way the UI would, stopping a running walkthrough. A region without a topic opens in
+   * the current topic if it covers the region, else in the first topic that does.
+   */
+  function goTo(target: Place, { camera = true, section }: { camera?: boolean; section?: RegionSection } = {}) {
+    cancelPreview();
+    stopWalk();
+    const inTopic = (path: PathId) => !state.overview && state.path === path;
+    switch (target.kind) {
+      case "overview":
+        showIntro({ camera });
+        break;
+      case "streams":
+        showStreams();
+        break;
+      case "step":
+        if (!inTopic(target.path)) selectPath(target.path, { step: target.index, camera });
+        else {
+          if (panel !== "guide") setPanel("guide");
+          setStep(target.index, { camera });
+        }
+        break;
+      case "regions":
+        if (!inTopic(target.path)) selectPath(target.path, { camera });
+        showRegionList();
+        break;
+      case "region": {
+        const path = target.path ?? (!state.overview && topicHasRegion(current(), target.id) ? state.path : hostTopic(target.id)?.id);
+        if (path && !inTopic(path)) selectPath(path, { camera: false });
+        showRegion(target.id, { camera, section });
+        break;
+      }
+    }
+  }
+
+  function emit(kind: ExplorerEvent["kind"], auto = false) {
+    onEvent?.({ kind, ref: formatRef(placeRef(place())), auto });
+  }
+
+  // The hash follows the place once per task, after every nested call has settled, so it never
+  // sees a half-updated state (a new topic with the old step number).
+  let routeQueued = false,
+    routeAuto = true,
+    shownHash: string | null = null;
+  function routeChanged(auto = false) {
+    routeAuto &&= auto;
+    if (routeQueued) return;
+    routeQueued = true;
+    queueMicrotask(flushRoute);
+  }
+  function flushRoute() {
+    if (!routeQueued) return;
+    const auto = routeAuto;
+    routeQueued = false;
+    routeAuto = true;
+    const hash = placeHash(place());
+    if (hash === shownHash) return;
+    shownHash = hash;
+    try {
+      history.replaceState(history.state, "", `${location.pathname}${location.search}${hash}`);
+    } catch {
+      // Some browsers refuse history changes for file:// pages; the guide works without the hash.
+    }
+    emit("navigated", auto);
+  }
+  window.addEventListener("hashchange", () => {
+    const target = parseHash(location.hash);
+    if (target && placeHash(target) !== shownHash) goTo(target);
+  });
+
+  /** Text the user selected in the panel, and the place it belongs to. */
+  function selection() {
+    const selected = getSelection();
+    const text = selected?.toString().trim();
+    const node = selected?.anchorNode;
+    const element = node instanceof Element ? node : node?.parentElement;
+    if (!text || !element || !inspector.contains(element)) return null;
+    const item = element.closest(".path-step");
+    const index = item ? Array.from(stepList.children).indexOf(item) : -1;
+    if (index >= 0 && !state.overview) return { place: { kind: "step", path: state.path, index } as Place, text };
+    if (element.closest("#drawer-content") && shownRegion) return { place: { kind: "region", path: state.path, id: shownRegion } as Place, text };
+    return { place: state.overview ? ({ kind: "overview" } as Place) : null, text };
   }
 
   /* ---------- Attention streams ---------- */
@@ -306,7 +418,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-path]");
     if (button) selectPath(button.dataset.path as PathId);
   });
-  byId("home-button").addEventListener("click", showIntro);
+  byId("home-button").addEventListener("click", () => showIntro());
   byId("intro-about").addEventListener("click", onOpenAbout);
   byId("back-to-intro").addEventListener("click", () => {
     showIntro();
@@ -412,12 +524,37 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     get walking() {
       return walkTimer !== undefined;
     },
+    snapshot(): ExplorerSnapshot {
+      flushRoute();
+      return {
+        overview: state.overview,
+        path: state.path,
+        step: state.step,
+        selected: state.selected,
+        panel,
+        region: shownRegion,
+        walking: walkTimer !== undefined,
+        seconds: stepSeconds,
+        place: place(),
+      };
+    },
+    /** Open the place a URL hash names, or the overview. */
+    restore(hash: string) {
+      goTo(parseHash(hash) ?? { kind: "overview" });
+    },
+    onEvent(listener: (event: ExplorerEvent) => void) {
+      onEvent = listener;
+    },
+    goTo,
+    selection,
     showIntro,
     selectPath,
     selectRegion,
     showRegion,
+    showStreams,
     setStep,
-    stopWalk,
+    startWalk,
+    stopWalk: () => stopWalk(),
   };
 }
 

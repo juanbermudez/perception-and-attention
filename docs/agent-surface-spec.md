@@ -58,6 +58,13 @@ These facts shape the design. Sources are listed in §18.
 - Do tools stay registered after hash changes?
 - Is OPFS available in the ChatGPT browser? This one blocks Stage 3.
 
+**Spike status (2026-09-28): still pending.** Stage 1 was built without access to the ChatGPT desktop browser, so none of the questions above has an answer yet. Until the spike runs, Stage 1 makes the safe choices and keeps each one switchable:
+
+- Results are plain objects (`DEFAULT_RESULT_FORMAT` in `src/agent/webmcp.ts`). `encodeResult` is the only place that shapes them; `?agent-result=content` switches to `content[]` without a rebuild.
+- Read tools set `annotations: { readOnlyHint: true }`; write tools set it to `false`.
+- Input schemas are fully inlined (no `$ref`), with `additionalProperties: false`.
+- Routing uses `history.replaceState` on the hash only, so the document never changes.
+
 ---
 
 ## 3. Key decisions, with the strongest case against each

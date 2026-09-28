@@ -38,12 +38,25 @@ export function richText(text: string) {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function toast(message: string) {
+/** A short status line over the stage. With an action (for example Undo) it stays longer and takes clicks. */
+export function toast(message: string, action?: { label: string; run: () => void }) {
   const node = byId("toast");
   node.textContent = message;
+  const hide = () => node.classList.remove("visible", "actionable");
+  if (action) {
+    const button = document.createElement("button");
+    button.className = "toast-action";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      hide();
+      action.run();
+    });
+    node.append(" ", button);
+  }
+  node.classList.toggle("actionable", Boolean(action));
   node.classList.add("visible");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove("visible"), 3400);
+  toastTimer = setTimeout(hide, action ? 6000 : 3400);
 }
 
 /** Arrow keys, Home and End move between the buttons of a tab list. */
