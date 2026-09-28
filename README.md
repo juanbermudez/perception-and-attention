@@ -30,6 +30,8 @@ This is a first version; I expect to keep adding detail.
 - **Region guides.** The Region tab lists a topic's regions with a one-line description; each opens a short guide with its sources. Hovering a region name in the panel turns the camera to it; moving away returns the view.
 - **Attention streams.** In the Attention topic, a simplified normalization model shows how giving one sense priority reduces the others without switching them off.
 - **Labels outside the head.** Callouts are placed in columns beside the head, 14 px apart when there is room, and joined to their regions by two-segment leader lines: a 45° bend out of the region, then a horizontal run to the label.
+- **Links to a place.** The URL hash follows what you are looking at (`#/vision/parallel-channels`, `#/hearing/region/soc`), so a reload or a shared link opens the same step or region.
+- **Assistant tools.** In browsers with site tools (WebMCP), an assistant can read the guide a level at a time, search it, navigate and play walkthroughs. Its actions show in an "Assistant" pill and a toast with Undo; About has a switch that turns its control off. See [`docs/agent-surface-spec.md`](docs/agent-surface-spec.md).
 
 ## Accuracy
 
@@ -57,6 +59,8 @@ pnpm preview      # build, then serve dist/ at http://localhost:8769
 | `pnpm lint` | Lint and format-check with Biome |
 | `pnpm format` | Apply Biome formatting and safe fixes |
 
+To try the assistant tools in any browser, open the page with `?agent=shim`, then call them from the console: `await agentDebug.call("outline", { ref: "topic:vision" })`. `agentDebug.tools()` lists them with their input schemas.
+
 ## Project structure
 
 ```
@@ -77,6 +81,11 @@ src/
     attention.ts       Normalization model of attention; region pulse
     activity.ts        Critically damped springs and exponential decay
     callouts.ts        Label placement outside the head
+    refs.ts            Ref grammar (topic:, step:, region:, …), suggestions, URL hash
+    search.ts          Tokenizer and scorer for guide search
+    topics.ts          Topic helpers: step signals, regions per topic
+  api/                 GuideApi: outline, read, search, go, walkthrough, context (no DOM)
+  agent/               WebMCP adapter, tool definitions, help card, kill switch, dev shim
   scene/               Three.js
     brain-scene.ts     Builds the scene and runs the frame loop
     geometry.ts        Atlas decoding, surface sampling, route curves
@@ -84,7 +93,8 @@ src/
   ui/
     explorer.ts        Controller: overview, topics, steps, panels, hover previews
     templates.ts       HTML builders for the side panel and dock
-    about.ts           About dialog (About, Papers, Code, Models)
+    about.ts           About dialog (About, Papers, Code, Models) and the assistant switch
+    agent-presence.ts  "Assistant" pill and action toasts
     dom.ts             Element lookup, escaping, [[region|text]] links, toasts
     icons.ts, keyboard.ts, panel-resize.ts
   data/                Atlas and skull geometry derived from Z-Anatomy; functional-area positions
@@ -116,7 +126,7 @@ All text lives in `src/content/`.
 
 - **Links to regions:** write `[[regionId|visible text]]` in any body text to make a button that focuses that region.
 - **External links:** in About copy, write `[label](https://…)`.
-- **New step:** add it to a topic's `steps` in `pathways.ts`. Give it a `fact`. Add a `signal` if the default hop from the previous step is wrong. The tests check that every signal follows a drawn edge.
+- **New step:** add it to a topic's `steps` in `pathways.ts`. Give it a `key` (a slug unique in the topic; links and refs use it, so do not rename it) and a `fact`. Add a `signal` if the default hop from the previous step is wrong. The tests check that every signal follows a drawn edge.
 - **New source:** add it to `sources.ts` or `guideSources` in `region-guides.ts` and reference its `id`.
 
 Run `pnpm test` after editing. It checks that every region has a guide, every link and source resolves, and every step signal follows a drawn edge.
