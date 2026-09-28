@@ -106,19 +106,19 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   pfc: {
     summary: "Prefrontal cortex, at the front of the brain, keeps goals and rules active and uses them to guide behaviour.",
     mechanism:
-      "Sustained activity keeps a goal available, for example the colour of the coat you are looking for. With the [[fef|frontal eye fields]], it sends signals that favour matching features and locations in sensory areas.",
+      "Neurons here are active while a goal has to be held in mind, for example the colour of the coat you are looking for. Researchers disagree about whether this activity is continuous or comes in brief bursts. With the [[fef|frontal eye fields]], it sends signals that favour matching features and locations in sensory areas.",
     roles: {
       attention: "Provides the goal that determines which sensory signals are prioritized.",
     },
     connections:
       "Works with [[parietal|parietal cortex]] and the [[fef|frontal eye fields]], and with the [[insula|insula]] and [[cingulate|anterior cingulate]]. Receives noradrenaline from the [[lc|locus coeruleus]]. Connects to the thalamus directly and through the basal ganglia.",
     limit: "The highlight is the left middle frontal gyrus, which is only one part of prefrontal cortex.",
-    sourceIds: ["attention-networks", "baseline", "lc-adaptive-gain"],
+    sourceIds: ["attention-networks", "baseline", "lc-adaptive-gain", "persistent-activity", "activity-bursts"],
   },
   parietal: {
     summary: "Posterior parietal cortex combines information from several senses to represent the space around the body and to plan actions.",
     mechanism:
-      "Neurons around the intraparietal sulcus represent where things are and how relevant they are at the moment. In monkeys, the lateral intraparietal area (LIP) has been described as a priority map that combines a fast response to whatever appears with top-down signals such as a planned eye movement. The peak of this map is thought to guide eye movements and attention, and the region also guides reaching.",
+      "Neurons around the intraparietal sulcus represent where things are and how relevant they are at the moment. In monkeys, the lateral intraparietal area (LIP) has been described as a priority map that combines a fast response to whatever appears with top-down signals such as a planned eye movement. The peak of this map is thought to guide eye movements and attention. Neighbouring parts of parietal cortex guide reaching.",
     roles: {
       vision: "The end of the dorsal stream. Uses vision to guide eye movements, reaching and grasping.",
       attention:
@@ -156,7 +156,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     },
     connections:
       "Receives driving input from [[l5|layer 5]] of visual cortex and input from the [[sc|superior colliculus]]; in monkeys, some pulvinar neurons receive SC input and project to [[mt|area MT]]. Connected with [[extrastriate|higher visual areas]] and [[parietal|parietal cortex]].",
-    limit: "The atlas does not include a separate pulvinar, so the marker is an approximate position and the highlight shows the whole thalamus.",
+    limit: "The atlas does not include a separate pulvinar, so the marker is an approximate position and the highlight shows the whole left thalamus.",
     sourceIds: ["pulvinar-coordination", "transthalamic", "sc-pulvinar-mt", "transthalamic-review", "visual-transthalamic"],
   },
   extrastriate: {
@@ -171,7 +171,16 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from [[v1|V1]], exchanges signals with the [[pulvinar|pulvinar]], receives feedback from the [[fef|frontal eye fields]], and sends output to [[it|inferior temporal cortex]], the category-selective areas and [[parietal|parietal]] cortex.",
     limit: "The lateral occipital highlight represents a large group of different areas.",
-    sourceIds: ["attention-gain", "baseline", "third-pathway", "parallel-pathways", "fef-v4", "visual-transthalamic"],
+    sourceIds: [
+      "attention-gain",
+      "baseline",
+      "third-pathway",
+      "parallel-pathways",
+      "fef-v4",
+      "visual-transthalamic",
+      "attention-reliability",
+      "attention-competition",
+    ],
   },
   mt: {
     summary:
@@ -383,12 +392,13 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     roles: {
       hearing: "The first cortical area for hearing. Each side receives input from both ears.",
       speech: "Processes speech at the same time as the nearby [[temporal|superior temporal gyrus]].",
-      attention: "One of the sensory inputs whose strength attention adjusts.",
+      attention:
+        "One of the sensory inputs whose strength attention adjusts. In human recordings, attended tones evoked larger responses in auditory cortex from about 20 ms after the sound.",
     },
     connections:
       "Receives input from the [[mgn|MGN]] and sends output to the surrounding [[belt|belt areas]]. Works with [[a1R|right auditory cortex]]. Sends descending fibres to the MGN and the [[ic|inferior colliculus]].",
     limit: "The highlight is Heschl’s gyrus. The actual border of A1 varies between people.",
-    sourceIds: ["auditory-cortex", "human-tonotopy", "auditory-cortex-streams", "belt-fmri"],
+    sourceIds: ["auditory-cortex", "human-tonotopy", "auditory-cortex-streams", "belt-fmri", "auditory-attention"],
   },
   a1R: {
     summary: "Right primary auditory cortex.",
@@ -396,11 +406,12 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "Same frequency organization as the left. The right side tends to be more involved in pitch and melody and the left side in rapid speech sounds, but both sides process both.",
     roles: {
       hearing: "Receives input from both ears.",
-      attention: "Continues to process sound when another sense has priority. Unexpected sounds also engage the right [[tpj|temporoparietal junction]].",
+      attention:
+        "Continues to process sound, though more weakly, when another sense has priority. Unexpected sounds also engage the right [[tpj|temporoparietal junction]].",
     },
     connections: "Works with [[a1|left auditory cortex]].",
     limit: "Heschl’s gyrus is used as the reference for A1.",
-    sourceIds: ["auditory-cortex", "multimodal-change"],
+    sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention"],
   },
   temporal: {
     summary: "The superior temporal gyrus, along the top of the temporal lobe, is where speech sounds are recognized.",
@@ -467,7 +478,8 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       touch: "The point where the pathway crosses, so the left hemisphere receives touch from the right side of the body.",
     },
     connections: "Receives input from the dorsal columns of the spinal cord and sends crossed fibres to the [[vpl|VPL]].",
-    limit: "The nuclei are not included in the atlas. The highlight shows the right half of the medulla.",
+    limit:
+      "The nuclei are not included in the atlas. The highlight shows the right half of the medulla, and the marker sits at its centre; the nuclei lie in its lower, back part.",
     sourceIds: ["body-touch-route", "mechanoreceptors"],
   },
   vpl: {
@@ -480,25 +492,26 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
         "Relays touch and position signals to S1. The thalamus also relays pain and temperature signals to S1, S2, the posterior insula and the cingulate cortex.",
     },
     connections:
-      "Receives the medial lemniscus from the [[medulla|medulla]] and spinothalamic fibres from the [[dorsalHorn|dorsal horn]], and sends output to [[s1|S1]] and [[s2|S2]]. Touch from the face uses a neighbouring nucleus (VPM).",
+      "Receives the medial lemniscus from the [[medulla|medulla]] and spinothalamic fibres from the [[dorsalHorn|dorsal horn]], and sends output mainly to areas 3b and 1 of [[s1|S1]]. In monkeys, [[s2|S2]] receives its thalamic input mainly from neighbouring nuclei (the ventral posterior inferior and superior nuclei and the anterior pulvinar). Touch from the face uses a neighbouring nucleus (VPM).",
     limit:
-      "The VPL is not included in the atlas. The highlight shows the whole left thalamus, and the marker also stands for the other thalamic nuclei that relay pain and temperature to the insula and cingulate cortex.",
-    sourceIds: ["body-touch-route", "pain-pathways", "lamina1-thalamus", "vmpo-debate"],
+      "The VPL is not included in the atlas. The highlight shows the whole left thalamus and the marker sits at its centre; the VPL lies in its lower, back, outer part. The marker also stands for the other thalamic nuclei that relay pain and temperature to the insula and cingulate cortex.",
+    sourceIds: ["body-touch-route", "pain-pathways", "lamina1-thalamus", "vmpo-debate", "s1-s2-review"],
   },
   s1: {
     summary: "Primary somatosensory cortex (S1), on the postcentral gyrus, contains a map of the body surface.",
     mechanism:
-      "Body parts are mapped in order along the gyrus, with the foot near the midline and the face and tongue at the lower end; the hands, lips and tongue take up much more space than other parts. S1 consists of four strips, areas 3a, 3b, 1 and 2, each with its own map of the opposite side of the body. In monkeys, area 3a responds mainly to muscle stretch and joint movement, areas 3b and 1 mainly to touch on the skin, and area 2 to both. Receptive fields become larger from area 3b to area 1 to area 2, and some area 2 neurons respond to curved shapes. Most neurons of the thalamic touch relay project to areas 3b and 1; area 3b corresponds to the primary somatosensory cortex of other mammals. Most neurons combine several types of input.",
+      "Body parts are mapped in order along the gyrus, with the foot near the midline and the face and tongue at the lower end; the hands, lips and tongue take up much more space than other parts. S1 consists of four strips, areas 3a, 3b, 1 and 2, each with its own map of the opposite side of the body. In monkeys, area 3a responds mainly to muscle stretch and joint movement, areas 3b and 1 mainly to touch on the skin, and area 2 to both. Receptive fields become larger from area 3b to area 1 to area 2, and some area 2 neurons respond to curved shapes. In monkeys, most neurons of the thalamic touch relay project to areas 3b and 1; area 3b corresponds to the primary somatosensory cortex of other mammals. Most neurons combine signals from more than one type of skin receptor.",
     roles: {
       touch:
-        "Assigns touch and position signals to a location on the body. It also responds to pain: after a stroke in the postcentral region, one patient lost the sensory side of pain on the affected side while its unpleasantness remained.",
-      attention: "Continues to process touch when attention is directed elsewhere.",
+        "Assigns touch and position signals to a location on the body. It also contributes to the sensory side of pain: after a stroke in the postcentral region, one patient lost the sensory side of pain on the affected side while its unpleasantness remained.",
+      attention:
+        "Continues to process touch when attention is directed elsewhere, but attention changes its responses: in one monkey, switching attention between touch and vision changed the firing of about half of S1 neurons and 80% of neurons in S2.",
     },
     connections:
       "Receives input from the [[vpl|VPL]] and sends output to [[parietal|parietal cortex]] and [[s2|S2]]. The four areas are strongly interconnected.",
     limit:
-      "The highlight is the whole left postcentral gyrus. The body map and the four areas are not drawn; area 3a lies at the bottom of the central sulcus, out of view.",
-    sourceIds: ["somatosensory-cortex", "s1-coding", "s1-s2-review", "s1-maps", "penfield", "pain-affect-lesion"],
+      "The highlight is the whole left postcentral gyrus. The body map and the four areas are not drawn; area 3a and much of area 3b lie inside the central sulcus, out of view.",
+    sourceIds: ["somatosensory-cortex", "s1-coding", "s1-s2-review", "s1-maps", "penfield", "pain-affect-lesion", "touch-attention", "s1-convergence"],
   },
   insula: {
     summary:
@@ -508,7 +521,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     roles: {
       attention: "Detects unexpected or important events and can shift attention toward them.",
       touch:
-        "Its front part receives pain, temperature and body-state signals passed forward from the [[postInsula|posterior insula]]. In one study, how intense cooling felt correlated with activity in the right anterior insula.",
+        "According to one influential model, its front part re-represents pain, temperature and body-state signals passed forward from the [[postInsula|posterior insula]]. In one study, how intense cooling felt correlated with activity in the right anterior insula.",
     },
     connections:
       "Works with the [[cingulate|anterior cingulate]] and [[pfc|prefrontal cortex]]. In one study, people who were more accurate at detecting their heartbeat showed more activity in the right anterior insula.",
@@ -526,29 +539,43 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     ],
   },
   cingulate: {
-    summary: "The anterior cingulate cortex, on the inner surface of the frontal lobe, monitors conflict and errors.",
+    summary:
+      "The anterior cingulate cortex, on the inner surface of the frontal lobe, is active when responses conflict and after errors. It is also involved in pain and emotion.",
     mechanism:
-      "Its activity increases when responses conflict, after errors, and when a task requires more effort. This is thought to signal that more control is needed.",
+      "Its activity increases when responses conflict and after errors. This is thought to signal that more control is needed. This is thought to signal that more control is needed.",
     roles: {
       attention: "Helps maintain task performance when goals and habits conflict.",
-      touch: "Activity follows how unpleasant pain feels more closely than how intense it is.",
+      touch:
+        "In a hypnosis study, its activity changed when pain was made more or less unpleasant while its intensity stayed the same. It also responds to other sudden, important stimuli, not only to pain.",
     },
     connections:
       "Works with the [[insula|insula]] in the salience network and with [[pfc|prefrontal cortex]] for control. Receives pain-related input from the midline, mediodorsal and intralaminar nuclei of the thalamus (represented by the [[vpl|thalamus]] marker). In monkeys, it sends direct input to the [[lc|locus coeruleus]].",
-    limit: "The highlight is a middle-anterior part of the cingulate. The exact functional area varies.",
-    sourceIds: ["task-control", "salience-networks", "lc-adaptive-gain", "pain-affect", "cingulate-thalamus", "spinothalamic-cortex"],
+    limit:
+      "The highlight is the middle-anterior part of the cingulate, which some anatomists call anterior midcingulate cortex; much of the 'dorsal anterior cingulate' activity in conflict and salience studies is reported here. The exact functional area varies.",
+    sourceIds: [
+      "task-control",
+      "salience-networks",
+      "lc-adaptive-gain",
+      "pain-affect",
+      "cingulate-thalamus",
+      "spinothalamic-cortex",
+      "conflict-monitoring",
+      "conflict-adjustment",
+      "cingulate-subregions",
+      "pain-matrix",
+    ],
   },
   fef: {
     summary:
       "The frontal eye fields (FEF) are areas of frontal cortex that move the eyes and help direct attention. In humans they lie in the precentral sulcus, near its junction with the superior frontal sulcus.",
     mechanism:
-      "In monkeys, electrically stimulating an FEF site moves the eyes by a particular direction and distance, and currents as small as 10 microamps can be enough. The FEF contains neurons that respond to visual stimuli, neurons that fire before eye movements, and neurons that do both. Stimulation too weak to move the eyes improved monkeys' performance at the matching location and increased the responses of V4 neurons there. During attention, activity in the FEF and V4 becomes synchronized at gamma frequencies, and the FEF appears to lead by about 8–13 ms. Whether attention simply reuses eye-movement plans is debated: in one study, FEF neurons active only before eye movements did not change during covert attention, while visually responsive FEF neurons did.",
+      "In monkeys, electrically stimulating an FEF site moves the eyes by a particular direction and distance, and currents as small as 10 microamps can be enough. The FEF contains neurons that respond to visual stimuli, neurons that fire before eye movements, and neurons that do both. Stimulation too weak to move the eyes improved monkeys' performance at the matching location and increased the responses of V4 neurons there. In monkeys, during attention, activity in the FEF and V4 becomes synchronized at gamma frequencies, and the FEF appears to lead by about 8–13 ms. Whether attention simply reuses eye-movement plans is debated: in one monkey study, FEF neurons active only before eye movements did not change during covert attention, while visually responsive FEF neurons did.",
     roles: {
       attention:
         "Turns the current goal into a spatial signal that increases the gain of visual neurons at the chosen location, with or without an eye movement.",
     },
     connections:
-      "Works with [[parietal|parietal cortex]] in the dorsal attention network and with [[pfc|prefrontal cortex]]. In monkeys, it sends a large projection to the [[sc|superior colliculus]] and projects to many visual areas, including V2, V4, [[mt|MT]] and [[it|inferior temporal cortex]]. The right [[tpj|temporoparietal junction]] is thought to interrupt this network when something unexpected happens.",
+      "Works with [[parietal|parietal cortex]] in the dorsal attention network and with [[pfc|prefrontal cortex]]. In monkeys, it sends a large projection to the [[sc|superior colliculus]] and projects to many visual areas, including V2, V4, [[mt|MT]] and [[it|inferior temporal cortex]]. The right [[tpj|temporoparietal junction]] has been proposed to interrupt this network when something unexpected happens, although this role is debated.",
     limit:
       "The marker sits in the left superior precentral sulcus at a typical position from a meta-analysis of brain imaging studies. Across studies and people, the FEF's position varies by around a centimetre, most of all from side to side. It is found in both hemispheres; only the left is shown.",
     sourceIds: [
@@ -593,9 +620,9 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "The temporoparietal junction (TPJ) is the region where the temporal and parietal lobes meet, at the back end of the lateral (Sylvian) fissure. The right TPJ is a core part of the ventral attention network, which redirects attention to unexpected events.",
     mechanism:
-      "It responds when something relevant appears where it was not expected, such as a target on the uncued side of a screen, and to changes in what is seen, heard or felt. During focused attention its activity drops, which may help keep distractions out. Its responses depend on the current goal: distractors that shared the target's colour captured attention and activated the TPJ together with ventral frontal cortex. In healthy volunteers, briefly disrupting the right TPJ with magnetic stimulation made it harder to shift attention to a target at an unexpected location. The TPJ is also used when thinking about other people's beliefs; a meta-analysis found that its front part is active in both reorienting and this social task, while its back part is more specific to the social task.",
+      "It responds when something relevant appears where it was not expected, such as a target on the uncued side of a screen, and to changes in what is seen, heard or felt. During focused attention its activity drops, which may help keep distractions out. Its responses depend on the current goal: distractors that shared the target's colour captured attention and activated the TPJ together with ventral frontal cortex. In healthy volunteers, briefly disrupting the right TPJ with magnetic stimulation made it harder to shift attention to a target at an unexpected location. The TPJ is also used when thinking about other people's beliefs; a meta-analysis found that its front part is active in both reorienting and this social task, while its back part is more specific to the social task. Whether the TPJ triggers shifts of attention is debated: some researchers argue that its responses come too late and reflect updating of expectations after an unexpected event.",
     roles: {
-      attention: "Detects relevant, unexpected events and helps pull attention away from the current focus.",
+      attention: "Responds to relevant, unexpected events and is thought to help pull attention away from the current focus.",
     },
     connections:
       "Works with inferior frontal cortex in the ventral attention network and interacts with the dorsal network ([[fef|frontal eye fields]] and [[parietal|parietal cortex]]); at rest, parts of prefrontal cortex are correlated with both networks. Its resting activity also rises and falls with the anterior [[insula|insula]] and mid-cingulate cortex, more strongly for the right TPJ than the left. Corbetta and colleagues proposed that it is influenced by noradrenaline from the [[lc|locus coeruleus]]. Damage to the right TPJ causes spatial neglect more often than damage to the left.",
@@ -613,6 +640,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "neglect-networks",
       "attention-rest",
       "dorsal-ventral-interaction",
+      "tpj-updating",
     ],
   },
   lc: {
@@ -633,13 +661,13 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "The dorsal horn is the back part of the spinal cord’s grey matter, where sensory fibres from the body make their first connections. For pain, temperature and itch it is the first relay; its output crosses the cord and rises to the brain in the spinothalamic tract.",
     mechanism:
-      "Nociceptor fibres end mainly in laminae I, II and V of the dorsal horn, on relay neurons and local interneurons that adjust the signal before it leaves. In monkeys, cats and rats, the neurons that project to the thalamus are concentrated in lamina I, the outermost layer, and in laminae IV–VI. Their axons usually cross the midline a short distance from the cell body and ascend in the anterolateral part of the cord. Other branches of this system go to the brainstem and midbrain. In cats, some lamina I spinothalamic neurons respond selectively to histamine, a chemical that causes itch.",
+      "Nociceptor fibres end mainly in laminae I, II and V of the dorsal horn, on relay neurons and local interneurons that adjust the signal before it leaves. In monkeys, the neurons that project to the thalamus are concentrated in lamina I, the outermost layer, and in laminae IV–VI. Their axons usually cross the midline a short distance from the cell body and ascend in the anterolateral part of the cord. Other branches of this system go to the brainstem and midbrain. In cats, some lamina I spinothalamic neurons respond selectively to histamine, a chemical that causes itch.",
     roles: {
       touch:
         "The first relay of the pain and temperature route. Its signals cross to the opposite side near where they enter the cord, much lower than touch and position signals, which cross in the medulla.",
     },
     connections:
-      "Receives thin Aδ and C fibres from the right side of the body and sends crossed axons up the spinothalamic tract to the [[vpl|thalamus]]. Because the two routes cross at different levels, damage to one half of the spinal cord (Brown-Séquard syndrome) causes loss of fine touch, vibration and position sense on the same side below the injury, and loss of pain and temperature on the opposite side.",
+      "Receives thin Aδ and C fibres from the right side of the body and sends crossed axons up the spinothalamic tract to the [[vpl|thalamus]]. Because the two routes cross at different levels, damage to one half of the spinal cord (Brown-Séquard syndrome) causes loss of fine touch, vibration and position sense on the same side below the injury, and loss of pain and temperature on the opposite side, starting a few segments below the injury.",
     limit:
       "The spinal cord is not part of the model. The marker sits at the lower end of the right medulla, where the spinal cord begins, and stands for the dorsal horn at every level of the cord; the medulla is highlighted as the nearest modelled structure. The crossing and the tract are drawn as one curve.",
     sourceIds: ["pain-pathways", "nociceptors", "itch-neurons", "cordotomy", "brown-sequard"],
@@ -648,7 +676,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "Secondary somatosensory cortex (S2) lies on the parietal operculum, the upper bank of the lateral sulcus, just below the lower end of S1. It processes touch from both sides of the body and also responds to pain.",
     mechanism:
-      "In humans, the parietal operculum contains four areas that differ in their cell layers (OP1–OP4); OP1 is thought to correspond to monkey S2. In monkeys, S2 neurons have large receptive fields that span several fingers and often respond to touch on either hand. S2 receives input from all four areas of S1 and directly from the thalamus. In macaques, removing the S1 representation of a body part left the matching part of S2 unresponsive to touch, whereas removing S2 did not change S1. In humans, magnetic stimulation over S2 shortly after a painful laser pulse made people worse at judging the pulse’s intensity, but not its location.",
+      "In humans, the parietal operculum contains four areas that differ in their cell layers (OP1–OP4); OP1 is thought to correspond to monkey S2. In monkeys, S2 neurons have large receptive fields that span several fingers and often respond to touch on either hand, and S2 receives input from all four areas of S1 and directly from the thalamus. In macaques, removing the S1 representation of a body part left the matching part of S2 unresponsive to touch, whereas removing S2 did not change S1. In humans, magnetic stimulation over S2 shortly after a painful laser pulse made people worse at judging the pulse’s intensity, but not its location.",
     roles: {
       touch: "A second stage of touch processing that combines input from both sides of the body. It also contributes to judging how intense a pain is.",
     },
@@ -662,13 +690,13 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "The posterior insula is the back part of the insula, folded deep inside the lateral sulcus. It is a main cortical target of the spinothalamic pathway and responds to pain, temperature and other signals about the body’s condition.",
     mechanism:
-      "In macaques, a posterior thalamic region that receives lamina I spinothalamic input projects in body-ordered fashion to the dorsal posterior insula. In human brain imaging, graded cooling activated the dorsal edge of the middle and posterior insula on the opposite side, and painful heat on the face, hand and foot produced a rough body map there. Electrical stimulation of this region and the neighbouring parietal operculum is the only cortical stimulation found to evoke pain. In a patient without large touch fibres, slow stroking that activates unmyelinated touch (C-tactile) fibres felt faintly pleasant and activated the insula, but not S1 or S2. Whether any part of it is specific to pain is debated: recordings from electrodes in the human insula found similar responses to painful, vibrating, sound and visual stimuli.",
+      "In macaques, a posterior thalamic region that receives lamina I spinothalamic input projects in body-ordered fashion to the dorsal posterior insula. In human brain imaging, graded cooling activated the dorsal edge of the middle and posterior insula on the opposite side, and painful heat on the face, hand and foot produced a rough body map there. In a study of 4,160 electrical stimulations across the cortex, only this region and the neighbouring parietal operculum evoked pain. Another stimulation study also evoked pain from a gyrus in the front half of the insula (the middle short gyrus). In a patient without large touch fibres, slow stroking that activates unmyelinated touch (C-tactile) fibres felt faintly pleasant and activated the insula, but not S1 or S2. Whether any part of it is specific to pain is debated: recordings from electrodes in the human insula found similar responses to painful, vibrating, sound and visual stimuli.",
     roles: {
       touch:
         "Receives pain, temperature, itch and other signals about the body’s condition. Craig proposed it as the primary cortex for interoception, the sense of the body’s internal state.",
     },
     connections:
-      "Receives input from posterior thalamic nuclei (represented by the [[vpl|thalamus]] marker) and lies next to [[s2|S2]] on the parietal operculum. Craig proposed that its signals are passed forward to the [[insula|anterior insula]], where they are re-represented as feelings; in one study, how intense cooling felt correlated with activity in the right anterior insula.",
+      "Receives input from posterior thalamic nuclei (represented by the [[vpl|thalamus]] marker) and lies just below and inside [[s2|S2]], which is on the parietal operculum. Craig proposed that its signals are passed forward to the [[insula|anterior insula]], where they are re-represented as feelings; in one study, how intense cooling felt correlated with activity in the right anterior insula.",
     limit:
       "The atlas does not segment the insular gyri. The marker is at a group-average position for painful heat on the right hand (MNI −40, −19, 14), snapped to the circular sulcus that borders the insula, and the highlight shows the whole left circular sulcus. The posterior insula is present in both hemispheres; only the left is shown.",
     sourceIds: [
@@ -681,6 +709,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "insula-nonspecific",
       "dpins",
       "dpins-debate",
+      "insula-stimulation-pain",
     ],
   },
   belt: {
@@ -750,6 +779,11 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
 };
 
 export const guideSources: { id: string; title: string; url: string }[] = [
+  {
+    id: "pain-matrix",
+    title: "Iannetti & Mouraux · From the neuromatrix to the pain matrix (and back) (2010)",
+    url: "https://doi.org/10.1007/s00221-010-2340-1",
+  },
   {
     id: "retinal-circuits",
     title: "Purves et al. · The Retina · Neuroscience (2001)",
@@ -1197,7 +1231,7 @@ export const guideSources: { id: string; title: string; url: string }[] = [
   },
   {
     id: "fef-sc-projection",
-    title: "Stanton, Goldberg & Bruce · Frontal eye field efferents in the macaque monkey: II. Terminal fields in midbrain and pons (1988)",
+    title: "Stanton, Goldberg & Bruce · Frontal eye field efferents in the macaque monkey: II. Topography of terminal fields in midbrain and pons (1988)",
     url: "https://doi.org/10.1002/cne.902710403",
   },
   {
@@ -1647,5 +1681,76 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     id: "cortical-thickness",
     title: "Fischl & Dale · Measuring the thickness of the human cerebral cortex from magnetic resonance images (2000)",
     url: "https://doi.org/10.1073/pnas.200033797",
+  },
+  {
+    id: "tpj-updating",
+    title: "Geng & Vossel · Re-evaluating the role of TPJ in attentional control: contextual updating? (2013)",
+    url: "https://doi.org/10.1016/j.neubiorev.2013.08.010",
+  },
+  {
+    id: "conflict-monitoring",
+    title: "Botvinick et al. · Conflict monitoring and cognitive control (2001)",
+    url: "https://doi.org/10.1037/0033-295X.108.3.624",
+  },
+  {
+    id: "conflict-adjustment",
+    title: "Kerns et al. · Anterior cingulate conflict monitoring and adjustments in control (2004)",
+    url: "https://doi.org/10.1126/science.1089910",
+  },
+  {
+    id: "attention-reliability",
+    title: "Mitchell, Sundberg & Reynolds · Differential attention-dependent response modulation across cell classes in macaque V4 (2007)",
+    url: "https://doi.org/10.1016/j.neuron.2007.06.018",
+  },
+  {
+    id: "attention-competition",
+    title: "Reynolds, Chelazzi & Desimone · Competitive mechanisms subserve attention in macaque areas V2 and V4 (1999)",
+    url: "https://doi.org/10.1523/JNEUROSCI.19-05-01736.1999",
+  },
+  {
+    id: "crossmodal-attention",
+    title: "Johnson & Zatorre · Attention to simultaneous unrelated auditory and visual events (2005)",
+    url: "https://doi.org/10.1093/cercor/bhi039",
+  },
+  {
+    id: "crossmodal-shifts",
+    title: "Shomstein & Yantis · Control of attention shifts between vision and audition in human cortex (2004)",
+    url: "https://doi.org/10.1523/JNEUROSCI.2939-04.2004",
+  },
+  {
+    id: "persistent-activity",
+    title: "Constantinidis et al. · Persistent spiking activity underlies working memory (2018)",
+    url: "https://doi.org/10.1523/JNEUROSCI.2486-17.2018",
+  },
+  {
+    id: "activity-bursts",
+    title: "Lundqvist, Herman & Miller · Working memory: delay activity, yes! Persistent activity? Maybe not (2018)",
+    url: "https://doi.org/10.1523/JNEUROSCI.2485-17.2018",
+  },
+  {
+    id: "auditory-attention",
+    title: "Woldorff et al. · Modulation of early sensory processing in human auditory cortex during auditory selective attention (1993)",
+    url: "https://doi.org/10.1073/pnas.90.18.8722",
+  },
+  {
+    id: "touch-attention",
+    title:
+      "Hsiao, O'Shaughnessy & Johnson · Effects of selective attention on spatial form processing in monkey primary and secondary somatosensory cortex (1993)",
+    url: "https://doi.org/10.1152/jn.1993.70.1.444",
+  },
+  {
+    id: "cingulate-subregions",
+    title: "Vogt · Pain and emotion interactions in subregions of the cingulate gyrus (2005)",
+    url: "https://doi.org/10.1038/nrn1704",
+  },
+  {
+    id: "insula-stimulation-pain",
+    title: "Afif et al. · Middle short gyrus of the insula implicated in pain processing (2008)",
+    url: "https://doi.org/10.1016/j.pain.2008.02.004",
+  },
+  {
+    id: "s1-convergence",
+    title: "Saal & Bensmaia · Touch is a team effort: interplay of submodalities in cutaneous sensibility (2014)",
+    url: "https://doi.org/10.1016/j.tins.2014.08.012",
   },
 ];

@@ -58,6 +58,8 @@ export function senseForRegion(id: RegionId) {
 // number per stream: R_i = A_i·E_i / (σ + Σ_j A_j·E_j). E is the stimulus drive
 // (1 while a stream is shown), A the attention gain. Boosting one stream enlarges
 // the shared denominator, so the others are suppressed without being switched off.
+// The published model pools stimuli within visual cortex; pooling across senses
+// here is an illustrative assumption, not an established mechanism.
 export const NORMALIZATION_SIGMA = 1;
 export const MAX_ATTENTION_GAIN = 3;
 export function attentionGain(focus: number) {

@@ -31,7 +31,11 @@ export const regionAnatomy: Record<RegionId, AtlasHighlight> = {
   l5: { parts: ["Calcarine_sulcusl"], label: "Left calcarine region", context: "Cortical surface reference; microscopic layer 5 is not segmented." },
   trn: { parts: ["Thalamusl"], label: "Left thalamus", context: "Parent structure highlighted; TRN remains an unsegmented landmark." },
   pfc: { parts: ["Middle_frontal_gyrusl"], label: "Left middle frontal gyrus", context: "Anatomical reference for this prefrontal landmark." },
-  parietal: { parts: ["Superior_parietal_lobulel"], label: "Left superior parietal lobule", context: "Anatomical reference for this parietal landmark." },
+  parietal: {
+    parts: ["Superior_parietal_lobulel", "Intraparietal_sulcusl"],
+    label: "Left superior parietal lobule and intraparietal sulcus",
+    context: "Anatomical reference for this parietal landmark; the priority-map regions lie around the intraparietal sulcus.",
+  },
   pulvinar: { parts: ["Thalamusl"], label: "Left thalamus", context: "Parent structure highlighted; pulvinar remains an unsegmented landmark." },
   extrastriate: {
     parts: ["Lateral_occipital_gyrus_(Middle_occipital_gyrus*)l"],

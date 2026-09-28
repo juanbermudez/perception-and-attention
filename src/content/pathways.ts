@@ -186,7 +186,7 @@ export const pathways: Pathway[] = [
     color: "#89bdf4",
     icon: "touch",
     intro:
-      "Signals from the body reach the brain by two main routes. Fine touch, vibration and body position run up the dorsal columns of the spinal cord and cross to the other side in the medulla. Pain, temperature and itch cross in the spinal cord, near where they enter, and run up the spinothalamic tract. Both routes pass through the thalamus to the cortex, so each hemisphere receives signals from the opposite side of the body.",
+      "Signals from the body reach the brain by two main routes. Fine touch, vibration and body position run up the dorsal columns of the spinal cord and cross to the other side in the medulla. Pain, temperature and itch cross in the spinal cord, near where they enter, and run up the spinothalamic tract. Both routes pass through the thalamus to the cortex, so each hemisphere receives signals mainly from the opposite side of the body.",
     insight:
       "The two routes cross at different levels, so damage to one half of the spinal cord affects fine touch on one side of the body and pain on the other. The touch route leads to S1, which maps the body surface in detail, and on to parietal cortex, which uses touch to guide action. The pain and temperature route reaches S1 and S2, and also the posterior insula, which represents the body’s internal condition, and the cingulate cortex, whose activity follows how unpleasant pain feels. Whether any cortical area responds to pain alone is debated.",
     caveat:
@@ -208,27 +208,27 @@ export const pathways: Pathway[] = [
       {
         region: "s1",
         title: "Primary somatosensory cortex (S1)",
-        body: "[[s1|Primary somatosensory cortex]] runs along the postcentral gyrus and contains a map of the opposite side of the body, with the foot near the midline and the face and tongue at the lower end. The hands, lips and tongue take up much more of this map than the back or legs. S1 is made of four narrow strips, areas 3a, 3b, 1 and 2, each with its own body map. In monkeys, area 3a responds mainly to muscle stretch and joint movement, areas 3b and 1 mainly to touch on the skin, and area 2 to both, with larger receptive fields and some neurons tuned to object shape. Most neurons combine several types of input.",
+        body: "[[s1|Primary somatosensory cortex]] runs along the postcentral gyrus and contains a map of the opposite side of the body, with the foot near the midline and the face and tongue at the lower end. The hands, lips and tongue take up much more of this map than the back or legs. S1 is made of four narrow strips, areas 3a, 3b, 1 and 2, each with its own body map. In monkeys, area 3a responds mainly to muscle stretch and joint movement, areas 3b and 1 mainly to touch on the skin, and area 2 to both, with larger receptive fields and some neurons tuned to object shape. Most neurons combine signals from more than one type of skin receptor.",
         fact: "Wilder Penfield mapped this area by electrically stimulating the cortex of awake patients during epilepsy surgery; patients reported sensations in specific body parts.",
       },
       {
         region: "parietal",
         title: "Posterior parietal cortex",
         body: "[[parietal|Posterior parietal cortex]] combines touch with vision and body position to track where objects are relative to the body. This information is used for actions such as reaching and grasping.",
-        fact: "Damage to parietal cortex, usually on the right, can cause neglect: the person does not attend to one side of space, sometimes including their own body. The damage that causes it usually lies in the inferior parietal lobule or the nearby temporoparietal junction, below the area highlighted here.",
+        fact: "Damage on the right side of the brain, often in parietal cortex, can cause neglect: the person does not attend to the left side of space, sometimes including their own body. The damage usually involves the inferior parietal lobule, the temporoparietal junction or the superior temporal gyrus, all below the area highlighted here. Which of these matters most is debated.",
       },
       {
         region: "s2",
         title: "Secondary somatosensory cortex (S2)",
-        body: "[[s2|Secondary somatosensory cortex]] lies on the parietal operculum, the upper bank of the lateral sulcus, just below the lower end of S1. It receives input from all four areas of S1 and directly from the thalamus. In monkeys, its neurons respond to touch over larger areas of skin than S1 neurons, often on both hands. In human brain imaging, touch on the right hand activates S2 in both hemispheres. S2 also responds to painful stimuli, and briefly disrupting it with magnetic stimulation made people worse at judging how intense a pain was.",
+        body: "[[s2|Secondary somatosensory cortex]] lies on the parietal operculum, the upper bank of the lateral sulcus, just below the lower end of S1. In monkeys, it receives input from all four areas of S1 and directly from the thalamus, and its neurons respond to touch over larger areas of skin than S1 neurons, often on both hands. In human brain imaging, touch on the right hand activates S2 in both hemispheres. S2 also responds to painful stimuli, and briefly disrupting it with magnetic stimulation made people worse at judging how intense a pain was.",
         fact: "In macaques, removing the part of S1 that represents one body part left the matching part of S2 unresponsive to touch, while removing S2 left S1 responses unchanged.",
         signal: [[["s1", "s2"]]],
       },
       {
         region: "dorsalHorn",
         title: "Pain and temperature cross in the spinal cord",
-        body: "Pain, temperature and itch are detected by free nerve endings with thin fibres. Thinly myelinated Aδ fibres carry the first, sharp pain; the slower, burning pain that follows comes mainly from unmyelinated C fibres. These fibres end in the [[dorsalHorn|dorsal horn]] of the spinal cord. Neurons there send their axons across to the other side of the cord, close to the level where the signal entered, and up the spinothalamic tract to the thalamus. Touch and position fibres stay on the same side until the medulla, so damage to one half of the spinal cord removes fine touch on the same side of the body and pain and temperature on the opposite side.",
-        fact: "Surgeons can relieve severe one-sided cancer pain by cutting this tract high in the neck, on the side opposite the pain. In a study of 19 such patients, pain, temperature and itch on the painful side were lost or greatly reduced, while the threshold for detecting light touch did not change.",
+        body: "Pain, temperature and itch are detected by free nerve endings with thin fibres. Thinly myelinated Aδ fibres carry the first, sharp pain; the slower, burning pain that follows comes mainly from unmyelinated C fibres. These fibres end in the [[dorsalHorn|dorsal horn]] of the spinal cord. Neurons there send their axons across to the other side of the cord, close to the level where the signal entered, and up the spinothalamic tract to the thalamus. Touch and position fibres stay on the same side until the medulla, so damage to one half of the spinal cord causes loss of fine touch and position sense on the same side of the body, and of pain and temperature on the opposite side, below the level of the damage.",
+        fact: "Surgeons can relieve severe one-sided cancer pain by destroying this tract with a heat probe high in the neck, on the side opposite the pain. In a study of 19 such patients, pain, temperature and itch on the painful side were lost or greatly reduced, while the threshold for detecting light touch did not change.",
         signal: [],
       },
       {
@@ -248,7 +248,7 @@ export const pathways: Pathway[] = [
       {
         region: "cingulate",
         title: "Cingulate cortex: how unpleasant pain feels",
-        body: "Pain has a sensory side, where it is and how strong it is, and an emotional side, how unpleasant it is. Spinothalamic signals reach the [[cingulate|anterior cingulate cortex]] through nuclei in the middle of the thalamus, and activity here follows how unpleasant a painful stimulus feels. Much of the response to brief painful stimuli in the cingulate cortex, insula and S2 also appears with other sudden stimuli, such as touches, sounds or flashes, which links these areas to the salience network (see the Attention topic). Whether any cortical area responds to pain alone is debated.",
+        body: "Pain has a sensory side, where it is and how strong it is, and an emotional side, how unpleasant it is. Spinothalamic signals reach the [[cingulate|anterior cingulate cortex]] through nuclei in the middle of the thalamus, and activity here follows how unpleasant a painful stimulus feels. Much of the response to brief painful stimuli in the cingulate cortex, insula and S2 also appears with other sudden stimuli, such as touches, sounds or flashes, which suggests that these responses mainly signal that something important has happened. The anterior cingulate cortex and the front of the insula form the core of the salience network (see the Attention topic). Whether any cortical area responds to pain alone is debated.",
         fact: "When hypnotic suggestions made a painful stimulus feel more or less unpleasant without changing how intense it felt, activity changed in the anterior cingulate cortex but not in S1.",
         signal: [[["vpl", "cingulate"]]],
       },
@@ -323,6 +323,7 @@ export const pathways: Pathway[] = [
       "pain-stimulation",
       "pain-affect",
       "pain-matrix",
+      "neglect-networks",
     ],
   },
   {
@@ -740,9 +741,9 @@ export const pathways: Pathway[] = [
     intro:
       "The senses provide more information than the brain can process in detail. Attention increases the processing of some signals and reduces others. Several systems are involved: a frontal and parietal network that follows current goals, networks that respond to unexpected or important events, brainstem nuclei that set arousal, and the superior colliculus and thalamus below the cortex.",
     insight:
-      "Attention changes how strongly sensory neurons respond (their gain). Directing the eyes and directing attention share much of their circuitry: the frontal eye fields, parietal cortex and superior colliculus each hold a map of space used for both, although researchers disagree about how completely the two overlap. Goal-driven and event-driven networks interact, neuromodulators such as noradrenaline and acetylcholine adjust the overall state, and the thalamus helps coordinate the areas involved. Unattended signals are weakened but still processed.",
+      "Attention changes how strongly sensory neurons respond (their gain). Directing the eyes and directing attention share much of their circuitry: the frontal eye fields, parietal cortex and superior colliculus each hold a map of space used for both, although researchers disagree about how completely the two overlap. Goal-driven and event-driven networks interact, neuromodulators such as noradrenaline and acetylcholine adjust alertness and the strength of attention effects, and, in monkeys and mice, the thalamus has been shown to help coordinate the areas involved. Unattended signals are weakened but still processed.",
     caveat:
-      "A simplified example with three senses. The gold links show that these networks interact; they are not a fixed sequence or traced fibres. Most regions are drawn in the left hemisphere, although all of them exist on both sides; the temporoparietal junction is drawn on the right, where the ventral attention network is stronger. The frontal eye fields and temporoparietal junction are markers at typical positions from group studies and vary by around a centimetre between people. The superior colliculus, locus coeruleus and pulvinar are not in the atlas; their markers are approximate positions inside the midbrain, pons and thalamus. The basal forebrain, the main source of acetylcholine for the cortex, is not drawn. Dopamine, the basal ganglia, memory systems and the default mode network are not shown. The numbers in the Streams tab come from a simplified model, not measurements.",
+      "A simplified example with three senses. The gold links show that these networks interact; they are not a fixed sequence or traced fibres. Most regions are drawn in the left hemisphere, although all of them exist on both sides; the temporoparietal junction and the right auditory cortex are drawn on the right, and the ventral attention network is stronger there. The frontal eye fields and temporoparietal junction are markers at typical positions from group studies. The FEF's reported position varies by around a centimetre, and the TPJ has no agreed borders. The superior colliculus, locus coeruleus and pulvinar are not in the atlas; their markers are approximate positions inside the midbrain, pons and thalamus. The basal forebrain, the main source of acetylcholine for the cortex, is not drawn. Dopamine, the basal ganglia, memory systems and the default mode network are not shown. The numbers in the Streams tab come from a simplified model, not measurements.",
     steps: [
       {
         region: "pfc",
@@ -754,7 +755,7 @@ export const pathways: Pathway[] = [
       {
         region: "fef",
         title: "Steering the eyes and attention",
-        body: "The [[fef|frontal eye fields]] (FEF), in the precentral sulcus, move the eyes toward chosen locations. They also shift attention to a location without moving the eyes, which is called covert attention. Each FEF site corresponds to one part of the visual field. In monkeys, stimulating an FEF site with a current too weak to move the eyes improved performance on an attention task, but only when the attended object was in that site's part of the field. In humans, magnetic stimulation (TMS) of the right FEF changed activity in visual areas V1 to V4 and made stimuli in the periphery look higher in contrast than central ones.",
+        body: "The [[fef|frontal eye fields]] (FEF), in the precentral sulcus, move the eyes toward chosen locations. They also shift attention to a location without moving the eyes, which is called covert attention. Each FEF site corresponds to one part of the visual field. In monkeys, stimulating an FEF site with a current too weak to move the eyes improved performance on an attention task, but only when the attended object was in that site's part of the field. In humans, magnetic stimulation (TMS) of the right FEF changed activity in visual areas V1 to V4 and made stimuli in the periphery look higher in contrast relative to central ones.",
         fact: "In monkeys, the same weak FEF stimulation increased the responses of V4 neurons to stimuli at the matching location. Stimulating FEF sites for other locations could reduce them.",
       },
       {
@@ -773,7 +774,7 @@ export const pathways: Pathway[] = [
       {
         region: "tpj",
         title: "Reorienting to the unexpected",
-        body: "When something unexpected but relevant happens, such as a sound behind you or a movement at the edge of view, attention has to leave its current focus. This engages the ventral attention network: the [[tpj|temporoparietal junction]] (TPJ) and the inferior frontal cortex, mainly in the right hemisphere. The TPJ responds to changes in what you see, hear and feel. Its activity drops during focused attention, which may help keep distractions out. When a relevant event occurs, it is thought to interrupt the dorsal network so that attention can move to the event.",
+        body: "When something unexpected but relevant happens, such as a sound behind you or a movement at the edge of view, attention has to leave its current focus. This engages the ventral attention network: the [[tpj|temporoparietal junction]] (TPJ) and the inferior frontal cortex, mainly in the right hemisphere. The TPJ responds to changes in what you see, hear and feel. Its activity drops during focused attention, which may help keep distractions out. When a relevant event occurs, it has been proposed to interrupt the dorsal network so that attention can move to the event. Others argue that its responses come too late to trigger the shift and instead reflect updating of expectations after the event.",
         fact: "Spatial neglect, in which a person does not attend to the left side of space, usually follows damage to the right hemisphere, typically the inferior parietal lobule, superior temporal gyrus or inferior frontal gyrus. Which of these areas is most critical is debated.",
         signal: [
           [
@@ -787,20 +788,20 @@ export const pathways: Pathway[] = [
         region: "insula",
         title: "Detecting important events",
         body: "The anterior [[insula|insula]] and [[cingulate|anterior cingulate cortex]] form the salience network. It responds to events that are important at the moment, such as a sudden change in a sound, sight or touch, or pain, and can shift attention away from the current task. It overlaps with the ventral attention network: the right anterior insula is active when attention is reoriented, and at rest the [[tpj|TPJ]]'s activity rises and falls with the insula and cingulate cortex. Some researchers treat the two as one network; others keep them separate. One hypothesis, still debated, is that the salience network switches the brain between internally focused and task-focused states.",
-        fact: "The anterior insula also processes signals from inside the body. People who are better at detecting their own heartbeat show more activity in the right anterior insula.",
+        fact: "The anterior insula also processes signals from inside the body. In one study, people who were better at detecting their own heartbeat showed more activity in the right anterior insula while they tried to do so.",
         signal: [],
       },
       {
         region: "cingulate",
         title: "Adjusting control",
-        body: "The [[cingulate|anterior cingulate cortex]] is active when responses conflict or when an error is made. It works with prefrontal cortex to increase control on the next attempt. In monkeys, it also sends direct input to the [[lc|locus coeruleus]].",
+        body: "The [[cingulate|anterior cingulate cortex]] is active when responses conflict or when an error is made. According to the conflict-monitoring theory, this activity signals prefrontal cortex to increase control on the next attempt. In one study using the Stroop task, stronger cingulate activity on a conflicting trial was followed by more prefrontal activity and by adjustments in performance on the next trial. In monkeys, it also sends direct input to the [[lc|locus coeruleus]].",
         fact: "A standard example is the Stroop task: naming the ink colour of the word RED printed in blue. Anterior cingulate activity increases on these conflicting trials.",
         signal: [[["insula", "cingulate"]], [["cingulate", "pfc"]]],
       },
       {
         region: "lc",
         title: "Arousal and neuromodulators",
-        body: "How alert you are affects how well you can attend. The [[lc|locus coeruleus]], a small nucleus in the upper pons, is the main source of noradrenaline (norepinephrine) for the cortex. According to the adaptive gain theory, brief bursts of its activity help carry out the current task, while a steadier, tonic pattern goes with disengaging and looking for alternatives. Acetylcholine, a second chemical involved in attention, reaches the cortex mainly from the basal forebrain, which is not shown in the model. In monkey V1, adding small amounts of acetylcholine increased the effect of attention on neurons, and blocking its muscarinic receptors reduced it.",
+        body: "How alert you are affects how well you can attend. The [[lc|locus coeruleus]], a small nucleus in the upper pons, is the main source of noradrenaline (norepinephrine) for the cortex. According to the adaptive gain theory, brief bursts of its activity help carry out the current task, while a higher background (tonic) firing rate with weaker bursts goes with disengaging and looking for alternatives. Acetylcholine, a second chemical involved in attention, reaches the cortex mainly from the basal forebrain, which is not shown in the model. In monkey V1, adding small amounts of acetylcholine increased the effect of attention on neurons, and blocking its muscarinic receptors reduced it.",
         fact: "In monkeys doing a vigilance task, locus coeruleus neurons fired a brief burst about 90 ms after a rare target appeared, roughly 200 ms before the monkey responded. The bursts were weaker during periods of poor performance.",
         signal: [
           [["cingulate", "lc"]],
@@ -826,7 +827,7 @@ export const pathways: Pathway[] = [
         region: "pulvinar",
         title: "Thalamic coordination",
         body: "The [[pulvinar|pulvinar]] is the largest nucleus of the primate thalamus and connects visual areas with each other. It also relays signals from the [[sc|superior colliculus]] to the cortex: in monkeys, some pulvinar neurons receive input from the SC and project to [[mt|area MT]]. In monkeys, pulvinar activity synchronized connected visual areas according to where the animal was attending.",
-        fact: "The thalamus can also reduce input from a whole sense. In mice, prefrontal cortex, acting through the basal ganglia and the TRN, reduces the thalamic relay of the sense that should be ignored.",
+        fact: "In mice, the thalamus can also reduce input from a whole sense: prefrontal cortex, acting through the basal ganglia and the thalamic reticular nucleus (TRN), reduces the thalamic relay of the sense that should be ignored.",
         signal: [
           [
             ["sc", "pulvinar"],
@@ -837,8 +838,8 @@ export const pathways: Pathway[] = [
       {
         region: "extrastriate",
         title: "Effects in sensory cortex",
-        body: "In sensory cortex, attention increases the responses of neurons that represent the attended item and makes them more consistent. Responses to other items are reduced. In monkeys, the increase is about 25% in visual area V4 and under 10% in V1. Unattended signals are still processed and can still draw attention.",
-        fact: "The normalization model describes this with one equation: each response is divided by the combined activity of nearby neurons, so increasing one input reduces the others. The Streams tab shows a simplified version.",
+        body: "In sensory cortex, attention increases the responses of neurons that represent the attended item; in monkey area V4, it also makes their responses vary less from one trial to the next. Responses to other items are reduced. In monkeys, with a single stimulus in view, the typical increase was about 26% in visual area V4 and 8% in V1; effects are larger when several stimuli compete. Unattended signals are still processed and can still draw attention.",
+        fact: "The normalization model describes this with one equation: each neuron's response is divided by the pooled activity of neurons that respond to nearby locations and similar features, so strengthening the attended input reduces responses to the others. The Streams tab applies a simplified version across senses as an illustration.",
         signal: [
           [
             ["pulvinar", "extrastriate"],
@@ -1007,6 +1008,11 @@ export const pathways: Pathway[] = [
       "lc-adaptive-gain",
       "ach-v1",
       "neuromodulation",
+      "crossmodal-attention",
+      "tpj-updating",
+      "attention-competition",
+      "conflict-monitoring",
+      "conflict-adjustment",
     ],
   },
 ];

@@ -87,7 +87,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Posterior parietal cortex",
     short: "Parietal cortex",
     name: "parietal cortex",
-    where: "Parietal lobe, superior parietal lobule",
+    where: "Parietal lobe, superior parietal lobule and intraparietal sulcus",
     position: at("parietal"),
   },
   pulvinar: { id: "pulvinar", label: "Pulvinar", short: "Pulvinar", name: "the pulvinar", where: "Back of the thalamus", position: at("pulvinar") },
