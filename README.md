@@ -3,11 +3,13 @@
 An open-source, interactive review of some basics of human perception and attention. A 3D brain built from a reference anatomy atlas shows six topics, each as a short step-by-step walkthrough:
 
 1. **Vision**: from the eye to visual cortex, then the two streams that identify objects (including areas for faces, places, bodies and words) and guide action
-2. **Hearing**: from the ear to auditory cortex
-3. **Touch**: from skin and muscles to touch cortex
-4. **Cortex–thalamus feedback**: how the cortex adjusts its own input
-5. **Attention**: how the brain sets priorities
-6. **Speech and language**: hearing and producing speech
+2. **Touch**: from skin and muscles to touch cortex
+3. **Hearing**: from the ear to auditory cortex
+4. **Speech and language**: hearing and producing speech
+5. **Cortex–thalamus feedback**: how the cortex adjusts its own input
+6. **Attention**: how the brain sets priorities
+
+The four perception topics come first; the last two cover how the brain controls its own input, ending with attention.
 
 The build is a single self-contained HTML file. It makes no network requests at runtime.
 

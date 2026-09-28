@@ -111,6 +111,12 @@ for (const path of pathways) {
 for (const source of sources) assert.equal(new URL(source.url).protocol, "https:");
 console.log(`PASS ${pathways.length} walkthroughs: every step has a key fact, ${signals} step signals follow drawn edges, all pathway sources resolve.`);
 
+// Perception topics first, then the two about controlling input, ending with attention.
+assert.deepEqual(
+  pathways.map((path) => path.id),
+  ["vision", "touch", "hearing", "speech", "loop", "attention"],
+);
+
 // Detail routes (beyond V1) appear only inside their own topic.
 {
   const vision = pathways.find((path) => path.id === "vision");

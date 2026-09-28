@@ -2,8 +2,8 @@
 export const overview = {
   title: "Perception & Attention",
   lede: [
-    "A review of some basics of human perception and attention. Attention acts on the signals that arrive from the senses, so this review covers both: how sight, sound and touch reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
-    "The 3D view shows vision, hearing and touch at the same time. Each sense passes through its own relay in the [[lgn|thalamus]] before reaching its own area of cortex. Select a topic to go through it step by step.",
+    "A review of some basics of human perception and attention. Attention acts on the signals that arrive from the senses, so this review covers both: how sight, touch and sound (including speech) reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
+    "The 3D view shows vision, touch and hearing at the same time. Each sense passes through its own relay in the [[lgn|thalamus]] before reaching its own area of cortex. Select a topic to go through it step by step.",
   ],
   modelNotes: [
     "The anatomy uses 167 structures from the Z-Anatomy atlas (based on BodyParts3D), all placed with one shared transform. It is a single reference brain, not a scan of a real person.",

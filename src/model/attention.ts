@@ -9,8 +9,8 @@ export interface AttentionSettings {
 }
 export const sensoryStreams: { id: SenseId; name: string; color: string; region: RegionId }[] = [
   { id: "vision", name: "Vision", color: "#77e8db", region: "v1" },
-  { id: "hearing", name: "Sound", color: "#ed9bcc", region: "a1" },
   { id: "touch", name: "Touch", color: "#89bdf4", region: "s1" },
+  { id: "hearing", name: "Sound", color: "#ed9bcc", region: "a1" },
 ];
 const senseRegions: Partial<Record<RegionId, SenseId>> = {
   retina: "vision",
