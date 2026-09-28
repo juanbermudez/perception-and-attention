@@ -34,7 +34,7 @@ export function linkedText(text: string) {
 
 /** Escaped text where [label](https://…) becomes an external link. */
 export function richText(text: string) {
-  return escapeHtml(text).replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, (_, label: string, url: string) => externalLink(label, url));
+  return escapeHtml(text).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label: string, url: string) => externalLink(label, url));
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
