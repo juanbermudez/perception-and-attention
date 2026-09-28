@@ -1165,6 +1165,31 @@ body.labels-hidden #region-labels {
 .step-dot:hover::after {
   background: #ffffff45;
 }
+/* While playing, the current step's bar fills over the time it stays on screen. */
+.step-dot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--path-color);
+  transform: scaleX(0);
+  transform-origin: left;
+  z-index: 1;
+}
+.step-progress.playing .step-dot.active::after {
+  background: color-mix(in srgb, var(--path-color) 22%, transparent);
+}
+.step-progress.playing .step-dot.active::before {
+  animation: step-fill var(--step-duration, 5.5s) linear forwards;
+}
+@keyframes step-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
 .step-play {
   display: flex;
   align-items: center;

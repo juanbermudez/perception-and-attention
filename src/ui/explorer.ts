@@ -36,6 +36,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   const inspector = byId("inspector");
   const stepList = byId("path-steps");
   const stepDots = byId("step-progress");
+  stepDots.style.setProperty("--step-duration", `${STEP_SECONDS}s`);
   const body = byId("inspector-body");
   const playButton = byId("step-play");
   let scene: BrainScene | undefined;
@@ -175,6 +176,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     walkTimer = undefined;
     playButton.setAttribute("aria-pressed", "false");
     byId("step-play-label").textContent = "Play";
+    stepDots.classList.remove("playing");
   }
 
   function scheduleWalk() {
@@ -195,6 +197,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("step-play-label").textContent = "Pause";
     const atEnd = state.step >= current().steps.length - 1;
     setStep(atEnd ? 0 : state.step, { keepWalking: true });
+    // Restart the fill animation so it matches the fresh timer.
+    stepDots.classList.remove("playing");
+    void stepDots.offsetWidth;
+    stepDots.classList.add("playing");
     scheduleWalk();
   }
 
