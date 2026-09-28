@@ -31,7 +31,7 @@ This is a first version; I expect to keep adding detail.
 - **Attention streams.** In the Attention topic, a simplified normalization model shows how giving one sense priority reduces the others without switching them off.
 - **Labels outside the head.** Callouts are placed in columns beside the head, 14 px apart when there is room, and joined to their regions by two-segment leader lines: a 45° bend out of the region, then a horizontal run to the label.
 - **Links to a place.** The URL hash follows what you are looking at (`#/vision/parallel-channels`, `#/hearing/region/soc`), so a reload or a shared link opens the same step or region.
-- **Assistant tools.** In browsers with site tools (WebMCP), an assistant can read the guide a level at a time, search it, navigate and play walkthroughs. Its actions show in an "Assistant" pill and a toast with Undo; About has a switch that turns its control off. See [`docs/agent-surface-spec.md`](docs/agent-surface-spec.md).
+- **Assistant tools.** In browsers with site tools (WebMCP), an assistant can read the guide a level at a time, search it, navigate, play walkthroughs, change the 3D view in one call (camera, dissolving layers, isolating regions, labels) and run captioned tours that pause when you orbit, click or press a key. Its actions show in an "Assistant" pill and a toast with Undo; going home or to another topic resets its view; About has a switch that turns its control off. See [`docs/agent-surface-spec.md`](docs/agent-surface-spec.md).
 
 ## Accuracy
 
@@ -84,7 +84,7 @@ src/
     refs.ts            Ref grammar (topic:, step:, region:, …), suggestions, URL hash
     search.ts          Tokenizer and scorer for guide search
     topics.ts          Topic helpers: step signals, regions per topic
-  api/                 GuideApi: outline, read, search, go, walkthrough, context (no DOM)
+  api/                 GuideApi (outline, read, search, go, walkthrough, context), view API, tour runner (no DOM)
   agent/               WebMCP adapter, tool definitions, help card, kill switch, dev shim
   scene/               Three.js
     brain-scene.ts     Builds the scene and runs the frame loop

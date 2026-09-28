@@ -82,9 +82,24 @@ Notes for review:
 - Isolate route filtering, including a `detail` route from another topic.
 - The existing motion tests.
 
-**Status**: In Progress (core done; tool wrappers pending Stage 1)
-- Done (`webmcp/stage2`): `model/view.ts`, `api/view-api.ts` (`createViewApi(state, scene)`: `apply`, `undo`, `current`), scene pose API, layer presence with dissolve/fade, isolate, multi-region highlight, label modes, `viewFocus`, `ui/narration.ts`. Tests in `tests/view.test.mjs`. Manual access: `explorerDebug.view(patch)`, `undoView()`, `currentView()`, `routes()`, `narrate(text, stop, of)`.
-- Pending (needs Stage 1): the `set_view` tool (zod schema over `ViewPatch`; `apply` already returns `{ view, said, skipped? }` or `{ error }`), `walkthrough` `tour`/`stop` with a tour runner that drives the caption bar (`narration.onAction`) and pauses on user input, `get_context.view` from `current()`, Undo in the agent toast (`undo()`), and the kill switch around `apply`.
+**Status**: Complete in code (branches `webmcp/stage2` and `webmcp/stage2-tools`); acceptance prompt 3 in the ChatGPT desktop browser is still pending with the spike (spec §2).
+- Core (`webmcp/stage2`): `model/view.ts`, `api/view-api.ts` (`createViewApi(state, scene)`: `apply`, `undo`, `current`), scene pose API, layer presence with dissolve/fade, isolate, multi-region highlight, label modes, `viewFocus`, `ui/narration.ts`. Manual access: `explorerDebug.view(patch)`, `undoView()`, `currentView()`, `routes()`, `narrate(text, stop, of)`.
+- Tools (`webmcp/stage2-tools`):
+  - `set_view`: a zod schema over `ViewPatch` (region, layer, side and label enums from content; `focus` with `frame` rejected), over `view-api`. Returns `{ view, said }`; mid-gesture the camera part comes back as `skipped.camera` (`locked_by_user`) and the rest applies. The toast offers "Back to previous view".
+  - `walkthrough` `tour` and `stop`: `api/tour.ts` runs 1–20 stops in order (`go(ref)`, then the stop's view), 2–30 s each (default 6, or the call's `seconds`), with the caption bar. Every stop is checked before the first plays. Any user pointer down, wheel or key (not Tab or modifiers) pauses it; the bar's pause, skip and close work; `go`, a new walkthrough, `stop` and the kill switch end it. User tour actions and the natural end go to the activity log; tour navigation is not logged as the user's.
+  - `get_context.view` (from `current()`: focus, yaw, pitch, zoom, effective layers, isolate, labels, gated) and `get_context.tour` (`{ stop, of, paused }`); `go` results include `view`.
+  - Going home or into another topic resets `layers`, `layerEffect`, `isolate`, `labelMode` and `viewFocus` (`clearViewOnNavigate`, called by the explorer). A tour stop navigates first and applies its view after, so its own settings win.
+  - `view-api` errors use Stage 1's `ApiError`/`fail`; the local `ViewError` is gone.
+  - `help` lists the view grammar, angles and the tour limits.
+- Tests: `tests/tour.test.mjs` (runner, fake clock), `tests/view-tools.test.mjs` (tool runner + GuideApi + view API + tour runner against a fake scene and explorer), and new fixtures in `tests/agent-tools.test.mjs`. 73 tests in all.
+
+Notes for review:
+- Four Stage 1 assertions in `tests/agent-tools.test.mjs` described the Stage 1 surface and had to change: the tool list (7 tools), the `walkthrough` action enum (adds `tour`, `stop`), `{ action: "stop" }` (now valid) and the unknown-tool example (`set_view` → `doc`).
+- While a tour is active, `walkthrough` `pause`, `play`, `next`, `prev` and `restart` without `ref` or `seconds` act on the tour. With a `ref` or `seconds`, `play` and `restart` start a topic walkthrough and end the tour. The spec only lists `tour` and `stop` for tours.
+- A `set_view` that only moves the camera, sent mid-gesture, returns `{ error: locked_by_user }`, since nothing applied.
+- Tour stops accept only places (overview, topic, step, region, streams), not About, sources or help.
+- Region fields are exact ids (schema enums), so `"V1"` is rejected with `closest: v1`; the view API itself still accepts any case.
+- Inlined schemas are large: `set_view` about 4.8 KB and `walkthrough` about 5.8 KB, mostly the 50-id region enum repeated. `$ref` would shrink them once the spike confirms support. `help` is about 2.9 KB.
 
 ## Stage 3: Local store and artifacts API
 

@@ -89,6 +89,8 @@ export function createNarration(stage: HTMLElement) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    /** The bar itself: clicks and keys inside it are its own controls, not input that pauses a tour. */
+    element: bar,
     get visible() {
       return !bar.hidden;
     },
