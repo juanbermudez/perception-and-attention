@@ -223,6 +223,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const viewGap = createViewGap();
   const gapFocus = createColor();
   const gapAmount = createWeight();
+  let gapRegion: RegionId | null = null;
   const sensoryGroups = new Set(["eye", "optic", "ear", "auditory-nerve"]);
   const surfaceLayers: { group: string; object: THREE.Mesh; material: THREE.MeshPhongMaterial; opacity: WeightMotion }[] = [];
   const cortexCount = 38000;
@@ -933,15 +934,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     );
     const near = zoomT * zoomT * (3 - 2 * zoomT);
     const zoomFade = (keep: number) => lerp(1, keep, near);
-    // The view gap opens on the region being shown; a closed gap jumps straight to
-    // the next region instead of sweeping across the head.
+    // The view gap parts the particles around the region being shown. Moving to
+    // another region closes it, re-centres it while closed, and parts them again,
+    // so the particles visibly move out of the way each time.
     const gapOpen = !state.overview || preview !== null;
-    viewGap.gapAmount.value = stepWeight(gapAmount, gapOpen ? 1 : 0, dt, reduced);
-    if (gapAmount.value < 0.01) {
+    viewGap.gapAmount.value = stepWeight(gapAmount, gapOpen && gapRegion === shown ? 1 : 0, dt, reduced);
+    if (gapAmount.value < 0.05 && gapRegion !== shown) {
+      gapRegion = shown;
       vec3.copy(gapFocus.value, regions[shown].position);
       vec3.set(gapFocus.velocity, 0, 0, 0);
     }
-    viewGap.gapFocus.value.fromArray(stepPoint(gapFocus, regions[shown].position, dt, reduced));
+    viewGap.gapFocus.value.fromArray(stepPoint(gapFocus, regions[gapRegion ?? shown].position, dt, reduced));
     cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, (state.xray ? 0.3 : 0.62) * zoomFade(ZOOM_KEEP.cortex), dt, reduced);
     cortex.visible = cortexOpacity.value > ACTIVITY_CUTOFF;
     skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 * zoomFade(ZOOM_KEEP.skull) : 0, dt, reduced);

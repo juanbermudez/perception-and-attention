@@ -393,8 +393,8 @@ kbd {
   font-size: 11.5px;
   font-weight: 500;
   /* --lift (0–1) is set per frame from mouse proximity. */
-  transform: translate(-50%, -50%) scale(calc(1 + var(--lift, 0) * 0.18));
-  box-shadow: 0 calc(var(--lift, 0) * 6px) calc(var(--lift, 0) * 18px) #000000b3;
+  transform: translate(-50%, -50%) scale(calc(1 + var(--lift, 0) * 0.28));
+  box-shadow: 0 calc(var(--lift, 0) * 8px) calc(var(--lift, 0) * 22px) #000000b3;
   z-index: 2;
   transition:
     color 0.15s,

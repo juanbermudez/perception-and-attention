@@ -14,7 +14,7 @@ export interface ViewGap {
   /** 0 closed, 1 fully open. */
   gapAmount: { value: number };
 }
-export function createViewGap(radius = 0.9): ViewGap {
+export function createViewGap(radius = 1.05): ViewGap {
   return { gapFocus: { value: new THREE.Vector3() }, gapRadius: { value: radius }, gapAmount: { value: 0 } };
 }
 
@@ -23,7 +23,7 @@ export function createViewGap(radius = 0.9): ViewGap {
 // the focus depth stays, so the region keeps its immediate surroundings.
 const GAP_GLSL = `uniform vec3 gapFocus;uniform float gapRadius;uniform float gapAmount;
 void gapFrame(vec3 p,out vec3 outward,out float dist,out float radius,out float front,out float back){vec3 axis=gapFocus-cameraPosition;float focusDist=max(length(axis),1e-3);axis/=focusDist;vec3 rel=p-cameraPosition;float along=dot(rel,axis);vec3 perp=rel-axis*along;dist=length(perp);outward=dist>1e-4?perp/dist:vec3(0.0,1.0,0.0);radius=gapRadius*mix(1.0,0.75,clamp(along/focusDist,0.0,1.0));front=gapAmount*smoothstep(0.0,0.4,along)*(1.0-smoothstep(focusDist-0.5,focusDist-0.2,along));back=gapAmount*smoothstep(focusDist+0.2,focusDist+0.6,along);}
-vec3 gapDisplace(vec3 p,out float fade){vec3 outward;float dist,radius,front,back;gapFrame(p,outward,dist,radius,front,back);float inside=max(radius-dist,0.0);fade=(1.0-0.5*front*inside/radius)*(1.0-0.7*back*(1.0-smoothstep(radius*0.6,radius,dist)));return p+outward*front*inside*1.25;}
+vec3 gapDisplace(vec3 p,out float fade){vec3 outward;float dist,radius,front,back;gapFrame(p,outward,dist,radius,front,back);float inside=max(radius-dist,0.0);fade=(1.0-0.35*front*inside/radius)*(1.0-0.7*back*(1.0-smoothstep(radius*0.6,radius,dist)));return p+outward*front*inside*2.2;}
 float gapMask(vec3 p){vec3 outward;float dist,radius,front,back;gapFrame(p,outward,dist,radius,front,back);return max(front,0.7*back)*(1.0-smoothstep(radius*0.7,radius,dist));}
 `;
 
