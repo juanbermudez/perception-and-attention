@@ -5,13 +5,17 @@ async function bundle(entry) {
   const result = await build({ entryPoints: [entry], bundle: true, platform: "node", format: "esm", write: false, logLevel: "silent" });
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
 }
-const [{ attentionWeight, regionPulse, streamResponses }, { layoutCallouts, leaderPath }, { regionGuides, guideSources }, { pathways, regions, sources }] =
-  await Promise.all([
-    bundle("src/model/attention.ts"),
-    bundle("src/model/callouts.ts"),
-    bundle("src/content/region-guides.ts"),
-    bundle("src/content/index.ts"),
-  ]);
+const [
+  { attentionWeight, regionPulse, streamResponses },
+  { layoutCallouts, leaderPath, stackColumn },
+  { regionGuides, guideSources },
+  { pathways, regions, sources },
+] = await Promise.all([
+  bundle("src/model/attention.ts"),
+  bundle("src/model/callouts.ts"),
+  bundle("src/content/region-guides.ts"),
+  bundle("src/content/index.ts"),
+]);
 const senses = ["vision", "hearing", "touch"];
 const settings = { enabledSenses: { vision: true, hearing: true, touch: true }, priority: "balanced", controlNetwork: true, focus: 100 };
 const attention = pathways.find((path) => path.id === "attention");
@@ -144,17 +148,62 @@ for (const column of [leftCol, rightCol]) {
   const sorted = [...column].sort((a, b) => a.anchorY - b.anchorY);
   for (let i = 1; i < sorted.length; i++) {
     assert(sorted[i].labelY > sorted[i - 1].labelY, "Labels left anchor order, so leaders would cross.");
-    assert(sorted[i].labelY - sorted[i - 1].labelY >= (sorted[i].labelHeight + sorted[i - 1].labelHeight) / 2, "Labels overlap.");
+    // With room in the band, labels keep the full 14 px spacing.
+    const spacing = sorted[i].labelY - sorted[i - 1].labelY - (sorted[i].labelHeight + sorted[i - 1].labelHeight) / 2;
+    assert(spacing >= 14 - 0.01, `Labels only ${spacing.toFixed(1)} px apart.`);
   }
 }
+const leaderPoints = (label) => [...leaderPath(label).matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
 for (const label of labels) {
   assert(label.labelY - label.labelHeight / 2 >= bounds.top - 1 && label.labelY + label.labelHeight / 2 <= bounds.bottom + 1);
-  assert.match(leaderPath(label), /^M[\d.]+,[\d.]+(L[\d.]+,[\d.]+){1,2}$/);
+  // Two segments: an angled one from the region, then a horizontal run into the label's near edge.
+  const [anchor, elbow, edge] = leaderPoints(label);
+  assert(edge, "Leader should have two segments.");
+  assert.deepEqual(anchor, [Number(label.anchorX.toFixed(1)), Number(label.anchorY.toFixed(1))]);
+  assert(Math.abs(elbow[1] - label.labelY) < 0.1 && Math.abs(edge[1] - label.labelY) < 0.1, "Run into the label is not horizontal.");
+  assert(Math.abs(Math.abs(edge[0] - label.labelX) - label.labelWidth / 2) < 0.1, "Leader does not end at the label's edge.");
+  assert(Math.abs(edge[0] - elbow[0]) >= 12 - 0.1, "Horizontal run is too short.");
+  const rise = Math.abs(elbow[1] - anchor[1]),
+    run = Math.abs(elbow[0] - anchor[0]);
+  assert(run <= rise + 0.25, `Angled segment is shallower than 45° (run ${run}, rise ${rise}).`);
+}
+// Labels fan out from the head's vertical centre, so leaders away from the middle bend outward.
+{
+  const middle = (head.top + head.bottom) / 2,
+    outer = labels.filter((l) => Math.abs(l.anchorY - middle) > 40);
+  for (const label of outer) assert(Math.abs(label.labelY - middle) >= Math.abs(label.anchorY - middle), "Label was pulled toward the centre.");
+  assert(
+    outer.some((label) => Math.abs(label.labelY - label.anchorY) > 20),
+    "No leader bends visibly.",
+  );
+}
+// Far-off label: the bend steepens so a short horizontal run remains.
+{
+  const far = { ...makeLabel(600, 500), labelX: 720, labelY: 100, side: 1, initialized: true };
+  const [, elbow, edge] = leaderPoints(far);
+  assert(Math.abs(edge[0] - elbow[0] - 12) < 0.1 && elbow[0] > 600, "Steep leader should keep a 12 px run.");
 }
 // A crowded column squeezed into a short band still fits and keeps order.
 const crowd = Array.from({ length: 9 }, (_, i) => makeLabel(500, 300 + i * 2));
 for (let frame = 0; frame < 240; frame++) layoutCallouts(crowd, crowd.length, head, { ...bounds, top: 100, bottom: 420 }, dt);
 for (const label of crowd) assert(label.labelY - 13 >= 99 && label.labelY + 13 <= 421, "Crowded label escaped its band.");
+for (const side of [-1, 1]) {
+  const ys = crowd
+    .filter((label) => label.side === side)
+    .map((label) => label.labelY)
+    .sort((a, b) => a - b);
+  for (let i = 1; i < ys.length; i++) assert(ys[i] - ys[i - 1] >= 26 + 4 - 0.01, "Crowded labels overlap.");
+}
+// One column too full for the preferred spacing squeezes it instead of overflowing.
+{
+  const column = Array.from({ length: 9 }, (_, i) => ({ ...makeLabel(700, 250 + i * 3), labelX: 760, side: 1 }));
+  stackColumn(column, 100, 420);
+  for (let i = 1; i < column.length; i++) {
+    const spacing = column[i].targetY - column[i - 1].targetY - 26;
+    assert(spacing >= 4 - 0.01 && spacing < 14, `Squeezed spacing ${spacing.toFixed(1)} px.`);
+  }
+  assert(column[0].targetY - 13 >= 99 && column.at(-1).targetY + 13 <= 421, "Squeezed column escaped its band.");
+}
 // Orbiting: anchors sweep, labels glide under the speed cap.
 for (let frame = 0; frame < 600; frame++) {
   const previous = labels.map((label) => [label.labelX, label.labelY]);
@@ -169,5 +218,5 @@ for (let frame = 0; frame < 600; frame++) {
   });
 }
 console.log(
-  "PASS callouts sit outside the head in balanced columns, keep anchor order (no crossing leaders), never overlap, and glide under 900 px/s while orbiting.",
+  "PASS callouts sit outside the head in balanced columns, keep anchor order and 14 px spacing (squeezing only when crowded), bend leaders at 45° into a horizontal run, and glide under 900 px/s while orbiting.",
 );

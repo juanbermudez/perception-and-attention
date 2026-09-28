@@ -30,7 +30,10 @@ export interface CalloutBounds {
 }
 
 const GAP_X = 22; // clearance between the silhouette and a label column
-const GAP_Y = 6; // vertical space between stacked labels
+const GAP_Y = 14; // preferred vertical space between stacked labels
+const MIN_GAP_Y = 4; // a crowded column squeezes down to this before it overflows
+const MIN_RUN = 12; // shortest horizontal run into a label
+const FAN = 1.3; // labels spread vertically this much further from the head's centre than their regions
 const SWITCH = 28; // hysteresis before a label changes sides while orbiting
 
 interface Cluster {
@@ -40,15 +43,22 @@ interface Cluster {
 }
 
 // One-dimensional placement: keep labels in anchor order, merge any that would
-// overlap into a cluster, and centre each cluster on the mean of its anchors.
+// overlap into a cluster, and centre each cluster on the mean of its preferred heights.
 // This settles in a few passes and never reorders labels, so leaders don't cross.
-export function stackColumn(items: LabelLayout[], top: number, bottom: number) {
+// With a `middle`, each label prefers a height fanned out from it, so leaders
+// leave their regions at an angle instead of running flat.
+export function stackColumn(items: LabelLayout[], top: number, bottom: number, middle?: number) {
   if (!items.length) return;
   items.sort((a, b) => a.anchorY - b.anchorY);
+  const preferred = (item: LabelLayout) => (middle === undefined ? item.anchorY : middle + (item.anchorY - middle) * FAN);
+  // Use the preferred spacing when the column has room; shrink it only as far as needed to fit.
+  let heights = 0;
+  for (const item of items) heights += item.labelHeight;
+  const gap = clamp((bottom - top - heights) / Math.max(1, items.length - 1), MIN_GAP_Y, GAP_Y);
   const clusters: Cluster[] = [];
   for (const item of items) {
-    const size = item.labelHeight + GAP_Y;
-    clusters.push({ items: [item], top: item.anchorY - size / 2, size });
+    const size = item.labelHeight + gap;
+    clusters.push({ items: [item], top: preferred(item) - size / 2, size });
     while (clusters.length > 1) {
       const b = clusters[clusters.length - 1],
         a = clusters[clusters.length - 2];
@@ -59,21 +69,21 @@ export function stackColumn(items: LabelLayout[], top: number, bottom: number) {
       let offset = 0,
         sum = 0;
       for (const member of a.items) {
-        const s = member.labelHeight + GAP_Y;
-        sum += member.anchorY - offset - s / 2;
+        const s = member.labelHeight + gap;
+        sum += preferred(member) - offset - s / 2;
         offset += s;
       }
       a.top = sum / a.items.length;
     }
   }
   // Fit the whole column inside the band, pushing clusters up from the bottom.
-  let limit = bottom + GAP_Y / 2;
+  let limit = bottom + gap / 2;
   for (let i = clusters.length - 1; i >= 0; i--) {
     const c = clusters[i];
     c.top = Math.min(c.top, limit - c.size);
     limit = c.top;
   }
-  let floor = top - GAP_Y / 2;
+  let floor = top - gap / 2;
   for (const c of clusters) {
     c.top = Math.max(c.top, floor);
     floor = c.top + c.size;
@@ -81,7 +91,7 @@ export function stackColumn(items: LabelLayout[], top: number, bottom: number) {
   for (const c of clusters) {
     let y = c.top;
     for (const item of c.items) {
-      const s = item.labelHeight + GAP_Y;
+      const s = item.labelHeight + gap;
       item.targetY = y + s / 2;
       y += s;
     }
@@ -147,8 +157,9 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
     const half = label.labelWidth / 2;
     label.targetX = clamp(head.right + GAP_X + half, bounds.margin + half, Math.max(bounds.margin + half, bounds.width - bounds.margin - half));
   }
-  stackColumn(left, bounds.top, bounds.bottom);
-  stackColumn(right, bounds.top, bounds.bottom);
+  const middle = (head.top + head.bottom) / 2;
+  stackColumn(left, bounds.top, bounds.bottom, middle);
+  stackColumn(right, bounds.top, bounds.bottom, middle);
 
   // Glide toward the solved slot. A label that changes sides jumps and fades in
   // rather than sliding across the head.
@@ -174,13 +185,19 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
   }
 }
 
-/** Anchor → angled segment → short horizontal run into the label's near edge. */
+/**
+ * Anchor → 45° segment → horizontal run into the label's near edge.
+ * The bend sits next to the region, so leaders stay apart at their labels'
+ * heights until they reach it. When the label is far above or below, the
+ * angled segment steepens to leave a short horizontal run.
+ */
 export function leaderPath(label: LabelLayout): string {
-  const toward = label.anchorX < label.labelX ? -1 : 1;
-  const edgeX = label.labelX + (toward * label.labelWidth) / 2;
-  const elbowX = edgeX + toward * 12;
-  const straight = toward < 0 ? label.anchorX >= elbowX : label.anchorX <= elbowX;
-  return straight
-    ? `M${label.anchorX.toFixed(1)},${label.anchorY.toFixed(1)}L${edgeX.toFixed(1)},${label.labelY.toFixed(1)}`
-    : `M${label.anchorX.toFixed(1)},${label.anchorY.toFixed(1)}L${elbowX.toFixed(1)},${label.labelY.toFixed(1)}L${edgeX.toFixed(1)},${label.labelY.toFixed(1)}`;
+  const toward = label.labelX < label.anchorX ? -1 : 1;
+  const edgeX = label.labelX - (toward * label.labelWidth) / 2;
+  const reach = (edgeX - label.anchorX) * toward;
+  const start = `M${label.anchorX.toFixed(1)},${label.anchorY.toFixed(1)}`;
+  const end = `L${edgeX.toFixed(1)},${label.labelY.toFixed(1)}`;
+  if (reach <= MIN_RUN) return start + end;
+  const elbowX = label.anchorX + toward * Math.min(Math.abs(label.labelY - label.anchorY), reach - MIN_RUN);
+  return `${start}L${elbowX.toFixed(1)},${label.labelY.toFixed(1)}${end}`;
 }
