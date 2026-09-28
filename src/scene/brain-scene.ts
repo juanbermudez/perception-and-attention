@@ -50,7 +50,8 @@ const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
 const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
 const ZOOM_KEEP = { skull: 0.12, cortex: 0.3, lower: 0.35, inner: 0.65 };
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
-const SPOT_DIM_ROUTE = 0.14;
+const SPOT_DIM_ROUTE = 0.24;
+const CONTEXT_HIGHLIGHT = 0.28; // highlight weight for the other regions of the current topic
 const SPOT_DIM_REGION = 0.25;
 const SPOT_DIM_MARKER = 0.3;
 const _curve_point = vec3.create();
@@ -339,7 +340,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const highlightTemplate = highlightMaterial();
   let highlightedRegion: RegionId | undefined, selectedHighlight: HighlightLayer;
   const selectionStart = performance.now();
-  function highlightRegion(id: RegionId) {
+  /** The highlight layer for a region's anatomy, created on first use and shared by regions with the same parts. */
+  function highlightLayerFor(id: RegionId) {
     const key = regionAnatomy[id].parts.join("|");
     let layer = highlightCache.get(key);
     const sense = senseForRegion(id),
@@ -373,9 +375,24 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       highlightCache.set(key, layer);
       highlightLayers.push(layer);
     }
-    selectedHighlight = layer;
     highlightTargetColor.toArray(layer.target);
+    return layer;
+  }
+  function highlightRegion(id: RegionId) {
+    selectedHighlight = highlightLayerFor(id);
     highlightedRegion = id;
+  }
+  // The other regions of the current topic keep a faint, steady highlight so the
+  // flow stays readable while one region is selected.
+  const contextHighlights = new Set<HighlightLayer>();
+  let contextPath: PathId | null = null;
+  function updateContextHighlights() {
+    if (contextPath === state.path) return;
+    contextPath = state.path;
+    contextHighlights.clear();
+    const path = pathways.find((p) => p.id === state.path)!;
+    const ids = new Set<RegionId>([...path.steps.map((step) => step.region), ...path.edges.flatMap((edge) => [edge.from, edge.to])]);
+    for (const id of ids) contextHighlights.add(highlightLayerFor(id));
   }
   highlightRegion(state.selected);
 
@@ -923,16 +940,21 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const reduced = reducedMotion.matches,
       pulseAmount = regionPulse((ms - selectionStart) / 1000, reduced);
     const shown = shownRegion();
+    updateContextHighlights();
     if (highlightedRegion !== shown) highlightRegion(shown);
     const selectedSense = senseForRegion(shown);
     if (state.path === "attention" && selectedSense) highlightTargetColor.set(streamColors[selectedSense]);
     else highlightTargetColor.copy(pathwayColors.get(state.path)!);
     highlightTargetColor.toArray(selectedHighlight.target);
+    const inTopic = !state.overview || preview !== null;
     for (const layer of highlightLayers) {
-      const weight = stepWeight(layer.weight, layer === selectedHighlight && (!state.overview || preview) ? 1 : 0, dt, reduced);
+      const selected = layer === selectedHighlight;
+      const target = !inTopic ? 0 : selected ? 1 : !state.overview && contextHighlights.has(layer) ? CONTEXT_HIGHLIGHT : 0;
+      const weight = stepWeight(layer.weight, target, dt, reduced);
       layer.object.visible = weight > ACTIVITY_CUTOFF;
       layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
-      layer.object.material.uniforms.pulse.value = pulseAmount * weight;
+      // Only the selected region pulses; context regions hold a steady level.
+      layer.object.material.uniforms.pulse.value = selected ? pulseAmount * weight : weight * 0.725;
     }
     // The overview turns slowly until someone takes hold of the model.
     controls.autoRotate = state.overview && state.playing && !reduced && !userOrbited && focusStarted < 0;
