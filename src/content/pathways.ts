@@ -337,9 +337,9 @@ export const pathways: Pathway[] = [
     color: "#ed9bcc",
     icon: "hearing",
     intro:
-      "Sound is converted into nerve signals in the cochlea and sorted by frequency. Several brainstem relays process the signal, including comparing the two ears to locate the sound, before it reaches the thalamus (MGN) and primary auditory cortex. Surrounding belt and parabelt areas then process more complex sounds and send signals along two streams, one for identifying sounds and one for locating them. The brain also sends signals back down to the ear.",
+      "Sound is converted into nerve signals in the cochlea and sorted by frequency. Several brainstem relays process the signal, including comparing the two ears to locate the sound, before it reaches the thalamus (MGN) and primary auditory cortex. Surrounding belt and parabelt areas then process more complex sounds and send signals along two proposed streams, one mainly for identifying sounds and one mainly for locating them. The brain also sends signals back down to the ear.",
     insight:
-      "The auditory brainstem processes timing very precisely, which is needed to locate sounds. The frequency map set up in the cochlea (tonotopy) is kept at each stage up to the cortex. In the cortex, processing runs from core to belt to parabelt, with neurons preferring increasingly complex sounds; a stream toward the front of the temporal lobe helps identify sounds, and a stream toward parietal cortex helps locate them. Olivocochlear fibres from the brainstem turn down the cochlea’s amplification, and the cortex can act on them.",
+      "The auditory brainstem processes timing very precisely, which is needed to locate sounds. The frequency map set up in the cochlea (tonotopy) is kept at each stage up to the cortex. In the cortex, processing runs from core to belt to parabelt, with neurons preferring increasingly complex sounds; a stream toward the front of the temporal lobe helps identify sounds, and a stream toward parietal cortex helps locate them. Medial olivocochlear fibres from the brainstem turn down the cochlea’s amplification, and in animals the auditory cortex can act on them.",
     caveat:
       "The main ascending routes are shown on both sides. The belt, the two streams and the descending route are drawn only from the left hemisphere; they exist on both sides, and locating sounds often relies more on the right hemisphere. The cochlea, auditory nerve, cochlear nuclei, inferior colliculi and geniculate bodies use atlas geometry; the superior olives are approximate positions inside the pons. The atlas does not segment the belt or the anterior superior temporal gyrus; their markers are typical positions from group studies. The “where” route ends at the parietal marker used by other topics (superior parietal lobule); in human studies, locating sounds mainly activates the inferior parietal lobule, just below it. The descending route is drawn through the inferior colliculus; auditory cortex also projects directly to the superior olive (shown in rats). Lateral olivocochlear fibres, the lateral lemniscus and routes that bypass the superior olive are not shown. Routes are drawn as curves, not traced fibres.",
     steps: [
@@ -366,31 +366,31 @@ export const pathways: Pathway[] = [
         region: "ic",
         title: "Inferior colliculus",
         body: "Nearly all ascending auditory pathways synapse in the [[ic|inferior colliculus]] in the midbrain. It combines timing, loudness and frequency information and sends signals to the superior colliculus, which helps turn the eyes and head toward a sound.",
-        fact: "Because almost all ascending auditory signals pass through it, the inferior colliculus is described as a near-obligatory relay.",
+        fact: "In rats, a small route from the cochlear nuclei bypasses the inferior colliculus and reaches the thalamus (the medial part of the MGN) directly.",
       },
       {
         region: "mgn",
         title: "Relay in the MGN",
-        body: "The [[mgn|medial geniculate nucleus]] (MGN) is the auditory relay of the thalamus. Its ventral part keeps the frequency map and projects to primary auditory cortex. Its other parts project to surrounding auditory areas and to the amygdala.",
+        body: "The [[mgn|medial geniculate nucleus]] (MGN) is the auditory relay of the thalamus. Its ventral part keeps the frequency map and projects to primary auditory cortex. Its other parts project to surrounding auditory areas; in rats, its medial part also projects to the amygdala.",
         fact: "Like the LGN, the MGN receives large feedback projections from the cortex it sends to.",
       },
       {
         region: "a1",
         title: "Primary auditory cortex (A1)",
-        body: "[[a1|Primary auditory cortex]] is on Heschl’s gyrus, inside the lateral sulcus. It is part of the auditory core, the first stage of auditory cortex, which receives its main input from the ventral part of the [[mgn|MGN]]. In humans, the core covers roughly the inner two-thirds of Heschl’s gyrus. Like the cochlea, it is organized by frequency (tonotopy), and pure tones activate it strongly.",
+        body: "[[a1|Primary auditory cortex]] is on Heschl’s gyrus, inside the lateral sulcus. It is part of the auditory core, the first stage of auditory cortex, which receives its main input from the ventral part of the [[mgn|MGN]]. In humans, the core lies along Heschl’s gyrus, mainly toward its inner end; its exact borders vary between people and do not follow the folds exactly. Like the cochlea, it is organized by frequency (tonotopy), and pure tones activate it strongly.",
         fact: "Because pathways cross at several levels, each hemisphere receives input from both ears. Damage to auditory cortex on one side rarely causes deafness in one ear.",
       },
       {
         region: "belt",
         title: "Belt and parabelt",
-        body: "Around the core lies a ring of [[belt|belt areas]], and just outside the belt, on the superior temporal gyrus, the parabelt. In monkeys, the core feeds eight proposed belt areas, and the belt feeds a parabelt with at least two divisions, giving three stages of processing. Belt neurons respond more to complex sounds, such as bands of noise and frequency sweeps, than to pure tones, and many prefer particular monkey calls. Human brain imaging shows a similar order: pure tones activate mainly the core, noise bands the cortex around it, and vowel sounds areas further forward and outward on the superior temporal gyrus. The stages also work in parallel: belt areas receive some input directly from the thalamus, and in human recordings the superior temporal gyrus responds to speech as early as primary auditory cortex (see the Speech topic).",
+        body: "Around the core lies a ring of [[belt|belt areas]], and just outside the belt, on the superior temporal gyrus, the parabelt. In monkeys, the core feeds eight proposed belt areas, and the belt feeds a parabelt with at least two divisions, giving three stages of processing. Neurons in the lateral belt respond more to complex sounds, such as bands of noise and frequency sweeps, than to pure tones, and many prefer particular monkey calls. Human brain imaging shows a similar order: pure tones activate mainly the core, noise bands the cortex around it, and vowel sounds areas further forward and outward on the superior temporal gyrus. The stages also work in parallel: belt areas receive some input directly from the thalamus, and in human recordings the superior temporal gyrus responds to speech as early as primary auditory cortex (see the Speech topic).",
         fact: "In monkeys, tracer injected into the parabelt labelled few neurons in the core but many in the belt, evidence that the parabelt receives core output mainly by way of the belt.",
       },
       {
         region: "astg",
         title: "Two streams leave auditory cortex",
         body: "In monkeys, neurons in the front part of the belt are more selective for the type of call, and neurons in the back part are more selective for where the sound comes from. The front part connects forward along the [[astg|superior temporal gyrus]] and to [[vlpfc|ventrolateral prefrontal cortex]], a proposed “what” stream for identifying sounds. The back part connects with [[parietal|posterior parietal cortex]] and dorsolateral prefrontal cortex, a proposed “where” stream for locating them. Human imaging and brain-damage studies support a similar division. Researchers disagree about how to describe the back route, because it is also used for speech and for linking sounds to movements (see the Speech topic).",
-        fact: "Among 15 patients with damage to the right hemisphere, four recognized sounds normally but could not locate them, and three located sounds well but had difficulty recognizing them.",
+        fact: "Among 15 patients with damage to the right hemisphere, four recognized sounds normally but were severely impaired at locating them, and three located sounds well but had difficulty recognizing them.",
         signal: [
           [
             ["belt", "astg"],
@@ -403,7 +403,7 @@ export const pathways: Pathway[] = [
         region: "soc",
         title: "Feedback to the ear",
         body: "The brain also sends signals back to the ear. Medial olivocochlear neurons in the [[soc|superior olivary complex]] send fibres to the [[cochlea|cochleae]], mostly to the ear on the opposite side, where they end on outer hair cells and reduce their amplification of quiet and moderate sounds. Sound in either ear activates them as a reflex; in animals, this helps the auditory nerve signal brief sounds in background noise and protects the ear from loud noise. [[a1|Auditory cortex]] sends fibres to the [[ic|inferior colliculus]] and, in rats, directly to these olive neurons, and in chinchillas stimulating auditory cortex changes how the cochlea responds. Whether this system helps people understand speech in noise, and how much attention changes the human cochlea, is still debated.",
-        fact: "In chinchillas paying attention to lights, auditory nerve responses to ignored clicks fell by up to 4 dB. In people, one study measured sounds emitted by the ear: they were 5.4 dB weaker during visual attention in 15 listeners, with no effect in the next 15.",
+        fact: "In chinchillas paying attention to lights, auditory nerve responses to ignored clicks fell by up to 4 dB. In people, one study measured sounds emitted by the ear: in the first 15 listeners they were 5.4 dB weaker during visual attention than during auditory attention, and the next 15 showed no effect.",
         signal: [
           [["a1", "ic"]],
           [["ic", "soc"]],
@@ -648,7 +648,7 @@ export const pathways: Pathway[] = [
     intro:
       "Sensory signals pass from the thalamus to the cortex, and the cortex sends two kinds of output back to the thalamus. Layer 6 feedback increases or reduces how much the thalamus passes on. Layer 5 output drives higher-order thalamic nuclei, such as the pulvinar, which relay it to other cortical areas. The example uses vision; hearing and touch have a similar circuit.",
     insight:
-      "The cortex can adjust its own sensory input at the thalamus, through direct excitation from layer 6 and through inhibition via the TRN. This circuit is involved in attention and also produces sleep spindles, a brain rhythm seen in light sleep. Through layer 5, the thalamus also carries signals from one cortical area to another, in parallel with the direct connections between them.",
+      "The cortex can adjust its own sensory input at the thalamus, through direct excitation from layer 6 and through inhibition via the TRN. In monkeys, attention raises LGN responses and lowers TRN responses, and the same thalamic circuit produces sleep spindles, a brain rhythm seen in light (non-REM) sleep. Through layer 5, the thalamus also carries signals from one cortical area to another, in parallel with the direct connections between them.",
     caveat:
       "This example uses vision. The rate-dependent switch between reducing and increasing relay activity was shown in the mouse touch (somatosensory) thalamus, not measured in human vision. Synapse counts come from cats. Most evidence for the layer 5 route through the thalamus comes from mice, and the behavioural test used their whiskers; in cats and monkeys, the evidence is mainly anatomical. The atlas does not include a separate TRN or pulvinar, so their highlights show the whole thalamus. Layers 5 and 6 share V1’s location, within about 2 millimetres of the surface. Layer 5 of higher visual areas also projects to the pulvinar; only the route from V1 is drawn.",
     steps: [
@@ -668,7 +668,7 @@ export const pathways: Pathway[] = [
       {
         region: "l6",
         title: "Feedback from layer 6",
-        body: "Neurons in [[l6|layer 6]] send axons back to the LGN, where they excite the relay cells. This feedback is called a “modulator”: it does not carry visual information itself, but it changes how relay cells respond to it.",
+        body: "Neurons in [[l6|layer 6]] send axons back to the LGN, where they excite the relay cells. This feedback is classed as a “modulator”: it changes how strongly relay cells respond to their retinal input, while the retinal input sets what each relay cell responds to.",
         fact: "Layer 6 supplies about 30% of the synapses on LGN relay cells, roughly four times the retina’s share (cat data).",
         signal: [[["v1", "l6"]], [["l6", "lgn"]]],
       },
@@ -676,13 +676,13 @@ export const pathways: Pathway[] = [
         region: "trn",
         title: "Inhibition through the TRN",
         body: "The same layer 6 axons have branches to the [[trn|thalamic reticular nucleus]] (TRN), a thin layer of inhibitory neurons around the thalamus. TRN neurons inhibit the relay cells. This allows the cortex to both increase and decrease activity in its own input.",
-        fact: "In mouse brain slices, slow layer 6 activity mainly reduced relay-cell activity, while activity at around 10 pulses per second increased it. A 2024 study in awake mice found the same rate-dependent effect.",
+        fact: "In slices of mouse touch thalamus, slow layer 6 activity mainly reduced relay-cell activity, while activity at around 10 pulses per second increased it. In awake mice, a 2024 study found a similar switch in the thalamus’s ongoing activity as layer 6 activity rose, while responses to whisker touch increased at every level tested.",
         signal: [[["l6", "trn"]], [["trn", "lgn"]]],
       },
       {
         region: "l5",
         title: "A second route through the thalamus",
-        body: "Neurons in [[l5|layer 5]], just above layer 6, send a second kind of output to the thalamus. Their axons end in higher-order nuclei such as the [[pulvinar|pulvinar]], whose main input comes from the cortex. In cats and monkeys, these axons have large terminals, a typical feature of driver inputs such as the retinal input to the LGN. The pulvinar relays the signal to [[extrastriate|higher visual areas]], in parallel with the direct connections from V1. Many of the same layer 5 axons also branch to brainstem centres that control movement, such as the superior colliculus.",
+        body: "Neurons in [[l5|layer 5]], just above layer 6, send a second kind of output to the thalamus. Their axons end in higher-order nuclei such as the [[pulvinar|pulvinar]], whose main input comes from the cortex. In cats and monkeys, some of these axons end in large terminals, a typical feature of driver inputs such as the retinal input to the LGN. The pulvinar relays the signal to [[extrastriate|higher visual areas]], in parallel with the direct connections from V1. Many of the same layer 5 axons also branch to brainstem centres that control movement, such as the superior colliculus.",
         fact: "In mice, blocking the layer 5 input from touch cortex to the higher-order touch thalamus severely impaired a whisker-based texture discrimination task, even though the direct connections between cortical areas were intact.",
         signal: [[["v1", "l5"]], [["l5", "pulvinar"]], [["pulvinar", "extrastriate"]]],
       },
@@ -732,7 +732,17 @@ export const pathways: Pathway[] = [
         bend: [0, 0, 0],
       },
     ],
-    sourceIds: ["thalamus", "lgn-synapses", "switch", "ct-awake", "transthalamic", "transthalamic-review"],
+    sourceIds: [
+      "thalamus",
+      "lgn-synapses",
+      "switch",
+      "ct-awake",
+      "transthalamic",
+      "transthalamic-review",
+      "lgn-attention",
+      "spindles-review",
+      "lgn-inputs-split",
+    ],
   },
   {
     id: "attention",

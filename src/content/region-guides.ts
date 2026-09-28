@@ -83,26 +83,26 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   l6: {
     summary: "Layer 6 is the deepest cell layer of the cortex. Here it refers to layer 6 neurons in V1 that project back to the thalamus.",
     mechanism:
-      "These neurons excite thalamic relay cells directly. Branches of the same axons excite inhibitory neurons in the TRN, which then inhibit the relay cells. Their synapses onto TRN neurons are individually stronger, so the overall effect can be inhibitory.",
+      "These neurons excite thalamic relay cells directly. Branches of the same axons excite inhibitory neurons in the TRN, which then inhibit the relay cells. In mice, their individual synapses onto TRN neurons are about 2.4 times stronger than those onto relay cells, so the overall effect can be inhibitory.",
     roles: {
       loop: "The feedback part of the circuit, through which the cortex adjusts its own input.",
     },
     connections:
       "Projects to the [[lgn|LGN]] and the [[trn|TRN]]. Separate [[l5|layer 5]] neurons, just above it, project to higher-order thalamic nuclei such as the [[pulvinar|pulvinar]], which relay signals between cortical areas.",
     limit: "Layer 6 lies within about 2 millimetres of the surface of V1, so it shares V1’s marker and highlight.",
-    sourceIds: ["corticothalamic-circuit", "ct-awake", "transthalamic", "cortical-thickness"],
+    sourceIds: ["corticothalamic-circuit", "ct-awake", "transthalamic", "cortical-thickness", "trn-synapse-strength"],
   },
   trn: {
     summary: "The thalamic reticular nucleus (TRN) is a thin layer of inhibitory neurons that surrounds the thalamus.",
     mechanism:
-      "TRN neurons receive branches of the connections running between the thalamus and the cortex in both directions, and they inhibit thalamic relay cells. The TRN also generates sleep spindles, a brain rhythm seen in light sleep.",
+      "TRN neurons receive branches of the connections running between the thalamus and the cortex in both directions, and they inhibit thalamic relay cells. Working with thalamic relay cells, the TRN generates sleep spindles, a brain rhythm seen in light (non-REM) sleep.",
     roles: {
       loop: "Allows the cortex to reduce, as well as increase, activity in its own input.",
     },
     connections:
       "Receives input from [[l6|layer 6]] and from relay cells, and inhibits the [[lgn|LGN]] and other thalamic nuclei. In mice, prefrontal cortex influences it through the basal ganglia.",
     limit: "The atlas does not include a separate TRN, so the marker is an approximate position and the highlight shows the whole thalamus.",
-    sourceIds: ["corticothalamic-circuit", "trn-basal-ganglia"],
+    sourceIds: ["corticothalamic-circuit", "trn-basal-ganglia", "spindles-trn", "spindles-review"],
   },
   pfc: {
     summary: "Prefrontal cortex, at the front of the brain, keeps goals and rules active and uses them to guide behaviour.",
@@ -127,7 +127,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
         "Part of the dorsal attention network, which directs attention voluntarily. In monkeys, the pattern of activity across LIP tracked where attention was and how it moved.",
       touch: "Combines touch with vision and body position so that you can act on what you feel.",
       hearing:
-        "The end of the auditory “where” stream. In human imaging, locating sounds activates parietal cortex, mainly the inferior parietal lobule, often more on the right.",
+        "Part of the auditory “where” stream, and the end of that route in this model. In human imaging, locating sounds activates parietal cortex, mainly the inferior parietal lobule, often more on the right.",
     },
     connections:
       "Receives visual input from [[mt|MT]] and other visual areas, as well as auditory and [[s1|touch]] input, and works with [[pfc|prefrontal cortex]] and the [[fef|frontal eye fields]]. Sends output to the [[sc|superior colliculus]]. Damage can cause optic ataxia (inaccurate reaching toward things a person sees clearly). Spatial neglect is more often linked to damage to the inferior parietal lobule, the nearby [[tpj|temporoparietal junction]] and the superior temporal gyrus than to the superior parietal lobule shown here.",
@@ -280,19 +280,30 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       hearing: "Separates sound into its frequency components. Feedback from the brainstem adjusts how much it amplifies.",
     },
     connections:
-      "The auditory nerve carries its output to the [[brainstem|cochlear nuclei]] on the same side. Medial olivocochlear fibres, mostly from the [[socR|superior olive on the opposite side]], return to the outer hair cells and reduce their amplification. In chinchillas, cochlear sensitivity dropped while the animals attended to lights; in humans, results are inconsistent. With age, auditory nerve fibres can be lost well before hair cells; this “hidden hearing loss” does not show on a standard hearing test.",
+      "The auditory nerve carries its output to the [[brainstem|cochlear nuclei]] on the same side. Medial olivocochlear fibres, mostly from the [[socR|superior olive on the opposite side]], return to the outer hair cells and reduce their amplification. In chinchillas, cochlear sensitivity dropped while the animals attended to lights; in humans, results are inconsistent. In human ears examined after death, many auditory nerve fibres were lost with age while most inner hair cells survived; this “hidden hearing loss” would not show on a standard hearing test.",
     limit: "The spiral is atlas geometry in its real position. Hair cells and fluid movement are not modelled.",
-    sourceIds: ["hair-cells", "prestin", "tonotopy", "hidden-hearing-loss", "olivocochlear", "attention-cochlea", "attention-oae", "attention-oae-null"],
+    sourceIds: [
+      "ohc-motility",
+      "prestin",
+      "tonotopy",
+      "hidden-hearing-loss",
+      "olivocochlear",
+      "attention-cochlea",
+      "attention-oae",
+      "attention-oae-null",
+      "hidden-hearing-loss-human",
+    ],
   },
   cochleaR: {
     summary: "The cochlea of the right ear.",
-    mechanism: "Same structure as the left cochlea. Having two ears on either side of the head is what allows sounds to be located.",
+    mechanism:
+      "Same structure as the left cochlea. Comparing the two ears lets the brain locate sounds to the left or right; the shape of the outer ear also helps locate sounds up or down.",
     roles: {
-      hearing: "Its signals stay separate from the left ear’s until the brainstem.",
+      hearing: "Its signals first meet the left ear’s in the superior olive, in the brainstem.",
     },
     connections: "Projects to the [[brainstemR|right cochlear nuclei]] and receives olivocochlear feedback, mostly from the [[soc|left superior olive]].",
     limit: "Atlas geometry; microscopic structure not modelled.",
-    sourceIds: ["hair-cells", "ear-location", "olivocochlear-human"],
+    sourceIds: ["ohc-motility", "ear-location", "olivocochlear-human", "sound-localization"],
   },
   brainstem: {
     summary: "The cochlear nuclei are the first stop in the brain for the auditory nerve, where the pons meets the medulla.",
@@ -302,29 +313,29 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       hearing: "Splits the signal into parallel pathways that travel upward by different routes.",
     },
     connections: "Sends output to the [[soc|superior olive]] on both sides and directly to the [[ic|inferior colliculus]].",
-    limit: "The anterior and posterior nuclei from the atlas are both highlighted.",
+    limit: "The atlas’s anterior (ventral) and posterior (dorsal) cochlear nuclei are both highlighted.",
     sourceIds: ["cochlear-nuclei"],
   },
   brainstemR: {
     summary: "The right cochlear nuclei, the first stop for the right auditory nerve.",
     mechanism: "Same organization as on the left.",
     roles: {
-      hearing: "The last stage where the right ear is processed separately.",
+      hearing: "Its outputs meet the left ear’s signals for the first time in the superior olive.",
     },
     connections: "Projects to both the [[socR|right]] and [[soc|left]] superior olives.",
     limit: "Atlas geometry; cell types not modelled.",
-    sourceIds: ["cochlear-nuclei"],
+    sourceIds: ["cochlear-nuclei", "vnll"],
   },
   soc: {
     summary:
       "The superior olivary complex is a group of brainstem nuclei where input from both ears is first combined. It also contains the neurons that send feedback to the cochlea.",
     mechanism:
-      "The medial superior olive compares arrival times between the ears, with a resolution of about 10 microseconds. The lateral superior olive compares loudness between the ears, using inhibition relayed through the calyx of Held, one of the largest synapses in the brain. In mammals, time differences appear to be read out by comparing firing rates between the two sides. Olivocochlear neurons in and around the complex send fibres back to the cochlea: medial olivocochlear fibres end on outer hair cells and reduce their amplification, and lateral olivocochlear fibres end on auditory nerve fibres beneath the inner hair cells. Human counts average about 360 medial and 1,005 lateral olivocochlear fibres.",
+      "The medial superior olive compares arrival times between the ears; people can detect differences as small as about 10 microseconds. The lateral superior olive compares loudness between the ears. Inhibition from the opposite ear reaches it through a small relay nucleus (the MNTB), whose input synapse, the calyx of Held, is one of the largest in the brain; its physiology comes mainly from rodents. In mammals, recent evidence suggests that time differences are read out by comparing firing rates between the two sides, which challenges the older textbook model of a map of delay lines. Olivocochlear neurons in and around the complex send fibres back to the cochlea: medial olivocochlear fibres end on outer hair cells and reduce their amplification, and lateral olivocochlear fibres end on auditory nerve fibres beneath the inner hair cells. Human counts average about 360 medial and 1,005 lateral olivocochlear fibres.",
     roles: {
       hearing: "Determines whether a sound comes from the left or the right, and sends feedback that turns down the cochlea’s amplification.",
     },
     connections:
-      "Receives input from the [[brainstem|left]] and [[brainstemR|right]] cochlear nuclei and sends output to the [[ic|inferior colliculus]]. Its medial olivocochlear fibres go mostly to the [[cochleaR|opposite cochlea]]. These neurons receive descending input from the [[ic|inferior colliculus]] and, in rats, directly from [[a1|auditory cortex]]. In animals, their reflex helps the auditory nerve respond to brief sounds in noise and protects the ear from loud noise; whether it helps people understand speech in noise is debated.",
+      "Receives input from the [[brainstem|left]] and [[brainstemR|right]] cochlear nuclei and sends output to the [[ic|inferior colliculus]]. Its medial olivocochlear fibres go mostly to the [[cochleaR|opposite cochlea]]. In rats, these neurons receive descending input from the [[ic|inferior colliculus]] and directly from [[a1|auditory cortex]]. In animals, their reflex helps the auditory nerve respond to brief sounds in noise and protects the ear from loud noise; whether it helps people understand speech in noise is debated.",
     limit:
       "The atlas does not include the superior olive, so the marker is an approximate position and the highlight shows the pons. The olivocochlear fibres, which leave the brainstem with the vestibular nerve, are drawn as single curves.",
     sourceIds: [
@@ -336,6 +347,8 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
       "antimasking",
       "cortex-olive",
       "colliculus-olive",
+      "itd-thresholds",
+      "sound-localization-mechanisms",
     ],
   },
   socR: {
@@ -358,7 +371,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from the [[soc|superior olive]] and the cochlear nuclei and sends output to the [[mgn|MGN]] and the [[sc|superior colliculus]]. The two inferior colliculi are connected to each other. It also receives descending fibres from [[a1|auditory cortex]] and, in rats, sends fibres down to the olivocochlear neurons of the [[soc|superior olive]].",
     limit: "Atlas geometry; internal subdivisions not modelled.",
-    sourceIds: ["inferior-colliculus", "cortex-cochlea", "colliculus-olive"],
+    sourceIds: ["inferior-colliculus", "cortex-cochlea", "colliculus-olive", "ic-bypass"],
   },
   icR: {
     summary: "The right inferior colliculus.",
@@ -373,13 +386,13 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   mgn: {
     summary: "The medial geniculate nucleus (MGN) is the auditory relay of the thalamus, next to the visual LGN.",
     mechanism:
-      "Its ventral part keeps the frequency map and projects to primary auditory cortex. Its other parts combine hearing with other senses and project to surrounding auditory cortex and to the amygdala.",
+      "Its ventral part keeps the frequency map and projects to primary auditory cortex. Its other parts combine hearing with other senses and project to surrounding auditory cortex; in rats, the medial part also projects to the amygdala.",
     roles: {
       hearing: "The last relay before auditory cortex.",
     },
     connections: "Receives input from the [[ic|inferior colliculus]], sends output to [[a1|auditory cortex]], and receives feedback from the cortex.",
     limit: "Atlas geometry for the whole nucleus; its subdivisions are not modelled.",
-    sourceIds: ["auditory-thalamus"],
+    sourceIds: ["auditory-thalamus", "mgn-amygdala"],
   },
   mgnR: {
     summary: "The right medial geniculate nucleus.",
@@ -394,7 +407,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   a1: {
     summary: "Primary auditory cortex (A1) is on Heschl’s gyrus, inside the lateral sulcus.",
     mechanism:
-      "It is organized by frequency, with mirror-image gradients (high–low–high) across the gyrus. It belongs to the core, the areas that receive their main input from the ventral MGN; in humans, the core covers roughly the inner two-thirds of Heschl’s gyrus. Pure tones activate the core strongly, while the surrounding belt and parabelt respond more to complex sounds such as speech, music and voices.",
+      "It is organized by frequency, with mirror-image gradients (high–low–high). Several high-field MRI studies find these gradients running across the gyrus; others place them along it. It belongs to the core, the areas that receive their main input from the ventral MGN; in humans, it lies along Heschl’s gyrus, mainly toward its inner end, and its borders vary between people. Pure tones activate the core strongly, while the surrounding belt and parabelt respond more to complex sounds such as speech, music and voices.",
     roles: {
       hearing: "The first cortical area for hearing. Each side receives input from both ears.",
       speech: "Processes speech at the same time as the nearby [[temporal|superior temporal gyrus]].",
@@ -404,12 +417,22 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives input from the [[mgn|MGN]] and sends output to the surrounding [[belt|belt areas]]. Works with [[a1R|right auditory cortex]]. Sends descending fibres to the MGN and the [[ic|inferior colliculus]].",
     limit: "The highlight is Heschl’s gyrus. The actual border of A1 varies between people.",
-    sourceIds: ["auditory-cortex", "human-tonotopy", "auditory-cortex-streams", "belt-fmri", "auditory-attention"],
+    sourceIds: [
+      "auditory-cortex",
+      "human-tonotopy",
+      "auditory-cortex-streams",
+      "belt-fmri",
+      "auditory-attention",
+      "a1-cytoarchitecture",
+      "a1-variability",
+      "tonotopy-orientation",
+      "speech-parallel",
+    ],
   },
   a1R: {
     summary: "Right primary auditory cortex.",
     mechanism:
-      "Same frequency organization as the left. The right side tends to be more involved in pitch and melody and the left side in rapid speech sounds, but both sides process both.",
+      "Same frequency organization as the left. The right side tends to be more sensitive to pitch and melody. The proposal that the left side specializes in rapid changes in sound is debated, and both sides process both.",
     roles: {
       hearing: "Receives input from both ears.",
       attention:
@@ -417,7 +440,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     },
     connections: "Works with [[a1|left auditory cortex]].",
     limit: "Heschl’s gyrus is used as the reference for A1.",
-    sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention"],
+    sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention", "music-speech-asymmetry", "asymmetry-debate"],
   },
   temporal: {
     summary: "The superior temporal gyrus, along the top of the temporal lobe, is where speech sounds are recognized.",
@@ -722,26 +745,34 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "The auditory belt is a ring of areas surrounding the auditory core, which includes A1. The parabelt lies just outside the belt, on the superior temporal gyrus. Together they are the second and third stages of auditory cortex.",
     mechanism:
-      "In monkeys, three core areas project to eight proposed belt areas, and the belt projects to a parabelt with at least a rostral and a caudal division. Belt neurons respond more to complex sounds than to pure tones: many are tuned to the centre frequency and width of noise bands and to the speed and direction of frequency sweeps, and many prefer a small number of monkey calls. Within the lateral belt, the front area is the most selective for the type of call and the back area for the location of the sound. In humans, brain imaging shows a similar order: pure tones activate mainly the core on Heschl’s gyrus, noise bands the cortex next to it, and vowel sounds regions further forward, outward and lower on the superior temporal gyrus. The stages also overlap in time, because the belt receives some input directly from the thalamus.",
+      "In monkeys, three core areas project to eight proposed belt areas, and the belt projects to a parabelt with at least a rostral and a caudal division. Lateral belt neurons respond more to complex sounds than to pure tones: many are tuned to the centre frequency and width of noise bands and to the speed and direction of frequency sweeps, and many prefer a small number of monkey calls. Within the lateral belt, the front area is the most selective for the type of call and the back area for the location of the sound. In humans, brain imaging shows a similar order: pure tones activate mainly the core on Heschl’s gyrus, noise bands the cortex next to it, and vowel sounds regions further forward, outward and lower on the superior temporal gyrus. The belt and parabelt also receive some input directly from the thalamus, so the stages partly work in parallel.",
     roles: {
       hearing: "The stages after A1, where neurons combine frequencies into more complex sound patterns and where the “what” and “where” streams begin.",
     },
     connections:
-      "Receives input from the [[a1|core]] and from the non-ventral parts of the [[mgn|MGN]]. In monkeys, the front of the belt and parabelt connects with the [[astg|anterior superior temporal gyrus]] and ventrolateral prefrontal cortex, and the back connects with [[parietal|posterior parietal cortex]], dorsolateral prefrontal cortex and the frontal eye fields. The parabelt also projects to other auditory and multisensory areas of the temporal lobe.",
+      "Receives input from the [[a1|core]] and some directly from the [[mgn|MGN]]; in monkeys, the parabelt’s thalamic input comes mainly from the dorsal and medial parts of the MGN, with little from the ventral part. In monkeys, the front of the belt and parabelt connects with the [[astg|anterior superior temporal gyrus]] and ventrolateral prefrontal cortex, and the back connects with [[parietal|posterior parietal cortex]], dorsolateral prefrontal cortex and the frontal eye fields. The parabelt also projects to other auditory and multisensory areas of the temporal lobe.",
     limit:
-      "The atlas does not segment the belt or parabelt. The marker is on the lateral superior temporal gyrus next to Heschl’s gyrus, at a typical group position for parabelt responses to vowel sounds; the belt itself lies mostly on the upper surface of the temporal lobe, inside the lateral sulcus, around A1. The highlight is the whole left superior temporal gyrus. Positions vary between people, and only the left hemisphere is shown.",
-    sourceIds: ["auditory-cortex-streams", "parabelt-connections", "auditory-what-where", "what-where-neurons", "belt-fmri", "human-auditory-hierarchy"],
+      "The atlas does not segment the belt or parabelt. The marker is on the lateral superior temporal gyrus next to Heschl’s gyrus, at the group peak for vowel sounds in one imaging study, which fell in parabelt-like cortex; the belt itself lies mostly on the upper surface of the temporal lobe, inside the lateral sulcus, around A1. The highlight is the outer (lateral) surface of the left superior temporal gyrus; the atlas has no separate part for the upper surface. Positions vary between people, and only the left hemisphere is shown.",
+    sourceIds: [
+      "auditory-cortex-streams",
+      "parabelt-connections",
+      "auditory-what-where",
+      "what-where-neurons",
+      "belt-fmri",
+      "human-auditory-hierarchy",
+      "parabelt-thalamus",
+    ],
   },
   astg: {
     summary:
       "The anterior superior temporal gyrus is the front part of the gyrus along the top of the temporal lobe. It is part of the auditory “what” stream, which identifies sounds, including spoken words.",
     mechanism:
-      "Along the superior temporal gyrus, from Heschl’s gyrus toward the front, regions respond to increasingly complex sounds. In a meta-analysis of more than 100 imaging experiments, speech sounds the length of single phonemes activated the middle of the gyrus most consistently, and whole words activated a site further forward. In macaque monkeys, brain imaging found a region on the front of the superior temporal plane that prefers calls of their own species and is sensitive to which individual is calling. In a study of 15 patients with right-hemisphere damage, those with a selective difficulty recognizing sounds had lesions in the front and lower parts of the temporal lobe.",
+      "Along the superior temporal gyrus, from Heschl’s gyrus toward the front, regions respond to increasingly complex sounds. In a meta-analysis of more than 100 imaging experiments, speech sounds the length of single phonemes activated the middle of the gyrus most consistently, and whole words activated a site further forward. In macaque monkeys, brain imaging found a region on the front of the superior temporal plane that prefers calls of their own species and is sensitive to which individual is calling. In a study of 15 patients with right-hemisphere damage, those with a selective difficulty recognizing sounds had lesions in the temporal pole and the front of the middle and lower temporal gyri, below the superior temporal gyrus.",
     roles: {
       hearing: "Part of the “what” stream, which identifies sounds such as words, voices and environmental sounds.",
     },
     connections:
-      "Receives input from the front of the [[belt|belt and parabelt]]. Connects with ventrolateral prefrontal cortex, including the [[frontal|inferior frontal gyrus]]. Speech sounds processed along this route feed the ventral speech stream described in the Speech topic.",
+      "Receives input from the front of the [[belt|belt and parabelt]]. Connects with [[vlpfc|ventrolateral prefrontal cortex]] in the inferior frontal gyrus (shown by tracer studies in monkeys). Speech sounds processed along this route feed the ventral speech stream described in the Speech topic.",
     limit:
       "The atlas does not segment this region. The marker is a typical group position from a meta-analysis of word-recognition studies, snapped to the left superior temporal gyrus; the region has no sharp borders. It exists in both hemispheres; only the left is shown.",
     sourceIds: ["auditory-streams-review", "word-recognition", "monkey-voice-region", "auditory-prefrontal", "auditory-lesions"],
@@ -750,7 +781,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     summary:
       "Layer 5 is a deep cell layer of the cortex, just above layer 6. Its large pyramidal neurons send output to the thalamus and to brainstem centres that control movement.",
     mechanism:
-      "The layer 5 neurons that project to the thalamus are among the largest pyramidal cells in the cortex. Their axons drive cells in higher-order thalamic nuclei, such as the pulvinar in vision and the posterior medial nucleus in touch, which relay the signal to other cortical areas. This forms a route between cortical areas that passes through the thalamus (a transthalamic route), alongside the direct cortical connections. In mouse brain slices, activity from primary touch cortex still reached secondary touch cortex after the direct connection between them was cut, and it disappeared when the thalamus was cut or silenced. Many of these axons also branch to brainstem centres that control movement; one proposal is that the thalamic branch carries a copy of motor commands.",
+      "The layer 5 neurons that project to the thalamus are among the largest pyramidal cells in the cortex. Their axons drive cells in higher-order thalamic nuclei, such as the pulvinar in vision and, in rodents, the posterior medial nucleus in touch, which relay the signal to other cortical areas. This forms a route between cortical areas that passes through the thalamus (a transthalamic route), alongside the direct cortical connections. In mouse brain slices, activity from primary touch cortex still reached secondary touch cortex after the direct connection between them was cut, and it disappeared when the thalamus was cut or silenced. Many of these axons also branch to brainstem centres that control movement; one proposal is that the thalamic branch carries a copy of motor commands.",
     roles: {
       loop: "Starts a second route through the thalamus, which carries signals from V1 to higher visual areas.",
     },
@@ -770,16 +801,16 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
   },
   vlpfc: {
     summary:
-      "Ventrolateral prefrontal cortex lies on the lower side of the frontal lobe and includes the triangular part of the inferior frontal gyrus. In the auditory system it is the frontal end of the “what” stream.",
+      "Ventrolateral prefrontal cortex lies on the lower part of the outer surface of the frontal lobe and includes the triangular part of the inferior frontal gyrus. In the auditory system it is the frontal end of the “what” stream.",
     mechanism:
-      "In monkeys, the front of the auditory belt and parabelt projects mainly to ventrolateral prefrontal cortex, and the back mainly to dorsolateral prefrontal cortex, so the two auditory streams reach different parts of the frontal lobe. Clusters of ventrolateral prefrontal neurons respond to similar complex calls. In a meta-analysis of human speech-recognition studies, one of the frontal peaks lay in the left triangular part of the inferior frontal gyrus.",
+      "In monkeys, the front of the auditory belt connects with the frontal pole and with rostral and ventral prefrontal cortex, and the back with caudal dorsolateral prefrontal cortex and the frontal eye fields. Both reach ventrolateral prefrontal cortex, the front at its forward end and the back further back. In monkeys, clusters of ventrolateral prefrontal neurons respond to similar complex calls. In a meta-analysis of human speech-recognition studies, one of the frontal peaks lay in the left triangular part of the inferior frontal gyrus.",
     roles: {
       hearing: "The frontal end of the auditory “what” stream, which identifies sounds.",
     },
     connections:
       "Receives input from the [[astg|anterior superior temporal gyrus]] and the front of the [[belt|belt and parabelt]]. It overlaps the front part of Broca’s area; the [[frontal|Broca’s area]] marker in this model sits on the opercular part of the same gyrus, just behind it.",
     limit:
-      "The marker is a typical position from a meta-analysis of speech studies, snapped to the triangular part of the left inferior frontal gyrus; the region’s borders are not segmented. It exists in both hemispheres; only the left is shown.",
+      "The marker is a peak from a meta-analysis of speech studies (a small cluster reported by about 4% of the experiments), snapped to the triangular part of the left inferior frontal gyrus; the region’s borders are not segmented. It exists in both hemispheres; only the left is shown.",
     sourceIds: ["auditory-prefrontal", "auditory-streams-review", "word-recognition"],
   },
 };
@@ -1036,7 +1067,7 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     url: "https://doi.org/10.1016/S1053-8119(03)00084-3",
   },
   {
-    id: "hair-cells",
+    id: "ohc-motility",
     title: "Ashmore · Cochlear outer hair cell motility (2008)",
     url: "https://doi.org/10.1152/physrev.00044.2006",
   },
@@ -1834,5 +1865,101 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     id: "dorsal-framework",
     title: "Kravitz et al. · A new neural framework for visuospatial processing (2011)",
     url: "https://doi.org/10.1038/nrn3008",
+  },
+  {
+    id: "ic-bypass",
+    title: "Malmierca et al. · Direct projections from cochlear nuclear complex to auditory thalamus in the rat (2002)",
+    url: "https://doi.org/10.1523/JNEUROSCI.22-24-10891.2002",
+  },
+  {
+    id: "mgn-amygdala",
+    title: "LeDoux, Farb & Ruggiero · Topographic organization of neurons in the acoustic thalamus that project to the amygdala (1990)",
+    url: "https://doi.org/10.1523/JNEUROSCI.10-04-01043.1990",
+  },
+  {
+    id: "a1-cytoarchitecture",
+    title: "Morosan et al. · Human primary auditory cortex: cytoarchitectonic subdivisions and mapping into a spatial reference system (2001)",
+    url: "https://doi.org/10.1006/nimg.2000.0715",
+  },
+  {
+    id: "a1-variability",
+    title: "Rademacher et al. · Probabilistic mapping and volume measurement of human primary auditory cortex (2001)",
+    url: "https://doi.org/10.1006/nimg.2000.0714",
+  },
+  {
+    id: "hidden-hearing-loss-human",
+    title: "Wu et al. · Primary neural degeneration in the human cochlea: evidence for hidden hearing loss in the aging ear (2019)",
+    url: "https://doi.org/10.1016/j.neuroscience.2018.07.053",
+  },
+  {
+    id: "sound-localization",
+    title: "Middlebrooks & Green · Sound localization by human listeners (1991)",
+    url: "https://doi.org/10.1146/annurev.ps.42.020191.001031",
+  },
+  {
+    id: "vnll",
+    title: "Batra & Fitzpatrick · Monaural and binaural processing in the ventral nucleus of the lateral lemniscus (2002)",
+    url: "https://doi.org/10.1016/S0378-5955(02)00368-4",
+  },
+  {
+    id: "itd-thresholds",
+    title: "Brughera, Dunai & Hartmann · Human interaural time difference thresholds for sine tones: the high-frequency limit (2013)",
+    url: "https://doi.org/10.1121/1.4795778",
+  },
+  {
+    id: "sound-localization-mechanisms",
+    title: "Grothe, Pecka & McAlpine · Mechanisms of sound localization in mammals (2010)",
+    url: "https://doi.org/10.1152/physrev.00026.2009",
+  },
+  {
+    id: "tonotopy-orientation",
+    title: "Da Costa et al. · Human primary auditory cortex follows the shape of Heschl's gyrus (2011)",
+    url: "https://doi.org/10.1523/JNEUROSCI.2000-11.2011",
+  },
+  {
+    id: "speech-parallel",
+    title: "Hamilton et al. · Parallel and distributed encoding of speech across human auditory cortex (2021)",
+    url: "https://doi.org/10.1016/j.cell.2021.07.019",
+  },
+  {
+    id: "music-speech-asymmetry",
+    title: "Zatorre, Belin & Penhune · Structure and function of auditory cortex: music and speech (2002)",
+    url: "https://doi.org/10.1016/S1364-6613(00)01816-7",
+  },
+  {
+    id: "asymmetry-debate",
+    title: "McGettigan & Scott · Cortical asymmetries in speech perception: what's wrong, what's right and what's left? (2012)",
+    url: "https://doi.org/10.1016/j.tics.2012.04.006",
+  },
+  {
+    id: "parabelt-thalamus",
+    title: "Hackett, Stepniewska & Kaas · Thalamocortical connections of the parabelt auditory cortex in macaque monkeys (1998)",
+    url: "https://pubmed.ncbi.nlm.nih.gov/9766404/",
+  },
+  {
+    id: "lgn-attention",
+    title: "McAlonan, Cavanaugh & Wurtz · Guarding the gateway to cortex with attention in visual thalamus (2008)",
+    url: "https://doi.org/10.1038/nature07382",
+  },
+  {
+    id: "spindles-trn",
+    title: "Steriade et al. · The deafferented reticular thalamic nucleus generates spindle rhythmicity (1987)",
+    url: "https://doi.org/10.1152/jn.1987.57.1.260",
+  },
+  {
+    id: "spindles-review",
+    title: "Fernandez & Lüthi · Sleep spindles: mechanisms and functions (2020)",
+    url: "https://doi.org/10.1152/physrev.00042.2018",
+  },
+  {
+    id: "lgn-inputs-split",
+    title: "Erişir, Van Horn & Sherman · Relative numbers of cortical and brainstem inputs to the lateral geniculate nucleus (1997)",
+    url: "https://doi.org/10.1073/pnas.94.4.1517",
+  },
+  {
+    id: "trn-synapse-strength",
+    title:
+      "Golshani, Liu & Jones · Differences in quantal amplitude reflect GluR4 subunit number at corticothalamic synapses on two populations of thalamic neurons (2001)",
+    url: "https://doi.org/10.1073/pnas.061013698",
   },
 ];

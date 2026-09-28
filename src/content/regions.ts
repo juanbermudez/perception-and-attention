@@ -55,7 +55,7 @@ export const regions: Record<RegionId, Region> = {
     label: "Layer 6 of the cortex",
     short: "Layer 6 · feedback",
     name: "layer 6",
-    where: "Deepest cell layer of V1 (same location, a few millimetres down)",
+    where: "Deepest cell layer of V1 (same location, within about 2 millimetres of the surface)",
     position: at("l6"),
   },
   l5: {

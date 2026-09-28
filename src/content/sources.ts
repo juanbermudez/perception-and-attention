@@ -470,4 +470,25 @@ export const sources: Source[] = [
     url: "https://doi.org/10.1002/cne.903000103",
     note: "Human ganglion-cell counts and how convergence differs between the centre of gaze and the periphery.",
   },
+  {
+    id: "lgn-attention",
+    title: "Guarding the gateway to cortex with attention in visual thalamus",
+    author: "McAlonan, Cavanaugh & Wurtz · Nature · 2008",
+    url: "https://doi.org/10.1038/nature07382",
+    note: "Monkeys: attention increased LGN responses and decreased TRN responses.",
+  },
+  {
+    id: "spindles-review",
+    title: "Sleep spindles: mechanisms and functions",
+    author: "Fernandez & Lüthi · Physiological Reviews · 2020",
+    url: "https://doi.org/10.1152/physrev.00042.2018",
+    note: "How the thalamic reticular nucleus and relay cells generate sleep spindles.",
+  },
+  {
+    id: "lgn-inputs-split",
+    title: "Relative numbers of cortical and brainstem inputs to the lateral geniculate nucleus",
+    author: "Erişir, Van Horn & Sherman · PNAS · 1997",
+    url: "https://doi.org/10.1073/pnas.94.4.1517",
+    note: "Cats: cortical and brainstem terminals each make up about half of the non-retinal excitatory input to LGN relay cells.",
+  },
 ];
