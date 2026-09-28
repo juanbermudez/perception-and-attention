@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b0b">
+  <meta name="description" content="A review of some basics of human attention and the sensory pathways it acts on, with an interactive 3D brain.">
+  <title>Basics on Attention</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%230b0b0b'/%3E%3Cpath d='M12 12c12-12 26 5 14 16S0 17 12 12m14 0C14 0 0 17 12 28s26-11 14-16' fill='none' stroke='%23cccccc' stroke-width='3'/%3E%3C/svg%3E">
+  <style>/* STYLES */</style>
+</head>
+<body>
+  <main class="workspace">
+    <section class="brain-stage" aria-label="Interactive brain visualization">
+      <h1 class="sr-only" id="scene-title">Basics on Attention</h1>
+      <div class="orbit-surface" id="orbit-surface">
+        <div id="canvas-container"><div id="loading" role="status"><span class="loading-orbit"></span>Making connections…</div></div>
+        <div id="region-labels" aria-label="Brain region markers"></div>
+      </div>
+      <div class="stage-toast" id="toast" role="status" aria-live="polite"></div>
+
+      <nav class="dock framed-card" aria-label="Topics"><div class="dock-surface card-surface">
+        <button class="dock-home" id="home-button" aria-label="Overview" title="Overview" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/></svg></button>
+        <span class="dock-divider" aria-hidden="true"></span>
+        <div class="pathway-list" id="pathway-list"></div>
+        <span class="dock-divider" aria-hidden="true"></span>
+        <div class="dock-actions">
+          <button class="ghost-icon" id="options-button" popovertarget="view-options" aria-label="Settings" title="Settings" aria-expanded="false" aria-controls="view-options" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg></button>
+          <button class="ghost-icon" id="help-button" popovertarget="view-help" aria-label="Info" title="Controls and about" aria-expanded="false" aria-controls="view-help" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg></button>
+        </div>
+      </div></nav>
+
+      <section id="view-options" class="view-options framed-card" popover aria-label="Settings" role="dialog">
+        <div class="options-heading"><h2>Settings</h2><button class="icon-button" popovertarget="view-options" popovertargetaction="hide" aria-label="Close settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+        <div class="option-group">
+          <h3>Show</h3>
+          <div class="view-controls" aria-label="Visible layers">
+            <button id="labels-toggle" class="chip active" aria-pressed="true">Labels</button><button id="tissue-toggle" class="chip active" aria-pressed="true">X-ray</button><button id="skull-toggle" class="chip active" aria-pressed="true">Skull</button><button id="play-toggle" class="chip active" aria-pressed="true">Animation</button><button class="chip active" id="bone-toggle" aria-pressed="true" hidden>Temporal bones</button>
+          </div>
+        </div>
+        <div class="option-group">
+          <h3>View from</h3>
+          <div class="anatomical-views" aria-label="Anatomical views"><button class="chip" data-view="front">Front</button><button class="chip" data-view="left">Left</button><button class="chip" data-view="right">Right</button><button class="chip" data-view="top">Top</button><button class="chip" data-view="ear" id="ear-view" hidden>Inner ear</button></div>
+        </div>
+        <div class="options-actions"><button id="reset-view" class="option-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>Reset view</button><button id="fullscreen" class="option-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>Fullscreen</button></div>
+      </section>
+
+      <section id="view-help" class="view-help framed-card" popover aria-label="Info" role="dialog">
+        <div class="options-heading"><h2>Controls</h2><button class="icon-button" popovertarget="view-help" popovertargetaction="hide" aria-label="Close info"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+        <dl class="help-controls">
+          <div><dt>Rotate</dt><dd>Drag</dd></div>
+          <div><dt>Pan</dt><dd>Shift + drag</dd></div>
+          <div><dt>Zoom</dt><dd>Scroll or pinch</dd></div>
+          <div><dt>Open a region</dt><dd>Click a label</dd></div>
+          <div><dt>Previous / next step</dt><dd><kbd>←</kbd><kbd>→</kbd></dd></div>
+          <div><dt>Pause animation</dt><dd><kbd>Space</kbd></dd></div>
+          <div><dt>Switch topic</dt><dd><kbd>1</kbd>–<kbd>6</kbd></dd></div>
+        </dl>
+        <button class="source-link" id="help-credits">About <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button>
+      </section>
+    </section>
+
+    <aside class="inspector" id="inspector" aria-label="Explanations">
+      <div class="inspector-resize" id="inspector-resize" role="separator" aria-label="Resize explanation panel" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="560" aria-valuenow="368" tabindex="0"></div>
+      <div class="inspector-surface">
+        <section class="intro-view" id="intro-view" aria-labelledby="intro-title">
+          <div class="inspector-scroll" id="intro-scroll"></div>
+        </section>
+        <section class="path-view" id="path-view" aria-labelledby="path-title" hidden>
+          <header class="inspector-heading">
+            <button class="back-link" id="back-to-intro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Overview</button>
+            <h2 id="path-title"></h2>
+            <p class="path-subtitle" id="path-subtitle"></p>
+          </header>
+          <div class="panel-tabs" role="tablist" aria-label="Topic sections">
+            <button class="panel-tab" id="guide-tab" role="tab" data-panel="guide" aria-selected="true" aria-controls="guide-panel">Walkthrough</button>
+            <button class="panel-tab" id="region-tab" role="tab" data-panel="region" aria-selected="false" aria-controls="region-drawer" tabindex="-1">Region</button>
+            <button class="panel-tab" id="streams-tab" role="tab" data-panel="streams" aria-selected="false" aria-controls="sensory-controls" tabindex="-1" hidden>Streams</button>
+          </div>
+          <div class="inspector-body" id="inspector-body">
+            <section class="guide-panel" id="guide-panel" role="tabpanel" aria-labelledby="guide-tab" tabindex="0">
+              <p class="path-intro" id="path-intro"></p>
+              <ol class="path-steps" id="path-steps" aria-label="Steps"></ol>
+              <div class="path-after" id="path-after"></div>
+            </section>
+            <section class="region-drawer" id="region-drawer" role="tabpanel" aria-labelledby="region-tab" tabindex="0" hidden><div id="drawer-content"></div></section>
+            <section class="sensory-controls" id="sensory-controls" role="tabpanel" aria-labelledby="streams-tab" tabindex="0" hidden>
+              <p class="panel-lede">Vision, sound and touch inputs arrive at the same time. Set a priority to see how attention changes the balance between them.</p>
+              <div id="sensory-streams" class="sensory-streams"></div>
+              <div class="network-row"><button id="control-network" class="layer-button" aria-pressed="true"><i class="stream-dot" style="--stream-color:#eed183"></i>Control network links</button><button id="show-all-streams" class="stream-action">Reset</button></div>
+              <div class="priority-control"><span class="control-label">Give priority to</span><div id="attention-priority" role="group" aria-label="Attention priority"></div></div>
+              <label class="gain-control"><span class="control-label">Attention gain</span><input id="attention-gain" type="range" min="0" max="100" step="5" value="65"><output id="attention-gain-value"></output></label>
+              <figure class="normalization" id="normalization" aria-label="Normalization model output"></figure>
+            </section>
+          </div>
+          <footer class="step-controls" id="step-controls" aria-label="Walkthrough controls">
+            <button class="step-nav" id="step-prev" aria-label="Previous step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+            <div class="step-progress" id="step-progress" role="group" aria-label="Steps"></div>
+            <button class="step-play" id="step-play" aria-pressed="false"><svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z"/></svg><svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span id="step-play-label">Play</span></button>
+            <button class="step-nav" id="step-next" aria-label="Next step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+          </footer>
+        </section>
+      </div>
+    </aside>
+  </main>
+  <dialog id="info-dialog" aria-label="About">
+    <header class="about-head">
+      <div class="about-tabs" role="tablist" aria-label="About sections">
+        <button class="about-tab" role="tab" id="about-tab-about" data-about="about" aria-controls="about-panel" aria-selected="true">About</button>
+        <button class="about-tab" role="tab" id="about-tab-papers" data-about="papers" aria-controls="about-panel" aria-selected="false" tabindex="-1">Papers</button>
+        <button class="about-tab" role="tab" id="about-tab-code" data-about="code" aria-controls="about-panel" aria-selected="false" tabindex="-1">Code</button>
+        <button class="about-tab" role="tab" id="about-tab-models" data-about="models" aria-controls="about-panel" aria-selected="false" tabindex="-1">Models</button>
+      </div>
+      <button class="drawer-close" id="dialog-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+    </header>
+    <div class="about-body" id="about-panel" role="tabpanel" aria-labelledby="about-tab-about" tabindex="0"></div>
+  </dialog>
+  <script type="module">/* SCRIPT */</script>
+</body>
+</html>
