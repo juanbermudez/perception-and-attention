@@ -1,5 +1,6 @@
 import { clamp } from "math";
 import type { Edge, PathId, RegionId, SenseId } from "../content/types";
+import type { Isolation } from "./view";
 
 export interface AttentionSettings {
   enabledSenses: Record<SenseId, boolean>;
@@ -89,13 +90,47 @@ export function attentionWeight(path: PathId, edge: Edge, settings: AttentionSet
 
 const OVERVIEW_PATHS = new Set<PathId>(["vision", "hearing", "touch"]);
 
-/** Brightness of one route in the current view; 0 hides it. */
-export function routeWeight(path: PathId, edge: Edge, view: AttentionSettings & { overview: boolean; path: PathId }): number {
+export type RouteView = AttentionSettings & { overview: boolean; path: PathId; isolate?: Isolation | null };
+
+function topicRouteWeight(path: PathId, edge: Edge, view: RouteView): number {
   // Detail routes (e.g. beyond V1) would crowd the overview and the Attention streams.
   if (edge.detail) return !view.overview && path === view.path ? 1 : 0;
   if (view.overview) return OVERVIEW_PATHS.has(path) ? 0.7 : 0;
   if (view.path === "attention") return attentionWeight(path, edge, view);
   return path === view.path ? 1 : 0;
+}
+
+/** True when both ends of a route are isolated, so it stays at full strength while everything else drops to `keep`. */
+export function isolateKeepsRoute(edge: Edge, isolate: Isolation | null | undefined): boolean {
+  return !!isolate && isolate.regions.includes(edge.from) && isolate.regions.includes(edge.to);
+}
+
+/**
+ * Brightness of one route in the current view; 0 hides it.
+ *
+ * While regions are isolated, a route between two of them shows even if its topic hides it
+ * (another topic's route, or a detail route), so an isolated pair never looks unconnected.
+ * Pass every route as `all` so only one route per connection shows: none if the view already
+ * shows one, otherwise the first in topic order.
+ */
+export function routeWeight(path: PathId, edge: Edge, view: RouteView, all?: readonly { path: PathId; edge: Edge }[]): number {
+  const weight = topicRouteWeight(path, edge, view);
+  if (weight > 0 || !isolateKeepsRoute(edge, view.isolate)) return weight;
+  if (all) {
+    let earlier = false,
+      seen = false;
+    for (const other of all) {
+      if (other.edge === edge) {
+        seen = true;
+        continue;
+      }
+      if (other.edge.from !== edge.from || other.edge.to !== edge.to) continue;
+      if (topicRouteWeight(other.path, other.edge, view) > 0) return 0;
+      if (!seen) earlier = true;
+    }
+    if (earlier) return 0;
+  }
+  return 1;
 }
 
 export function regionPulse(seconds: number, reducedMotion = false): number {
