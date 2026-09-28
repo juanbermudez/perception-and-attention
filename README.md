@@ -141,10 +141,10 @@ Run `pnpm test` after editing. It checks that every region has a guide, every li
 
 ## Regenerating geometry
 
-Normal builds use the checked-in files in `src/data/`. To regenerate them, obtain the two FBX inputs and the repository tree JSON identified in `provenance/anatomy.json`, then run:
+Normal builds use the checked-in files in `src/data/`. To regenerate them, put the two FBX inputs and the repository tree JSON identified in `provenance/anatomy.json` in `work/anatomy/` (git-ignored), then run:
 
 ```sh
-node scripts/prepare-atlas.mjs /path/to/inputs
+node scripts/prepare-atlas.mjs
 node scripts/prepare-skull.mjs
 ```
 

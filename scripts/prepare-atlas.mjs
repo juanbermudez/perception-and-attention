@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-const inputs = resolve(process.argv[2] || "../../work/anatomy");
+const inputs = resolve(process.argv[2] || "work/anatomy");
 const project = resolve(".");
 
 import { mulberry32 } from "math/random";

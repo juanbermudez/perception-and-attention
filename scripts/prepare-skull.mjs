@@ -7,7 +7,7 @@ import { mulberry32 } from "math/random";
 import { Box3, Matrix4, Vector3 } from "three";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
-const inputs = resolve(process.argv[2] || "../../work/anatomy");
+const inputs = resolve(process.argv[2] || "work/anatomy");
 const reference = JSON.parse(await readFile("provenance/anatomy.json", "utf8"));
 const raw = await readFile(join(inputs, "skeletal.fbx"));
 const sha256 = createHash("sha256").update(raw).digest("hex");
