@@ -4,7 +4,7 @@ import { byId } from "./dom";
 
 const NARROW = matchMedia("(max-width: 740px)");
 
-export function setupPanelResize(onResize: () => void) {
+export function setupPanelResize() {
   const workspace = document.querySelector<HTMLElement>(".workspace");
   if (!workspace) throw new Error("Missing .workspace");
   const panel = byId("inspector");
@@ -38,7 +38,6 @@ export function setupPanelResize(onResize: () => void) {
     const size = Math.round(Math.max(min, Math.min(max, value)));
     workspace?.style.setProperty(NARROW.matches ? "--drawer-height" : "--inspector-width", `${size}px`);
     updateHandle();
-    onResize();
   }
 
   function finish() {

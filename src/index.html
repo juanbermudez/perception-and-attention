@@ -25,23 +25,9 @@
         <div class="pathway-list" id="pathway-list"></div>
         <span class="dock-divider" aria-hidden="true"></span>
         <div class="dock-actions">
-          <button class="dock-text" id="about-button">About</button>
-          <button class="ghost-icon" id="help-button" popovertarget="view-help" aria-label="Info" title="Controls" aria-expanded="false" aria-controls="view-help" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg></button>
+          <button class="dock-about" id="about-button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg><span>About</span></button>
         </div>
       </div></nav>
-
-      <section id="view-help" class="view-help framed-card" popover aria-label="Info" role="dialog">
-        <div class="options-heading"><h2>Controls</h2><button class="icon-button" popovertarget="view-help" popovertargetaction="hide" aria-label="Close info"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
-        <dl class="help-controls">
-          <div><dt>Rotate</dt><dd>Drag</dd></div>
-          <div><dt>Pan</dt><dd>Shift + drag</dd></div>
-          <div><dt>Zoom</dt><dd>Scroll or pinch</dd></div>
-          <div><dt>Open a region</dt><dd>Click a label</dd></div>
-          <div><dt>Previous / next step</dt><dd><kbd>←</kbd><kbd>→</kbd></dd></div>
-          <div><dt>Pause animation</dt><dd><kbd>Space</kbd></dd></div>
-          <div><dt>Switch topic</dt><dd><kbd>1</kbd>–<kbd>6</kbd></dd></div>
-        </dl>
-      </section>
     </section>
 
     <aside class="inspector" id="inspector" aria-label="Explanations">
@@ -49,7 +35,7 @@
       <div class="inspector-surface">
         <section class="intro-view" id="intro-view" aria-labelledby="intro-title">
           <div class="inspector-scroll" id="intro-scroll"></div>
-          <footer class="intro-footer"><button class="source-link" id="intro-about">About this project <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button></footer>
+          <footer class="intro-footer"><button class="about-link" id="intro-about">About this project <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button></footer>
         </section>
         <section class="path-view" id="path-view" aria-labelledby="path-title" hidden>
           <header class="inspector-heading">

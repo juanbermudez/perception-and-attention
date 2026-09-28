@@ -1,3 +1,12 @@
+// The 3D brain: anatomy point clouds, signal routes, region activity and callout labels.
+//
+// createBrainScene builds everything once, then runs a single frame loop that reads the
+// shared ExplorerState. In order, each frame:
+//   1. highlights the selected (or hovered) region and moves the camera,
+//   2. advances the walkthrough volley and decays region activity (leaky integrator),
+//   3. draws particles along each route, dimming routes outside the step spotlight,
+//   4. flickers region activity points at a rate set by their activity,
+//   5. projects markers and lays out callout labels outside the head.
 import { clamp, lerp, repeat, type Vec3, vec3 } from "math";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -120,7 +129,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   controls.enablePan = true;
   controls.maxPolarAngle = Math.PI * 0.83;
   controls.minPolarAngle = 0.001;
-  let closeEar = false;
   let focusStarted = -1,
     contextDistance = camera.position.distanceTo(controls.target);
   const focusFrom = vec3.create(),
@@ -190,15 +198,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     return group === "bone" ? hearingVisible() && state.bones : group !== "ear" || hearingVisible();
   }
   function pointsVisible(group: string) {
-    return group === "lower"
-      ? !closeEar
-      : group === "bone"
-        ? hearingVisible() && state.bones
-        : group === "auditory-nerve"
-          ? hearingVisible()
-          : group === "eye" || group === "optic"
-            ? visionVisible()
-            : true;
+    return group === "bone"
+      ? hearingVisible() && state.bones
+      : group === "auditory-nerve"
+        ? hearingVisible()
+        : group === "eye" || group === "optic"
+          ? visionVisible()
+          : true;
   }
   const pointLayers: { group: string; object: THREE.Points; material: THREE.ShaderMaterial; opacity: WeightMotion }[] = [];
   const surfaceLayers: { group: string; object: THREE.Mesh; material: THREE.MeshPhongMaterial; opacity: WeightMotion }[] = [];
@@ -362,34 +368,25 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const skull = new THREE.Points(skullGeometry, skullMaterial);
   skull.renderOrder = 1;
   world.add(skull);
-  const skullOpacity = createWeight(skullMaterial.uniforms.opacity.value),
-    earViewWeight = createWeight();
+  const skullOpacity = createWeight(skullMaterial.uniforms.opacity.value);
   // Frame the whole head when the skull is shown; preserve all atlas coordinates.
   const skullCenterY = (skullData.bounds.min[1] + skullData.bounds.max[1]) * 0.5;
   function resetOverview() {
     focusStarted = -1;
     clearDamping();
-    closeEar = false;
     controls.target.set(0, state.skull ? skullCenterY : -0.1, 0);
     camera.position.set(state.skull ? -5.65 : -4.8, state.skull ? skullCenterY + 2.95 : 2.6, state.skull ? 10.05 : 8.5);
     controls.update();
     contextDistance = camera.position.distanceTo(controls.target);
   }
   function focusRegion(id: RegionId, focusCamera = false) {
-    if (closeEar && !["cochlea", "brainstem"].includes(id)) {
-      closeEar = false;
-      contextDistance = state.skull ? 12.4 : 10.5;
-      focusCamera = true;
-    }
     highlightRegion(id);
     if (!focusCamera) return;
     const region = regions[id].position,
       side = region[2] < 0 ? -1 : 1;
-    if (closeEar) vec3.copy(lookAt, region);
-    else vec3.set(lookAt, region[0] * 0.35, lerp(state.skull ? skullCenterY : -0.1, region[1], 0.35), region[2] * 0.35);
+    vec3.set(lookAt, region[0] * 0.35, lerp(state.skull ? skullCenterY : -0.1, region[1], 0.35), region[2] * 0.35);
     // Each region has a viewing direction that keeps it in front of the skull.
-    if (closeEar) viewFrom.set(-0.6, 0.3, 1.55);
-    else if (id.startsWith("retina") || id === "chiasm") viewFrom.set(-1, 0.18, side * 0.6);
+    if (id.startsWith("retina") || id === "chiasm") viewFrom.set(-1, 0.18, side * 0.6);
     else if (id === "v1" || id === "l6" || id === "extrastriate") viewFrom.set(0.75, 0.22, side);
     else if (id === "cingulate" || id === "motor" || id === "s1") viewFrom.set(-0.15, 0.75, side);
     else if (id === "medulla" || id.startsWith("brainstem")) viewFrom.set(0.5, -0.16, side);
@@ -416,11 +413,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
 
   // Hovering a region name previews it: look at it and highlight it, then return
   // to the saved view when the pointer leaves.
-  let preview: { id: RegionId; target: Vec3; direction: THREE.Vector3; distance: number; closeEar: boolean } | null = null;
+  let preview: { id: RegionId; target: Vec3; direction: THREE.Vector3; distance: number } | null = null;
   function previewRegion(id: RegionId) {
     if (!preview) {
       const direction = camera.position.clone().sub(controls.target);
-      preview = { id, target: controls.target.toArray() as Vec3, direction, distance: direction.length(), closeEar };
+      preview = { id, target: controls.target.toArray() as Vec3, direction, distance: direction.length() };
     }
     preview.id = id;
     focusRegion(id, true);
@@ -430,7 +427,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const saved = preview;
     preview = null;
     if (!restore) return;
-    closeEar = saved.closeEar;
     animateCamera(saved.target, saved.direction, saved.distance);
   }
   /** The region the scene should treat as selected: a hover preview wins over the step. */
@@ -790,7 +786,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     calloutBounds: CalloutBounds = { width: 0, top: 0, bottom: 0, margin: 10 };
   const dock = stage.querySelector<HTMLElement>(".dock");
   function measureHead() {
-    const outline = state.skull && !closeEar ? skullOutline : cortexOutline;
+    const outline = state.skull ? skullOutline : cortexOutline;
     head.left = Infinity;
     head.right = -Infinity;
     head.top = Infinity;
@@ -888,53 +884,19 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     controls.autoRotate = state.overview && state.playing && !reduced && !userOrbited && focusStarted < 0;
     updateFocus(ms);
     controls.update(dt);
-    const earBlend = stepWeight(earViewWeight, closeEar ? 1 : 0, dt, reduced);
-    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, closeEar ? 0 : state.xray ? 0.3 : 0.62, dt, reduced);
+    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, state.xray ? 0.3 : 0.62, dt, reduced);
     cortex.visible = cortexOpacity.value > ACTIVITY_CUTOFF;
-    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? (closeEar ? 0.1 : 0.7) : 0, dt, reduced);
+    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 : 0, dt, reduced);
     skull.visible = skullOpacity.value > ACTIVITY_CUTOFF;
-    skullMaterial.uniforms.pointSize.value = lerp(1.3, 0.4, earBlend);
-    particles.material.uniforms.pointScale.value = lerp(1, 0.18, earBlend);
-    activityClusters.material.uniforms.pointScale.value = lerp(1, 0.18, earBlend);
     for (const layer of surfaceLayers) {
       const target =
-        layer.group === "cortex"
-          ? closeEar
-            ? 0.014
-            : state.xray
-              ? 0.065
-              : 0.26
-          : layer.group === "bone"
-            ? closeEar
-              ? 0.13
-              : 0.075
-            : layer.group === "ear"
-              ? 0.95
-              : closeEar
-                ? 0.01
-                : state.xray
-                  ? 0.02
-                  : 0.045;
+        layer.group === "cortex" ? (state.xray ? 0.065 : 0.26) : layer.group === "bone" ? 0.075 : layer.group === "ear" ? 0.95 : state.xray ? 0.02 : 0.045;
       layer.material.opacity = stepWeight(layer.opacity, surfaceVisible(layer.group) ? target : 0, dt, reduced);
       layer.object.visible = layer.opacity.value > ACTIVITY_CUTOFF;
     }
     for (const layer of pointLayers) {
       const target =
-        layer.group === "bone"
-          ? 0.28
-          : layer.group === "auditory-nerve"
-            ? 0.8
-            : closeEar
-              ? layer.group === "stem"
-                ? 0.15
-                : 0.1
-              : layer.group === "deep"
-                ? state.xray
-                  ? 0.42
-                  : 0.6
-                : state.xray
-                  ? 0.5
-                  : 0.72;
+        layer.group === "bone" ? 0.28 : layer.group === "auditory-nerve" ? 0.8 : layer.group === "deep" ? (state.xray ? 0.42 : 0.6) : state.xray ? 0.5 : 0.72;
       layer.material.uniforms.opacity.value = stepWeight(layer.opacity, pointsVisible(layer.group) ? target : 0, dt, reduced);
       layer.object.visible = layer.opacity.value > ACTIVITY_CUTOFF;
     }
@@ -991,7 +953,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const isStepEdge = inVolley || spotRoutes.has(route);
       const emphasis = stepWeight(route.emphasis, isStepEdge ? 1 : 0, dt, reduced);
       const spot = stepWeight(route.spot, !spotOn || spotRoutes.has(route) ? 1 : SPOT_DIM_ROUTE, dt, reduced);
-      route.material.opacity = route.visibleWeight * spot * lerp(0.055, 0.13, emphasis) * (1 - earBlend);
+      route.material.opacity = route.visibleWeight * spot * lerp(0.055, 0.13, emphasis);
       route.lines.visible = route.material.opacity > 0.0001;
       if (route.visibleWeight < ACTIVITY_CUTOFF) continue;
       // Ongoing flow keeps both ends mildly active; volleys add impulses on arrival.
@@ -1026,7 +988,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
           vec3.fromBuffer(_particle_a, route.samples, n * 3);
           vec3.fromBuffer(_particle_b, route.samples, (n + 1) * 3);
           vec3.lerp(_particle_position, _particle_a, _particle_b, s - n);
-          const spread = Math.sin(pt * Math.PI) * route.radius * lane * lerp(1, 0.4, earBlend) * (inVolley && p < VOLLEY_PARTICLES ? 0.35 : 1);
+          const spread = Math.sin(pt * Math.PI) * route.radius * lane * (inVolley && p < VOLLEY_PARTICLES ? 0.35 : 1);
           for (let axis = 0; axis < 3; axis++)
             _particle_position[axis] +=
               (lerp(route.normals[n * 3 + axis], route.normals[(n + 1) * 3 + axis], s - n) * u +
@@ -1048,7 +1010,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     clusters.forEach((cluster, index) => {
       let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id);
       if ((cluster.id === "l6" && shown !== "l6") || (cluster.id === "v1" && shown === "l6")) energy = 0;
-      if (closeEar && (cluster.surface || ["cochleaR", "brainstemR", "socR", "icR", "mgnR", "ic", "mgn"].includes(cluster.id))) energy = 0;
       const activityColor = regionColors.get(cluster.id) ?? pathColor,
         level = Math.min(energy, 1.2);
       vec3.set(cluster.target, activityColor.r * level, activityColor.g * level, activityColor.b * level);
@@ -1073,11 +1034,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const active = (!state.overview || preview !== null) && marker.id === shown;
       marker.label.classList.toggle("selected", active);
       marker.label.setAttribute("aria-pressed", String(active));
-      const targetVisible =
-        (active || activeRegionIds.has(marker.id)) &&
-        !(closeEar && ["cochleaR", "brainstemR", "socR", "icR", "mgnR", "ic", "mgn", "a1"].includes(marker.id)) &&
-        !(marker.id === "l6" && !active) &&
-        !(marker.id === "v1" && shown === "l6");
+      const targetVisible = (active || activeRegionIds.has(marker.id)) && !(marker.id === "l6" && !active) && !(marker.id === "v1" && shown === "l6");
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
       const spot = stepWeight(marker.spot, regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
@@ -1105,8 +1062,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       objectMaterial.opacity = presence * spot;
       haloMaterial.opacity = presence * spot;
       const energy = (regionEnergy.get(marker.id) ?? 0) + (impulse.get(marker.id) ?? 0) * 0.6;
-      marker.object.scale.setScalar(lerp(1, 0.4, earBlend) * lerp(1, 1.15, selection));
-      marker.halo.scale.setScalar(lerp(1, 0.45, earBlend) * (lerp(0.32, 0.56, selection) + Math.min(energy, 1.2) * 0.22));
+      marker.object.scale.setScalar(lerp(1, 1.15, selection));
+      marker.halo.scale.setScalar(lerp(0.32, 0.56, selection) + Math.min(energy, 1.2) * 0.22);
       marker.pulse.scale.setScalar(lerp(0.65, 1 + (pulseAmount - 0.5) * 0.3, selection));
       pulseMaterial.opacity = presence * spot * lerp(0.12, pulseAmount * 0.45, selection);
       marker.object.getWorldPosition(projection);
@@ -1181,24 +1138,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       resetOverview();
       if (state.overview) userOrbited = false;
     },
-    setView(view: "front" | "left" | "right" | "top" | "ear") {
-      focusStarted = -1;
-      clearDamping();
-      closeEar = view === "ear";
-      const y = state.skull ? skullCenterY : -0.15,
-        distance = state.skull ? 12.4 : 10.5;
-      controls.target.set(0, y, 0);
-      if (view === "front") camera.position.set(-distance, y, 0);
-      if (view === "left") camera.position.set(0, y, distance);
-      if (view === "right") camera.position.set(0, y, -distance);
-      if (view === "top") camera.position.set(0, y + distance, 0.005);
-      if (view === "ear") {
-        controls.target.fromArray(regions.cochlea.position);
-        camera.position.copy(controls.target).add(new THREE.Vector3(-0.6, 0.3, 1.55));
-      }
-      controls.update();
-      contextDistance = camera.position.distanceTo(controls.target);
-    },
     focusRegion,
     sendVolley,
     previewRegion,
@@ -1241,7 +1180,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         cerebrumMillimetres: atlas.dimensions,
         camera: camera.position.toArray(),
         target: controls.target.toArray(),
-        closeEar,
       };
     },
     destroy() {

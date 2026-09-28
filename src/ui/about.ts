@@ -37,8 +37,21 @@ const sourceItem = (title: string, url: string, note = "") =>
 const credit = (title: string, url: string, attribution: string, links: string) =>
   `<article class="credit-item"><h4><a href="${url}" target="_blank" rel="noopener noreferrer">${title}${externalIcon}</a></h4><p>${attribution}</p><div class="credit-links">${links}</div></article>`;
 
+const CONTROLS: [action: string, input: string][] = [
+  ["Rotate", "Drag"],
+  ["Pan", "Shift + drag"],
+  ["Zoom", "Scroll or pinch"],
+  ["Open a region", "Click a label"],
+  ["Preview a region", "Hover its name in the panel"],
+  ["Previous / next step", "<kbd>←</kbd><kbd>→</kbd>"],
+  ["Pause animation", "<kbd>Space</kbd>"],
+  ["Switch topic", "<kbd>1</kbd>–<kbd>6</kbd>"],
+];
+
 function aboutTab() {
-  return about.sections.map((section) => `<h3>${escapeHtml(section.title)}</h3>${paragraphs(section.paragraphs)}`).join("");
+  const sections = about.sections.map((section) => `<h3>${escapeHtml(section.title)}</h3>${paragraphs(section.paragraphs)}`).join("");
+  const controls = CONTROLS.map(([action, input]) => `<div><dt>${action}</dt><dd>${input}</dd></div>`).join("");
+  return `${sections}<h3>Controls</h3><dl class="help-controls">${controls}</dl>`;
 }
 
 function papersTab() {
@@ -114,7 +127,7 @@ function modelsTab() {
 
 const panels: Record<AboutTab, () => string> = { about: aboutTab, papers: papersTab, code: codeTab, models: modelsTab };
 
-export function setupAbout(beforeOpen: () => void) {
+export function setupAbout() {
   const dialog = byId<HTMLDialogElement>("info-dialog");
   const panel = byId("about-panel");
   const tabs = Array.from(dialog.querySelectorAll<HTMLButtonElement>(".about-tab"));
@@ -135,7 +148,6 @@ export function setupAbout(beforeOpen: () => void) {
   }
 
   function open(tab: AboutTab = "about") {
-    beforeOpen();
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     select(tab);
     dialog.showModal();
