@@ -1,7 +1,7 @@
 {
-  "name": "basics-on-attention",
+  "name": "perception-and-attention",
   "version": "0.1.0",
-  "description": "A review of some basics of human attention and the sensory pathways it acts on, with an interactive 3D brain.",
+  "description": "A review of some basics of human perception and attention, with an interactive 3D brain.",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@8.15.9",

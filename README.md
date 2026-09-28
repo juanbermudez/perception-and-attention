@@ -1,6 +1,6 @@
-# Basics on Attention
+# Perception & Attention
 
-An open-source, interactive review of some basics of human attention and the sensory pathways it acts on. A 3D brain built from a reference anatomy atlas shows six topics, each as a short step-by-step walkthrough:
+An open-source, interactive review of some basics of human perception and attention. A 3D brain built from a reference anatomy atlas shows six topics, each as a short step-by-step walkthrough:
 
 1. **Vision**: from the eye to visual cortex
 2. **Hearing**: from the ear to auditory cortex

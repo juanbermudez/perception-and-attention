@@ -1,8 +1,8 @@
 // Copy for the overview panel and the About dialog.
 export const overview = {
-  title: "Basics on Attention",
+  title: "Perception & Attention",
   lede: [
-    "A review of some basics of human attention. Attention acts on the signals that arrive from the senses, so this review covers both: how sight, sound and touch reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
+    "A review of some basics of human perception and attention. Attention acts on the signals that arrive from the senses, so this review covers both: how sight, sound and touch reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
     "The 3D view shows vision, hearing and touch at the same time. Each sense passes through its own relay in the [[lgn|thalamus]] before reaching its own area of cortex. Select a topic to go through it step by step.",
   ],
   modelNotes: [
@@ -18,7 +18,7 @@ export const about = {
   sections: [
     {
       title: "The guide",
-      paragraphs: ["Basics on Attention is an open-source guide to how sensory signals reach the brain and how the brain decides what to pay attention to."],
+      paragraphs: ["Perception & Attention is an open-source guide to how sensory signals reach the brain and how the brain decides what to pay attention to."],
     },
     {
       title: "Why I made it",
