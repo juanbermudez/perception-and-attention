@@ -1,5 +1,7 @@
+import { createDocsApi } from "./api/docs-api";
 import { createBrainScene } from "./scene/brain-scene";
 import { createState } from "./state";
+import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { byId } from "./ui/dom";
 import { createExplorer } from "./ui/explorer";
@@ -49,3 +51,7 @@ Object.defineProperty(window, "explorerDebug", {
     },
   },
 });
+
+// Docs and quizzes (Stage 3 core). The store boots on first use, so the guide is unchanged
+// until a doc is made. The `doc`/`edit_blocks` tools and the windows wrap this API later.
+Object.defineProperty(window, "docsDebug", { value: createDocsApi({ store: browserStore }) });
