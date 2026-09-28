@@ -417,8 +417,11 @@ kbd {
 .region-label:hover,
 .region-label:focus-visible {
   color: var(--ink);
-  border-color: #ffffff40;
   z-index: 10;
+}
+/* Keyboard focus keeps a visible border; mouse hover relies on the proximity scale. */
+.region-label:focus-visible {
+  border-color: #ffffff40;
 }
 .label-role {
   color: var(--quiet);
