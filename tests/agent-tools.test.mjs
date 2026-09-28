@@ -73,10 +73,10 @@ function setup({ on = true, throws = false } = {}) {
   return { api, control, presence, logged, runner };
 }
 
-test("seven tools, each with a title, a description, and readOnly set only on the read tools", () => {
+test("ten tools, each with a title, a description, and readOnly set only on the read tools", () => {
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["get_context", "outline", "read", "search", "go", "walkthrough", "set_view"],
+    ["get_context", "outline", "read", "search", "go", "walkthrough", "set_view", "doc", "edit_blocks", "window"],
   );
   for (const tool of tools) {
     assert(tool.title && tool.description.length > 20, tool.name);
@@ -273,7 +273,7 @@ test("errors are returned, never thrown", async (t) => {
   }
   assert.equal(logged.mock.callCount(), READ_TOOLS.length + WRITE_TOOLS.length, "Failures are logged to the console for debugging.");
   assert.equal(setup().runner.running, false);
-  const unknown = await setup().runner.call("doc", {});
+  const unknown = await setup().runner.call("nope", {});
   assert.equal(unknown.error.code, "bad_input");
   assert(unknown.error.options.includes("go"));
 });

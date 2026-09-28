@@ -79,7 +79,10 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
   const run = (sql: string, bind?: Bind) => (bind ? db.exec(sql, { bind }) : db.exec(sql));
   const count = (sql: string, bind?: Bind) => Number(value(sql, bind) ?? 0);
 
-  function newId(table: "artifacts" | "blocks", length: number): string {
+  function newId(table: "artifacts" | "blocks", length: number, wanted?: unknown): string {
+    // The user's editor names new blocks itself so it can keep editing them while they save; a taken or malformed id is replaced.
+    if (typeof wanted === "string" && wanted.length === length && /^[0-9a-z]+$/.test(wanted) && !RESERVED_IDS.has(wanted))
+      if (value(`SELECT 1 FROM ${table} WHERE id = ?`, [wanted]) === undefined) return wanted;
     for (let attempt = 0; attempt < ID_ATTEMPTS; attempt++) {
       const id = randomId(length);
       if (RESERVED_IDS.has(id) || !/^[0-9a-z]+$/.test(id)) continue;
@@ -357,10 +360,10 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
     run("DELETE FROM block_history WHERE block_id = ? AND rev <= ?", [id, rev - LIMITS.historyPerBlock]);
   }
 
-  function insertBlocks(artifactId: string, at: number, contents: Content[], actor: Actor, time: number): InsertedBlock[] {
+  function insertBlocks(artifactId: string, at: number, contents: Content[], actor: Actor, time: number, wanted: unknown[] = []): InsertedBlock[] {
     openGap(artifactId, at, contents.length);
     return contents.map((content, index) => {
-      const id = newId("blocks", BLOCK_ID_LENGTH);
+      const id = newId("blocks", BLOCK_ID_LENGTH, wanted[index]);
       run(
         `INSERT INTO blocks (id, artifact_id, ord, type, indent, text, data, rev, updated_by, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
@@ -410,7 +413,8 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
             case "insert": {
               if (!Array.isArray(op.blocks) || op.blocks.length === 0) throw new StoreError("bad_input", "An insert needs at least one block.");
               const contents = op.blocks.map(normalize);
-              for (const block of insertBlocks(artifactId, anchorPosition(artifactId, op.after), contents, actor, at)) inserted.set(block.id, block);
+              const wanted = op.blocks.map((block) => (block as { id?: unknown }).id);
+              for (const block of insertBlocks(artifactId, anchorPosition(artifactId, op.after), contents, actor, at, wanted)) inserted.set(block.id, block);
               break;
             }
             case "update": {
