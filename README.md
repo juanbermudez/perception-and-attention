@@ -106,6 +106,8 @@ docs/                  Science fact-check notes
 
 **Camera.** Focusing a region eases the camera along an orbit to a preset viewing direction for that region. A hover preview saves the current view and returns to it afterwards.
 
+**View gap.** While a region is shown, the particle shaders open a channel from the camera to it (`scene/materials.ts`). Skull and brain points in front of the region are pushed sideways out of the channel, points behind it dim, and the translucent surfaces are cut the same way. The channel follows the camera as you orbit, so the region stays visible from any angle. Eyes, ears and their nerves are left in place. Zooming in past the default distance also fades the skull and outer brain.
+
 ## Editing content
 
 All text lives in `src/content/`.

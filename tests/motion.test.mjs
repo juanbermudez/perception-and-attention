@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 
 const result = await build({ entryPoints: ["src/model/activity.ts"], bundle: true, platform: "node", format: "esm", write: false, logLevel: "silent" });
-const { createWeight, createColor, stepWeight, stepColor, relax } = await import(
+const { createWeight, createColor, stepWeight, stepColor, stepPoint, relax } = await import(
   `data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`
 );
 const advance = (motion, target, seconds, fps = 60, reduced = false) => {
@@ -88,3 +88,19 @@ const decayed = [30, 60, 120].map((fps) => {
 for (const v of decayed) assert(Math.abs(v - Math.exp(-1 / 0.9)) < 1e-12);
 assert.equal(relax(0.5, 0, 0.9), 0.5);
 console.log("PASS region activity decays exponentially (τ = 0.9 s) and identically at 30/60/120 Hz.");
+
+// Positions (the view-gap focus) ease like colours but are not clamped to 0–1.
+{
+  const point = createColor([0, 0, 0]),
+    goal = [2.5, -1.2, 0.8];
+  for (let frame = 0; frame < 180; frame++) stepPoint(point, goal, 1 / 60);
+  for (let axis = 0; axis < 3; axis++) assert(Math.abs(point.value[axis] - goal[axis]) < 0.01, `axis ${axis}: ${point.value[axis]}`);
+  const standard = createColor([0, 0, 0]),
+    reducedPoint = createColor([0, 0, 0]);
+  for (let frame = 0; frame < 12; frame++) {
+    stepPoint(standard, goal, 1 / 60);
+    stepPoint(reducedPoint, goal, 1 / 60, true);
+  }
+  assert(Math.abs(reducedPoint.value[0] - goal[0]) < Math.abs(standard.value[0] - goal[0]), "Reduced motion should settle faster.");
+  console.log("PASS positions ease to targets outside 0–1 and settle faster with reduced motion.");
+}

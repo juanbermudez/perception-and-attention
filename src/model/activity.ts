@@ -51,6 +51,13 @@ export function stepColor(motion: ColorMotion, target: Vec3, delta: number, redu
   return motion.value;
 }
 
+// A position in scene units: same critically damped motion as colours, without the 0–1 clamp.
+export function stepPoint(motion: ColorMotion, target: Vec3, delta: number, reducedMotion = false): Vec3 {
+  if (delta <= 0) return motion.value;
+  spring3.damp(motion, target, reducedMotion ? 0.07 : 0.24, clamp(delta, 0, 0.05));
+  return motion.value;
+}
+
 // Exact one-step solution of τ·dx/dt = −x, so decay is frame-rate independent.
 export function relax(value: number, delta: number, tau: number): number {
   return delta <= 0 ? value : value * Math.exp(-delta / tau);

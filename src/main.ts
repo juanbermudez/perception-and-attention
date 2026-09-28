@@ -44,5 +44,8 @@ Object.defineProperty(window, "explorerDebug", {
     advance: (frames = 1) => explorer.scene?.advance(frames),
     labels: () => explorer.scene?.labelsSnapshot(),
     head: () => explorer.scene?.headSnapshot(),
+    get viewGap() {
+      return explorer.scene?.viewGap;
+    },
   },
 });

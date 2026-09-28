@@ -53,6 +53,7 @@ export const codeNotes = {
     "Region activity: each arriving signal adds to a region’s activity, which then decays exponentially with a time constant of 0.9 seconds (a leaky integrator, τ·dr/dt = −r + input).",
     "Glowing points: each point flashes at random times, at a rate proportional to its region’s activity, and fades after each flash. This resembles the rise and decay of a calcium-imaging signal; it is not a simulation of real neurons.",
     "Attention: a simplified normalization model, R = A·E / (σ + Σ A·E), with σ = 1 and an attention gain A of up to 3.",
+    "View gap: skull and brain points between the camera and the selected region move aside, and those behind it dim, so the region stays visible from any angle. Zooming in also fades the skull and outer brain.",
     "Labels: placed in columns outside the head. Labels on each side keep the vertical order of their regions, so leader lines do not cross, and labels that would overlap are grouped and centred on their regions.",
   ],
 };

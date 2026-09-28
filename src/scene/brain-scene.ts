@@ -16,12 +16,12 @@ import { regions } from "../content/regions";
 import type { Edge, PathId, RegionId, Signal } from "../content/types";
 import atlas from "../data/atlas-data.json";
 import skullData from "../data/skull-data.json";
-import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepWeight, type WeightMotion } from "../model/activity";
+import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepPoint, stepWeight, type WeightMotion } from "../model/activity";
 import { regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
 import { type CalloutBounds, type LabelLayout, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
 import type { ExplorerState } from "../state";
 import { bundleFrames, SAMPLES, sample, sampleEdge, sampleSurface, unpack } from "./geometry";
-import { activityMaterial, highlightMaterial, pointMaterial, skullPointMaterial } from "./materials";
+import { activityMaterial, applyViewGap, createViewGap, highlightMaterial, pointMaterial, skullPointMaterial } from "./materials";
 
 const PER_EDGE = 32;
 const TRAIL = 14;
@@ -40,8 +40,10 @@ const GLOW_TAU = 0.35;
 const OVERVIEW_LABELS = new Set<RegionId>(["v1", "a1", "s1", "lgn", "mgn", "vpl", "retina", "cochlea"]);
 // Zooming in fades the skull and outer brain so the region of interest stands out.
 // Distances are camera-to-target in scene units; the overview sits at about 12.
-const ZOOM_FADE_START = 9;
-const ZOOM_FADE_END = 4;
+// Fractions of the overview camera distance: fading starts as soon as you zoom
+// in past the default focus distance (0.94) and is complete at half the distance.
+const ZOOM_FADE_START = 0.92;
+const ZOOM_FADE_END = 0.5;
 /** Opacity kept at full zoom, per layer. Deep relays and brainstem stay more visible. */
 const ZOOM_KEEP = { skull: 0.12, cortex: 0.3, lower: 0.35, inner: 0.65 };
 // Walkthrough spotlight: routes and regions outside the current step fade to these levels.
@@ -135,7 +137,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   controls.maxPolarAngle = Math.PI * 0.83;
   controls.minPolarAngle = 0.001;
   let focusStarted = -1,
-    contextDistance = camera.position.distanceTo(controls.target);
+    contextDistance = camera.position.distanceTo(controls.target),
+    homeDistance = contextDistance;
   const focusFrom = vec3.create(),
     focusTo = vec3.create(),
     focusTarget = vec3.create();
@@ -212,6 +215,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
           : true;
   }
   const pointLayers: { group: string; object: THREE.Points; material: THREE.ShaderMaterial; opacity: WeightMotion }[] = [];
+  // Skull and brain anatomy move out of the line of sight to the selected region.
+  // Eyes, ears and their nerves are often the subject, so they stay in place.
+  const viewGap = createViewGap();
+  const gapFocus = createColor();
+  const gapAmount = createWeight();
+  const sensoryGroups = new Set(["eye", "optic", "ear", "auditory-nerve"]);
   const surfaceLayers: { group: string; object: THREE.Mesh; material: THREE.MeshPhongMaterial; opacity: WeightMotion }[] = [];
   const cortexCount = 38000;
   let cortexPositions: Float32Array = new Float32Array(0);
@@ -261,6 +270,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         side: THREE.DoubleSide,
         depthWrite: false,
       });
+      if (!sensoryGroups.has(group)) applyViewGap(material, viewGap);
       const object = new THREE.Mesh(geo, material);
       world.add(object);
       surfaceLayers.push({ group, object, material, opacity: createWeight(surfaceVisible(group) ? material.opacity : 0) });
@@ -282,7 +292,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         const particles = new THREE.BufferGeometry();
         particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         particles.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-        const cloudMaterial = pointMaterial(1.25, 0.42, false);
+        const cloudMaterial = pointMaterial(1.25, 0.42, false, sensoryGroups.has(group) ? undefined : viewGap);
         const cloud = new THREE.Points(particles, cloudMaterial);
         world.add(cloud);
         pointLayers.push({ group, object: cloud, material: cloudMaterial, opacity: createWeight(cloudMaterial.uniforms.opacity.value) });
@@ -291,7 +301,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(values, 3));
       geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-      const material = pointMaterial(group === "bone" ? 1.4 : 1.65, group === "bone" ? 0.28 : 0.7, false);
+      const material = pointMaterial(group === "bone" ? 1.4 : 1.65, group === "bone" ? 0.28 : 0.7, false, sensoryGroups.has(group) ? undefined : viewGap);
       const object = new THREE.Points(geo, material);
       world.add(object);
       pointLayers.push({ group, object, material, opacity: createWeight(pointsVisible(group) ? material.uniforms.opacity.value : 0) });
@@ -307,7 +317,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const cortexGeometry = new THREE.BufferGeometry();
   cortexGeometry.setAttribute("position", new THREE.BufferAttribute(cortexPositions, 3));
   cortexGeometry.setAttribute("color", new THREE.BufferAttribute(cortexColors, 3));
-  const cortexMaterial = pointMaterial(1.3, 0.5);
+  const cortexMaterial = pointMaterial(1.3, 0.5, true, viewGap);
   const cortex = new THREE.Points(cortexGeometry, cortexMaterial);
   world.add(cortex);
   const cortexOpacity = createWeight(cortexMaterial.uniforms.opacity.value);
@@ -369,7 +379,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const skullBrightness = new Float32Array(skullData.count);
   for (let i = 0; i < skullBrightness.length; i++) skullBrightness[i] = 0.55 + sample() * 0.45;
   skullGeometry.setAttribute("brightness", new THREE.BufferAttribute(skullBrightness, 1));
-  const skullMaterial = skullPointMaterial();
+  const skullMaterial = skullPointMaterial(viewGap);
   const skull = new THREE.Points(skullGeometry, skullMaterial);
   skull.renderOrder = 1;
   world.add(skull);
@@ -383,6 +393,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     camera.position.set(state.skull ? -5.65 : -4.8, state.skull ? skullCenterY + 2.95 : 2.6, state.skull ? 10.05 : 8.5);
     controls.update();
     contextDistance = camera.position.distanceTo(controls.target);
+    homeDistance = contextDistance;
   }
   function focusRegion(id: RegionId, focusCamera = false) {
     highlightRegion(id);
@@ -900,10 +911,23 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     controls.autoRotate = state.overview && state.playing && !reduced && !userOrbited && focusStarted < 0;
     updateFocus(ms);
     controls.update(dt);
-    // 0 at overview distance, 1 when zoomed in close (smoothstep).
-    const zoomT = clamp((ZOOM_FADE_START - camera.position.distanceTo(controls.target)) / (ZOOM_FADE_START - ZOOM_FADE_END), 0, 1);
+    // 0 at the default distance, 1 when zoomed in close (smoothstep).
+    const zoomT = clamp(
+      (homeDistance * ZOOM_FADE_START - camera.position.distanceTo(controls.target)) / (homeDistance * (ZOOM_FADE_START - ZOOM_FADE_END)),
+      0,
+      1,
+    );
     const near = zoomT * zoomT * (3 - 2 * zoomT);
     const zoomFade = (keep: number) => lerp(1, keep, near);
+    // The view gap opens on the region being shown; a closed gap jumps straight to
+    // the next region instead of sweeping across the head.
+    const gapOpen = !state.overview || preview !== null;
+    viewGap.gapAmount.value = stepWeight(gapAmount, gapOpen ? 1 : 0, dt, reduced);
+    if (gapAmount.value < 0.01) {
+      vec3.copy(gapFocus.value, regions[shown].position);
+      vec3.set(gapFocus.velocity, 0, 0, 0);
+    }
+    viewGap.gapFocus.value.fromArray(stepPoint(gapFocus, regions[shown].position, dt, reduced));
     cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, (state.xray ? 0.3 : 0.62) * zoomFade(ZOOM_KEEP.cortex), dt, reduced);
     cortex.visible = cortexOpacity.value > ACTIVITY_CUTOFF;
     skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 * zoomFade(ZOOM_KEEP.skull) : 0, dt, reduced);
@@ -1181,6 +1205,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     headSnapshot() {
       return { ...head };
     },
+    /** Live view-gap uniforms, for tuning from the console. */
+    viewGap,
     diagnostics() {
       return {
         frames: frameCount,
@@ -1196,6 +1222,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         cerebrumMillimetres: atlas.dimensions,
         camera: camera.position.toArray(),
         target: controls.target.toArray(),
+        viewGap: { amount: viewGap.gapAmount.value, focus: viewGap.gapFocus.value.toArray(), radius: viewGap.gapRadius.value },
       };
     },
     destroy() {
