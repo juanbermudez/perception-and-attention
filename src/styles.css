@@ -2305,7 +2305,6 @@ dialog::backdrop {
   font-size: 14px;
   border-left: 2px solid var(--path-color);
   border-radius: 0 6px 6px 0;
-  background: var(--card);
   background: #ffffff08;
 }
 .blk-callout[data-tone="tip"] {
@@ -2321,7 +2320,6 @@ dialog::backdrop {
   color: #d0d0d0;
   white-space: pre;
   overflow-x: auto;
-  background: var(--card);
   background: #ffffff0a;
 }
 .blk-code code,
