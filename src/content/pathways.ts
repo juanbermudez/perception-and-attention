@@ -13,13 +13,13 @@ export const pathways: Pathway[] = [
     insight:
       "The retina splits the image into parallel channels before it leaves the eye, and the LGN keeps them separate. At the chiasm, fibres are regrouped so that each hemisphere receives the opposite half of the visual field. V1 represents the visual field as local features such as edges. Beyond V1, the ventral stream identifies objects, with regions that prefer faces, places, bodies and words, and the dorsal stream processes motion and location to guide action.",
     caveat:
-      "Both eyes connect to the chiasm; after that, the animation follows the route in the left hemisphere, which receives the right half of the visual field. Nerves, tracts and cortical routes are drawn as single curves; the real connections are many parallel fibre bundles that run in both directions, and the two streams exchange information at many points. Routes to the superior colliculus and pretectum are not shown. MT, IT and the category-selective areas are markers at typical positions from group studies; their positions vary by several millimetres between people, and the face area is usually larger in the right hemisphere. The V1 highlight follows the calcarine sulcus; the actual border varies between people.",
+      "Both eyes connect to the chiasm; after that, the animation follows the route in the left hemisphere, which receives the right half of the visual field. Nerves, tracts and cortical routes are drawn as single curves; the real connections are many parallel fibre bundles. The optic nerves and tracts carry signals from the eyes to the brain; from the LGN onward, most connections also carry signals back the other way, and the two streams exchange information at many points. Routes to the superior colliculus and pretectum are not shown. MT, IT and the category-selective areas are markers at typical positions from group studies; their positions vary by several millimetres between people, and the face area is usually larger in the right hemisphere. The V1 highlight follows the calcarine sulcus; the actual border varies between people.",
     steps: [
       {
         region: "retina",
         title: "Light becomes neural signals",
         body: "Rods (dim light) and cones (colour and detail) absorb light. In photoreceptors, light reduces electrical activity. Retinal circuits compare neighbouring points, so the output mainly reports contrast and change. Ganglion cells send this output through the optic nerve. Different types of ganglion cell carry different information: midget cells carry fine detail and red–green colour; parasol cells carry motion and changes in brightness.",
-        fact: "About 96 million photoreceptors connect to roughly 1 million ganglion cells, so the signal is compressed around 100-fold before it leaves the eye.",
+        fact: "About 96 million photoreceptors feed roughly 1 million ganglion cells (0.7 to 1.5 million, depending on the person). Most of this convergence happens in the rod system and in peripheral vision; at the centre of gaze there are probably enough ganglion cells for each cone to have its own line to the brain.",
         signal: [],
       },
       {
@@ -31,8 +31,8 @@ export const pathways: Pathway[] = [
       {
         region: "lgn",
         title: "Parallel channels in the LGN",
-        body: "Most optic tract fibres end in the [[lgn|lateral geniculate nucleus]] (LGN) of the thalamus. Its layers keep the two eyes separate and keep three channels apart. Magnocellular layers receive parasol cells: fast signals about motion and coarse shape. Parvocellular layers receive midget cells: slower signals about fine detail and red–green colour. Thin koniocellular layers carry blue–yellow colour. The LGN also receives more input from the cortex than from the eyes.",
-        fact: "In monkeys, about 80% of retinal ganglion cells feed the parvocellular layers and about 10% the magnocellular layers. The fastest magnocellular responses arrive about 10 ms before the fastest parvocellular ones.",
+        body: "Most optic tract fibres end in the [[lgn|lateral geniculate nucleus]] (LGN) of the thalamus. Its layers keep the two eyes separate and keep three channels apart. Magnocellular layers receive parasol cells: fast signals about motion and coarse shape. Parvocellular layers receive midget cells: slower signals about fine detail and red–green colour. Thin koniocellular layers carry several kinds of signal, including blue–yellow colour. In cats, only about 7% of the synapses on LGN relay cells come from the eyes; the rest come from the cortex, the brainstem and local inhibitory cells. The few retinal synapses are strong and largely determine what the relay cells respond to.",
+        fact: "In monkeys, about 80% of retinal ganglion cells feed the parvocellular layers and about 10% the magnocellular layers. Recordings in the LGN of anaesthetised monkeys found that the fastest magnocellular responses came about 10 ms before the fastest parvocellular ones.",
       },
       {
         region: "v1",
@@ -44,7 +44,7 @@ export const pathways: Pathway[] = [
         region: "extrastriate",
         title: "Two streams leave V1",
         body: "From V1, visual information travels along two main routes. The ventral stream runs down into the temporal lobe through areas V2 and V4 and identifies what things are. The dorsal stream runs up into the parietal lobe through [[mt|area MT]] and represents where things are and how to act on them. The dorsal stream receives mostly magnocellular input; the ventral stream receives both channels. The two streams exchange information at many points.",
-        fact: "A patient known as D.F., with damage to her ventral stream, could not report how a slot was oriented, yet could post a card through it accurately. Her dorsal stream still guided the movement.",
+        fact: "A patient known as D.F., with damage to her ventral stream, could not report how a slot was oriented, yet could post a card through it accurately. Goodale and Milner concluded that her intact dorsal stream guided the movement; critics argue that the two streams are less independent than this case suggests.",
         signal: [
           [
             ["v1", "extrastriate"],
@@ -55,21 +55,21 @@ export const pathways: Pathway[] = [
       {
         region: "mt",
         title: "Motion in area MT",
-        body: "[[mt|Area MT]] (also called V5) is specialized for motion. Most of its neurons respond to movement in a particular direction and at a particular speed. In monkeys, electrically stimulating a small group of MT neurons shifts the animal's judgement of motion toward those neurons' preferred direction. A neighbouring area, MST, responds to the overall pattern of motion produced when you move through a scene (optic flow).",
+        body: "[[mt|Area MT]] (also called V5) is specialized for motion. Most of its neurons respond to movement in a particular direction and at a particular speed. In monkeys, electrically stimulating a small group of MT neurons shifts the animal's judgement of motion toward those neurons' preferred direction. In monkeys, a neighbouring area, MST, responds to the overall pattern of motion produced when moving through a scene (optic flow).",
         fact: "A patient with damage to this region on both sides lost most of her perception of motion. Pouring tea was difficult because the liquid appeared frozen.",
         signal: [[["v1", "mt"]]],
       },
       {
         region: "parietal",
         title: "Location and action in parietal cortex",
-        body: "The dorsal stream continues from MT to [[parietal|posterior parietal cortex]]. Here, the position of things in view is combined with the position of the eyes, head and hand, so that vision can guide eye movements, reaching and grasping. The same region helps direct attention to locations (see the Attention topic).",
+        body: "The dorsal stream continues from MT to [[parietal|posterior parietal cortex]]. Here, the position of things in view is combined with where the eyes are pointing and where the body is, so that vision can guide eye movements, reaching and grasping. The same region helps direct attention to locations (see the Attention topic).",
         fact: "Damage here can cause optic ataxia: a person can see and describe an object but reaches for it inaccurately.",
         signal: [[["mt", "parietal"]]],
       },
       {
         region: "it",
         title: "Object recognition in inferior temporal cortex",
-        body: "The ventral stream runs from V1 through V2 and V4 to [[it|inferior temporal cortex]] (IT). Along the way, neurons respond to increasingly complex features: edges in V1, contours and simple shapes in V2 and V4, and objects and object parts in IT. IT responses stay similar when an object moves, changes size or is seen from a somewhat different angle.",
+        body: "The ventral stream runs from V1 through V2 and V4 to [[it|inferior temporal cortex]] (IT). Along the way, neurons respond to increasingly complex features: edges in V1, contours and simple shapes in V2 and V4, and objects and object parts in IT. In monkeys, IT neurons tend to keep their preference for one object over another when the object moves, changes size or is seen from a somewhat different angle, although the strength of their response changes.",
         fact: "In monkeys, the activity of about 100 IT neurons over as little as 12.5 ms was enough to tell which object was shown and its category, even when its position and size changed.",
         signal: [[["v1", "extrastriate"]], [["extrastriate", "it"]]],
       },
@@ -176,6 +176,9 @@ export const pathways: Pathway[] = [
       "mt-review",
       "object-recognition",
       "vtc-review",
+      "streams-critique",
+      "ganglion-counts",
+      "lgn-synapses",
     ],
   },
   {

@@ -456,4 +456,18 @@ export const sources: Source[] = [
     url: "https://doi.org/10.1093/cercor/bhi039",
     note: "Attending to one sense increases activity in its sensory cortex and reduces it in the other's.",
   },
+  {
+    id: "streams-critique",
+    title: "Do we have independent visual streams for perception and action?",
+    author: "Schenk & McIntosh · Cognitive Neuroscience · 2010",
+    url: "https://doi.org/10.1080/17588920903388950",
+    note: "A critique of the strict division between a perception stream and an action stream.",
+  },
+  {
+    id: "ganglion-counts",
+    title: "Topography of ganglion cells in human retina",
+    author: "Curcio & Allen · Journal of Comparative Neurology · 1990",
+    url: "https://doi.org/10.1002/cne.903000103",
+    note: "Human ganglion-cell counts and how convergence differs between the centre of gaze and the periphery.",
+  },
 ];
