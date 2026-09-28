@@ -82,7 +82,9 @@ Notes for review:
 - Isolate route filtering, including a `detail` route from another topic.
 - The existing motion tests.
 
-**Status**: Not Started
+**Status**: In Progress (core done; tool wrappers pending Stage 1)
+- Done (`webmcp/stage2`): `model/view.ts`, `api/view-api.ts` (`createViewApi(state, scene)`: `apply`, `undo`, `current`), scene pose API, layer presence with dissolve/fade, isolate, multi-region highlight, label modes, `viewFocus`, `ui/narration.ts`. Tests in `tests/view.test.mjs`. Manual access: `explorerDebug.view(patch)`, `undoView()`, `currentView()`, `routes()`, `narrate(text, stop, of)`.
+- Pending (needs Stage 1): the `set_view` tool (zod schema over `ViewPatch`; `apply` already returns `{ view, said, skipped? }` or `{ error }`), `walkthrough` `tour`/`stop` with a tour runner that drives the caption bar (`narration.onAction`) and pauses on user input, `get_context.view` from `current()`, Undo in the agent toast (`undo()`), and the kill switch around `apply`.
 
 ## Stage 3: Local store and artifacts API
 
