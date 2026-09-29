@@ -905,9 +905,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     label.hidden = true;
     // The accessible name is the visible text; the full name is its description (dropped in pick mode, see pickChanged).
     const [abbr, role] = region.short.split(" · ");
-    label.innerHTML = role
-      ? `<span class="label-abbr">${abbr}</span><span class="label-role"><span aria-hidden="true"> ·</span> ${role}</span>`
-      : `<span class="label-abbr">${abbr}</span>`;
+    label.innerHTML = role ? `<span class="label-abbr">${abbr}</span><span class="label-role"> · ${role}</span>` : `<span class="label-abbr">${abbr}</span>`;
     if (region.label !== region.short) label.setAttribute("aria-description", region.label);
     label.dataset.region = id;
     label.draggable = false;
