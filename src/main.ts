@@ -14,9 +14,11 @@ import { createState } from "./state";
 import { browserStore } from "./store/client";
 import { setupAbout } from "./ui/about";
 import { createPresence } from "./ui/agent-presence";
+import { createCommandPalette, paletteKeys } from "./ui/command-palette";
 import { createDocsUi, type DocsUi } from "./ui/docs-ui";
 import { byId, toast } from "./ui/dom";
 import { createExplorer } from "./ui/explorer";
+import { setupHotkeys } from "./ui/hotkeys";
 import { setupKeyboard } from "./ui/keyboard";
 import { createNarration } from "./ui/narration";
 import { setupPanelResize } from "./ui/panel-resize";
@@ -35,7 +37,18 @@ const setPlaying = (value: boolean) => {
 };
 // The quiz card, while open, takes keys 1–6, Enter and → before the topic and step shortcuts.
 let quizCard: QuizCard | undefined;
-setupKeyboard(state, explorer, setPlaying, about.isOpen, () => quizCard?.keyOwner() ?? null);
+// Search (⌘K, / or the rail's search button) and the shortcuts card in the corner of the 3D view.
+const searchButton = byId("search-button");
+searchButton.dataset.tip = `Search (${paletteKeys().join(paletteKeys()[0] === "⌘" ? "" : "+")})`;
+const palette = createCommandPalette({ go: (place) => explorer.goTo(place), trigger: searchButton });
+setupHotkeys(byId("scene-title").closest<HTMLElement>(".brain-stage")!, paletteKeys());
+setupKeyboard(
+  state,
+  explorer,
+  setPlaying,
+  () => about.isOpen() || palette.isOpen(),
+  () => quizCard?.keyOwner() ?? null,
+);
 setupPanelResize(browserStorage());
 setupRailTips(byId("rail"));
 byId("about-button").addEventListener("click", () => about.open());
