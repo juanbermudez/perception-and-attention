@@ -1295,6 +1295,79 @@ kbd {
   transform: translateX(2px);
 }
 
+/* Page changes in the panel (explorer.ts, navigate): a copy of the old page builds out, quick and quiet,
+   while the new page builds in section by section (header, tabs, content), all at once. Forward enters
+   from the right and back from the left; a swap and a fade only fade, and a fade touches the content
+   alone. Transform, opacity and a light blur only, so the motion stays on the compositor. */
+.inspector-surface {
+  position: relative;
+}
+@keyframes panel-build-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--panel-from, 0));
+    filter: blur(2px);
+  }
+}
+@keyframes panel-build-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--panel-to, 0));
+    filter: blur(3px);
+  }
+}
+.panel-enter > * {
+  animation: panel-build-in 280ms cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+.panel-enter > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.panel-enter > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.panel-enter > :nth-child(n + 4) {
+  animation-delay: 120ms;
+}
+.panel-enter[data-motion="forward"] {
+  --panel-from: 16px;
+}
+.panel-enter[data-motion="back"] {
+  --panel-from: -16px;
+}
+/* The overview's rows build in one after another, in topic order, then the introduction. */
+.panel-enter > .inspector-scroll {
+  animation: none;
+}
+.panel-enter .journey-list li,
+.panel-enter .intro-lede-block {
+  animation: panel-build-in 260ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  animation-delay: calc(40ms + var(--i, 6) * 25ms);
+}
+/* A tab or a step on a region page: the content alone, a short fade. */
+.panel-enter[data-motion="fade"] > * {
+  animation: none;
+}
+.panel-enter[data-motion="fade"] > .inspector-body {
+  animation: panel-build-in 160ms ease-out backwards;
+}
+.panel-enter > .panel-steady {
+  animation: none;
+}
+.panel-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Out about twice as fast as the new page comes in, and dropping early, so the two barely overlap. */
+  animation: panel-build-out 110ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+.panel-ghost[data-motion="forward"] {
+  --panel-to: -12px;
+}
+.panel-ghost[data-motion="back"] {
+  --panel-to: 12px;
+}
+
 /* Pathway view. The header's first slot (the way back and the title) is centred on the rail's first icon. */
 .inspector-heading {
   padding: var(--rail-top) var(--space-5) var(--space-5);
@@ -1378,6 +1451,10 @@ kbd {
   color: var(--quiet);
   border-bottom: 1.5px solid transparent;
   margin-bottom: -1px;
+  /* Tabs change often: a short colour change, nothing that moves. */
+  transition:
+    color 0.15s ease-out,
+    border-color 0.15s ease-out;
 }
 .panel-tab:hover {
   color: var(--ink);
@@ -2210,6 +2287,15 @@ dialog::backdrop {
   }
   .stage-toast {
     bottom: calc(var(--space-4) + var(--narration-space, 0px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-enter *,
+  .panel-enter > * {
+    animation: none;
+  }
+  .panel-ghost {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

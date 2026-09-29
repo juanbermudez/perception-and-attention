@@ -160,7 +160,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId<HTMLButtonElement>("step-next").disabled = state.step >= path.steps.length - 1;
     if (panel === "region") {
       if (shownRegion === null) renderRegionList();
-      else if (shownRegion !== state.selected) renderRegion(state.selected);
+      else if (shownRegion !== state.selected) navigate("fade", () => renderRegion(state.selected));
       else updateHeader();
     }
   }
@@ -320,6 +320,88 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     setPanel("streams");
   }
 
+  /* ---------- Page transitions ---------- */
+
+  // A page change builds out and in: a copy of the old page fades out while the new page builds in,
+  // section by section, both at once so nothing waits for the exit. Going deeper enters from the right
+  // and going back from the left; another topic swaps in place; a tab or a step on a region page only
+  // fades the content. The copy is taken before the change, so navigation stays synchronous (the agent
+  // API reads the new place right away). Off before startup has settled (no entrance on load), with
+  // reduced motion, and where elements cannot be cloned (the test DOM).
+  type PanelMotion = "forward" | "back" | "swap" | "fade";
+  const surface = inspector.querySelector<HTMLElement>(".inspector-surface") ?? inspector;
+  let motionReady = false,
+    navDepth = 0,
+    enterTimer: ReturnType<typeof setTimeout> | undefined;
+  const visiblePage = () => byId(state.overview ? "intro-view" : "path-view");
+  const scrollers = (page: HTMLElement) => Array.from(page.querySelectorAll<HTMLElement>(".inspector-scroll, .inspector-body"));
+
+  /** Run a change to the panel with a page transition. Nested changes join the outermost one. */
+  function navigate<T>(motion: PanelMotion, change: () => T): T {
+    const before = visiblePage();
+    const animate = navDepth === 0 && motionReady && !reducedMotion.matches && typeof before.cloneNode === "function";
+    const from = animate ? placeHash(place()) : "";
+    const ghost = animate && motion !== "fade" ? ghostOf(before) : null;
+    const scrolled = ghost ? scrollers(before).map((element) => element.scrollTop) : [];
+    const footWasShown = !byId("step-controls").hidden && before.id === "path-view";
+    navDepth++;
+    try {
+      return change();
+    } finally {
+      navDepth--;
+      // A change that lands on the same place (Home on the overview) does not animate.
+      if (animate && placeHash(place()) !== from) buildIn(visiblePage(), motion, ghost, scrolled, footWasShown);
+    }
+  }
+
+  /** An inert copy of the page as it is now, without ids, to fade out over the new one. */
+  function ghostOf(page: HTMLElement) {
+    const ghost = page.cloneNode(true) as HTMLElement;
+    ghost.removeAttribute("id");
+    for (const element of ghost.querySelectorAll("[id]")) element.removeAttribute("id");
+    ghost.classList.remove("panel-enter");
+    ghost.classList.add("panel-ghost");
+    ghost.inert = true;
+    ghost.setAttribute("aria-hidden", "true");
+    return ghost;
+  }
+
+  function buildIn(page: HTMLElement, motion: PanelMotion, ghost: HTMLElement | null, scrolled: number[], footWasShown: boolean) {
+    // An interrupted transition clears its old copy at once.
+    for (const old of surface.querySelectorAll(".panel-ghost")) old.remove();
+    const foot = byId("step-controls");
+    // The walkthrough controls stay put when they were already showing; only the page around them moves.
+    const footSteady = footWasShown && page.id === "path-view" && !foot.hidden;
+    foot.classList.toggle("panel-steady", footSteady);
+    if (ghost) {
+      if (footSteady) ghost.querySelector(".step-controls")?.remove();
+      ghost.dataset.motion = motion;
+      surface.append(ghost);
+      scrollers(ghost).forEach((element, i) => {
+        element.scrollTop = scrolled[i] ?? 0;
+      });
+      ghost.addEventListener("animationend", () => ghost.remove(), { once: true });
+      setTimeout(() => ghost.remove(), 400);
+    }
+    page.classList.remove("panel-enter");
+    void page.offsetWidth; // restart the entrance if one was running
+    page.dataset.motion = motion;
+    page.classList.add("panel-enter");
+    clearTimeout(enterTimer);
+    enterTimer = setTimeout(() => page.classList.remove("panel-enter"), 600);
+  }
+
+  /** Deeper places enter from the right, shallower ones from the left; the same depth swaps or fades. */
+  function motionTo(target: Place): PanelMotion {
+    const depth = (kind: Place["kind"]) => (kind === "overview" ? 0 : kind === "region" ? 2 : 1);
+    const now = place();
+    const [from, to] = [depth(now.kind), depth(target.kind)];
+    if (to !== from) return to > from ? "forward" : "back";
+    const pathOf = (at: Place) => ("path" in at ? at.path : null);
+    return pathOf(target) !== null && pathOf(target) !== pathOf(now) ? "swap" : "fade";
+  }
+  const topicMotion = (): PanelMotion => (state.overview ? "forward" : "swap");
+
   /* ---------- Keyboard focus ---------- */
 
   // Navigation re-renders parts of the panel (the region drawer, the step list) and hides others (a tab's
@@ -446,7 +528,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     const target = hashPlace(location.hash);
     // A link that names no place leaves the view as it is, and the hash goes back to what is shown.
     if (!target) writeHash(shownHash ?? "");
-    else if (placeHash(target) !== shownHash) goTo(target);
+    else if (placeHash(target) !== shownHash) navigate(motionTo(target), () => goTo(target));
   });
 
   /** Text the user selected in the panel, and the place it belongs to. */
@@ -489,7 +571,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
       if (region) selectRegion(region, false);
     }
     if (study) {
-      selectPath(study as SenseId);
+      navigate("swap", () => selectPath(study as SenseId));
       return;
     }
     if (priority) {
@@ -515,9 +597,9 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   byId("pathway-list").addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-path]");
-    if (button) selectPath(button.dataset.path as PathId);
+    if (button) navigate(topicMotion(), () => selectPath(button.dataset.path as PathId));
   });
-  byId("home-button").addEventListener("click", () => showIntro());
+  byId("home-button").addEventListener("click", () => navigate("back", () => showIntro()));
   // On the overview, pointing at a topic (in the list or the rail) previews its system in the 3D view.
   const previewTopic = (event: Event) => {
     if (!state.overview) return;
@@ -537,17 +619,17 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   byId("back-link").addEventListener("click", () => {
     cancelPreview();
     if (panel === "region" && shownRegion !== null) {
-      leaveRegion();
+      navigate("back", leaveRegion);
       return;
     }
-    showIntro();
+    navigate("back", () => showIntro());
     byId("home-button").focus({ preventScroll: true });
   });
   byId("intro-scroll").addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     cancelPreview();
     const topic = target.closest<HTMLButtonElement>(".journey");
-    if (topic) selectPath(topic.dataset.path as PathId);
+    if (topic) navigate("forward", () => selectPath(topic.dataset.path as PathId));
     else {
       const mention = target.closest<HTMLButtonElement>(".region-mention");
       if (mention) scene?.focusRegion(mention.dataset.region as RegionId, true);
@@ -579,10 +661,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
       return;
     }
     cancelPreview();
-    if (button.dataset.openRegion) showRegion(button.dataset.openRegion as RegionId);
+    if (button.dataset.openRegion) navigate("forward", () => showRegion(button.dataset.openRegion as RegionId));
     else if (button.dataset.region) {
       const id = button.dataset.region as RegionId;
-      if (panel === "region" && shownRegion !== id) showRegion(id);
+      if (panel === "region" && shownRegion !== id) navigate("forward", () => showRegion(id));
       else selectRegion(id);
     }
   });
@@ -593,7 +675,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   const panelTabs = document.querySelector(".panel-tabs");
   for (const tab of document.querySelectorAll<HTMLButtonElement>(".panel-tab")) {
-    tab.addEventListener("click", () => (tab.dataset.panel === "region" ? showRegionList() : setPanel(tab.dataset.panel as Panel)));
+    tab.addEventListener("click", () => navigate("fade", () => (tab.dataset.panel === "region" ? showRegionList() : setPanel(tab.dataset.panel as Panel))));
   }
   panelTabs?.addEventListener("keydown", (event) => {
     const e = event as KeyboardEvent;
@@ -603,8 +685,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (next === null) return;
     e.preventDefault();
     e.stopPropagation();
-    if (tabs[next].dataset.panel === "region") showRegionList();
-    else setPanel(tabs[next].dataset.panel as Panel);
+    navigate("fade", () => (tabs[next].dataset.panel === "region" ? showRegionList() : setPanel(tabs[next].dataset.panel as Panel)));
     tabs[next].focus();
   });
 
@@ -663,18 +744,20 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     /** Open the place a URL hash names, or the overview when it names none or cannot be read. */
     restore(hash: string) {
       goTo(hashPlace(hash) ?? { kind: "overview" });
+      // From here on, page changes animate; the first place on load just appears.
+      motionReady = true;
     },
     onEvent(listener: (event: ExplorerEvent) => void) {
       onEvent = listener;
     },
-    goTo,
+    goTo: (target: Place, options?: { camera?: boolean; section?: RegionSection }) => navigate(motionTo(target), () => goTo(target, options)),
     selection,
     watchRegionHover,
-    showIntro,
-    selectPath,
+    showIntro: (options?: { camera?: boolean }) => navigate("back", () => showIntro(options)),
+    selectPath: (id: PathId, options?: { step?: number; camera?: boolean }) => navigate(topicMotion(), () => selectPath(id, options)),
     selectRegion,
-    showRegion,
-    showStreams,
+    showRegion: (id?: RegionId, options?: { camera?: boolean; section?: RegionSection }) => navigate("forward", () => showRegion(id, options)),
+    showStreams: () => navigate(state.overview ? "forward" : "fade", showStreams),
     setStep,
     startWalk,
     stopWalk: () => stopWalk(),

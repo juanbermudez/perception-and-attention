@@ -32,7 +32,7 @@ export function introHtml() {
   const topics = pathways
     .map(
       (path, i) =>
-        `<li><button class="journey" data-path="${path.id}" style="--path-color:${path.color}"><span>${i + 1}. ${escapeHtml(path.title)}</span>${chevronIcon("journey-arrow")}</button></li>`,
+        `<li style="--i:${i}"><button class="journey" data-path="${path.id}" style="--path-color:${path.color}"><span>${i + 1}. ${escapeHtml(path.title)}</span>${chevronIcon("journey-arrow")}</button></li>`,
     )
     .join("");
   return `<div class="intro">
