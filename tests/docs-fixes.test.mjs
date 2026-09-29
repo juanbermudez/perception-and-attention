@@ -94,3 +94,24 @@ test("L11: a failed ROLLBACK does not hide the original error", () => {
     /database or disk is full/,
   );
 });
+
+/* ---------- M2 ---------- */
+
+test("M2: update with the markdown read(full) returns keeps a nested list item's indent", async () => {
+  const { api } = setup();
+  const { ref } = ok(await api.doc({ action: "create", title: "Outline", markdown: "- parent\n  - child\n    - grandchild\n\nText" }));
+  const full = ok(await api.read(ref, "full"));
+  const grandchild = full.blocks[2];
+  assert.equal(grandchild.md, "- grandchild");
+  assert.equal(grandchild.indent, 2);
+  ok(await api.editBlocks({ ref, ops: [{ op: "update", id: grandchild.id, md: "- grandchild (edited)", rev: grandchild.rev }] }));
+  ok(await api.editBlocks({ ref, ops: [{ op: "update", id: full.blocks[1].id, md: "1. child as a number", rev: full.blocks[1].rev }] }));
+  ok(await api.editBlocks({ ref, ops: [{ op: "update", id: full.blocks[3].id, md: "- text becomes a bullet", rev: full.blocks[3].rev }] }));
+  const after = ok(await api.read(ref, "full")).blocks.map((block) => [block.type, block.md, block.indent ?? 0]);
+  assert.deepEqual(after, [
+    ["bullet", "- parent", 0],
+    ["number", "1. child as a number", 1],
+    ["bullet", "- grandchild (edited)", 2],
+    ["bullet", "- text becomes a bullet", 0],
+  ]);
+});

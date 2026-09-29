@@ -11,23 +11,24 @@ import { resolveRef } from "../model/refs";
 import { stayingIds } from "../model/sequence";
 import { LIMITS } from "../store/limits";
 import { storageBanner } from "../store/mode";
-import type {
-  Actor,
-  Artifact,
-  ArtifactKind,
-  ArtifactSummary,
-  Block,
-  BlockContent,
-  BlockData,
-  BlockOp,
-  BlockOpsResult,
-  BlockType,
-  MemoryReason,
-  Store,
-  StoreChange,
-  StoreErrorCode,
-  StoreMode,
-  WindowState,
+import {
+  type Actor,
+  type Artifact,
+  type ArtifactKind,
+  type ArtifactSummary,
+  type Block,
+  type BlockContent,
+  type BlockData,
+  type BlockOp,
+  type BlockOpsResult,
+  type BlockType,
+  LIST_TYPES,
+  type MemoryReason,
+  type Store,
+  type StoreChange,
+  type StoreErrorCode,
+  type StoreMode,
+  type WindowState,
 } from "../store/types";
 
 // ── Inputs and outputs ────────────────────────────────────────────────────────────────────────
@@ -447,9 +448,9 @@ export function createDocsApi(options: DocsApiOptions) {
         }
         const invalid = checkQuestions([next]);
         if (invalid) return invalid;
-        // A single block's markdown carries no nesting, so list blocks keep their indent.
-        const { indent: _indent, ...content } = next;
-        return { op: "update", id, rev: op.rev, block: content as BlockContent };
+        // A single block's markdown carries no nesting, so a list block that stays a list keeps its indent.
+        const indent = LIST_TYPES.includes(next.type) && LIST_TYPES.includes(block.type) ? block.indent : 0;
+        return { op: "update", id, rev: op.rev, block: { ...next, indent } };
       }
       case "replace":
         return { op: "replace", id, rev: op.rev, find: op.find, with: op.with };
