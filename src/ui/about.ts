@@ -63,7 +63,8 @@ function aboutTab(control?: AgentControl) {
   return `${sections}<h3>Controls</h3><dl class="help-controls">${controls}</dl>${control ? assistantsSection(control) : ""}`;
 }
 
-function papersTab() {
+/** The Papers tab: sources grouped by topic, then region-guide papers not already listed, each once. */
+export function papersTab() {
   const listed = new Set<string>();
   const groups = pathways
     .map((path) => {
@@ -78,8 +79,13 @@ function papersTab() {
       return `<h3>${escapeHtml(path.title)}</h3><ul class="source-list">${items}</ul>`;
     })
     .join("");
+  // Some papers are cited under more than one id; list each URL once.
   const regionOnly = guideSources
-    .filter((source) => !listed.has(source.url))
+    .filter((source) => {
+      if (listed.has(source.url)) return false;
+      listed.add(source.url);
+      return true;
+    })
     .map((source) => sourceItem(source.title, source.url))
     .join("");
   return `<p>Papers, reviews and textbook chapters used for this review, grouped by topic. Journal citations were checked against their DOI or PubMed records in September 2026; textbook chapters were checked on NCBI Bookshelf.</p>${groups}<h3>Region details</h3><ul class="source-list">${regionOnly}</ul>`;

@@ -49,7 +49,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections:
       "Receives the optic nerves from the [[retina|left]] and [[retinaR|right]] eyes and sends the optic tracts to the [[lgn|LGN]] and to the midbrain.",
     limit: "Crossing and non-crossing fibres are drawn as single curves.",
-    sourceIds: ["visual-projections"],
+    sourceIds: ["visual-projections", "optic-nerve-fibres"],
   },
   lgn: {
     summary: "The lateral geniculate nucleus (LGN) is the visual relay of the thalamus. It passes signals from the eyes to primary visual cortex.",
@@ -441,7 +441,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     },
     connections: "Works with [[a1|left auditory cortex]].",
     limit: "Heschl’s gyrus is used as the reference for A1.",
-    sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention", "music-speech-asymmetry", "asymmetry-debate"],
+    sourceIds: ["auditory-cortex", "multimodal-change", "crossmodal-attention", "crossmodal-shifts", "music-speech-asymmetry", "asymmetry-debate"],
   },
   temporal: {
     summary: "The superior temporal gyrus, along the top of the temporal lobe, is a key area for recognizing speech sounds.",
@@ -465,7 +465,7 @@ export const regionGuides: Record<RegionId, RegionGuide> = {
     connections: "Connects the [[temporal|superior temporal gyrus]] with [[frontal|Broca’s area]] and [[motor|speech motor cortex]].",
     limit:
       "Spt is defined by its function in each person. The marker sits at the back of the left planum temporale, inside the Sylvian fissure, where Spt usually lies; the highlight is the whole planum temporale.",
-    sourceIds: ["sound-movement", "spt-hypothesis", "spt-planum", "conduction-aphasia"],
+    sourceIds: ["sound-movement", "spt-hypothesis", "spt-planum", "conduction-aphasia", "speech-production-model"],
   },
   frontal: {
     summary:
@@ -1178,7 +1178,7 @@ export const guideSources: { id: string; title: string; url: string }[] = [
   {
     id: "semantic-networks",
     title: "Huth et al. · Natural speech reveals the semantic maps that tile human cerebral cortex (2016)",
-    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC4852309/",
+    url: "https://doi.org/10.1038/nature17637",
   },
   {
     id: "language-network",
@@ -1941,11 +1941,6 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     url: "https://pubmed.ncbi.nlm.nih.gov/9766404/",
   },
   {
-    id: "lgn-attention",
-    title: "McAlonan, Cavanaugh & Wurtz · Guarding the gateway to cortex with attention in visual thalamus (2008)",
-    url: "https://doi.org/10.1038/nature07382",
-  },
-  {
     id: "spindles-trn",
     title: "Steriade et al. · The deafferented reticular thalamic nucleus generates spindle rhythmicity (1987)",
     url: "https://doi.org/10.1152/jn.1987.57.1.260",
@@ -1956,20 +1951,10 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     url: "https://doi.org/10.1152/physrev.00042.2018",
   },
   {
-    id: "lgn-inputs-split",
-    title: "Erişir, Van Horn & Sherman · Relative numbers of cortical and brainstem inputs to the lateral geniculate nucleus (1997)",
-    url: "https://doi.org/10.1073/pnas.94.4.1517",
-  },
-  {
     id: "trn-synapse-strength",
     title:
       "Golshani, Liu & Jones · Differences in quantal amplitude reflect GluR4 subunit number at corticothalamic synapses on two populations of thalamic neurons (2001)",
     url: "https://doi.org/10.1073/pnas.061013698",
-  },
-  {
-    id: "language-dominance",
-    title: "Knecht et al. (2000) · Handedness and hemispheric language dominance in healthy humans",
-    url: "https://doi.org/10.1093/brain/123.12.2512",
   },
   {
     id: "conduction-aphasia",
@@ -1983,19 +1968,9 @@ export const guideSources: { id: string; title: string; url: string }[] = [
     url: "https://doi.org/10.1093/brain/awaa460",
   },
   {
-    id: "speech-planning-frontal",
-    title: "Castellucci et al. (2022) · A speech planning network for interactive language use",
-    url: "https://doi.org/10.1038/s41586-021-04270-z",
-  },
-  {
     id: "feedback-adaptation",
     title: "Houde & Jordan (1998) · Sensorimotor adaptation in speech production",
     url: "https://doi.org/10.1126/science.279.5354.1213",
-  },
-  {
-    id: "delayed-feedback",
-    title: "Stuart et al. (2002) · Effect of delayed auditory feedback on normal speakers at two speech rates",
-    url: "https://doi.org/10.1121/1.1466868",
   },
   {
     id: "speech-single-neurons",
