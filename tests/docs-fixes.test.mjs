@@ -553,3 +553,43 @@ test("L16: a user save of more than 50 ops commits together or not at all", asyn
   assert.equal(saved.rev, 2, "One transaction, one artifact rev.");
   err(await api.editBlocks({ ref, ops: inserts(51).map(({ blocks }) => ({ op: "insert", md: blocks[0].text })) }), "limit");
 });
+
+/* ---------- L10, L12: store events the page listens to ---------- */
+
+test("L10: a save tagged with an origin comes back with it, so the editor skips only its own saves", async () => {
+  const { api } = setup();
+  const { ref, blocks } = ok(await api.doc({ action: "create", title: "Tagged", markdown: "One" }, "user"));
+  const changes = [];
+  api.onChange((change) => change.kind === "blocks" && changes.push(change));
+  ok(await api.saveBlocks(ref, [{ op: "update", id: blocks[0].id, text: "One!" }], "user", { origin: "editor:1" }));
+  ok(await api.saveBlocks(ref, [{ op: "update", id: blocks[0].id, text: "One!!" }]));
+  assert.deepEqual(
+    changes.map((change) => [change.actor, change.origin]),
+    [
+      ["user", "editor:1"],
+      ["user", undefined],
+    ],
+  );
+});
+
+test("L12: when the browser will not keep storage, the store says so once", async () => {
+  const engine = openEngine(new sqlite3.oo1.DB(":memory:"));
+  let asked = 0;
+  const store = createStore(directCall(engine), {
+    mode: "local",
+    onFirstCreate: async () => {
+      asked++;
+      return false;
+    },
+  });
+  const changes = [];
+  store.onChange((change) => changes.push(change));
+  await store.createArtifact({ kind: "doc", title: "One", blocks: [] }, "user");
+  await store.createArtifact({ kind: "doc", title: "Two", blocks: [] }, "user");
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.equal(asked, 1);
+  assert.deepEqual(
+    changes.filter((change) => change.kind === "storage"),
+    [{ kind: "storage", persisted: false }],
+  );
+});

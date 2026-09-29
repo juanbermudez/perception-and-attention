@@ -174,8 +174,11 @@ export interface ActivityRow extends Required<Omit<ActivityEntry, "ref" | "summa
 
 export type StoreChange =
   | { kind: "artifact"; id: string; rev: number; deleted?: boolean }
-  | { kind: "blocks"; artifactId: string; rev: number; actor: Actor; ids: string[] }
-  | { kind: "windows" };
+  /** `origin` is the tag the writer passed (the doc editor tags its own saves, so it can skip them). */
+  | { kind: "blocks"; artifactId: string; rev: number; actor: Actor; ids: string[]; origin?: string }
+  | { kind: "windows" }
+  /** The browser did not grant persistent storage: saved docs may be cleared when space runs low. */
+  | { kind: "storage"; persisted: false };
 
 export type StoreErrorCode = "bad_input" | "unknown_ref" | "stale_rev" | "limit" | "store_unavailable";
 
@@ -202,7 +205,7 @@ export interface Store {
   getArtifact(id: string, options?: { includeDeleted?: boolean }): Promise<Artifact | null>;
   createArtifact(input: NewArtifact, actor: Actor): Promise<Artifact>;
   updateArtifact(id: string, patch: { title?: string; deleted?: boolean }, actor: Actor): Promise<ArtifactSummary>;
-  applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor): Promise<BlockOpsResult>;
+  applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor, options?: { origin?: string }): Promise<BlockOpsResult>;
   blockHistory(blockId: string): Promise<HistoryEntry[]>;
   /** Finds the artifact that holds a live block. */
   locateBlock(blockId: string): Promise<{ artifactId: string; kind: ArtifactKind } | null>;

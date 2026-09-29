@@ -31,8 +31,11 @@ export const ENGINE_METHODS: readonly EngineMethod[] = [
 export interface StoreOptions {
   mode: StoreMode;
   reason?: MemoryReason;
-  /** Runs once, after the first artifact is created (the browser asks for persistent storage then). */
-  onFirstCreate?: () => void;
+  /**
+   * Runs once, after the first artifact is created (the browser asks for persistent storage then).
+   * When it resolves false, the store emits a `storage` change so the page can say so.
+   */
+  onFirstCreate?: () => Promise<boolean> | void;
 }
 
 /** Calls the engine in this thread. Used by tests, and by anything that already runs inside the worker. */
@@ -57,7 +60,9 @@ export function createStore(call: EngineCall, options: StoreOptions): Store {
       emit({ kind: "artifact", id: artifact.id, rev: artifact.rev });
       if (!created) {
         created = true;
-        options.onFirstCreate?.();
+        void Promise.resolve(options.onFirstCreate?.()).then((persisted) => {
+          if (persisted === false) emit({ kind: "storage", persisted: false });
+        });
       }
       return artifact;
     },
@@ -66,10 +71,10 @@ export function createStore(call: EngineCall, options: StoreOptions): Store {
       emit({ kind: "artifact", id, rev: summary.rev, deleted: summary.deletedAt !== undefined });
       return summary;
     },
-    async applyBlockOps(artifactId, ops, actor) {
+    async applyBlockOps(artifactId, ops, actor, applyOptions = {}) {
       const result = await call("applyBlockOps", [artifactId, ops, actor]);
       const ids = [...result.changed.map((block) => block.id), ...result.inserted.map((block) => block.id), ...result.deleted];
-      emit({ kind: "blocks", artifactId, rev: result.rev, actor, ids });
+      emit({ kind: "blocks", artifactId, rev: result.rev, actor, ids, ...(applyOptions.origin ? { origin: applyOptions.origin } : {}) });
       return result;
     },
     blockHistory: (blockId) => call("blockHistory", [blockId]),

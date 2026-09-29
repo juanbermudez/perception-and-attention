@@ -93,7 +93,15 @@ async function openBrowserStore(): Promise<Store> {
   }
   const { worker, reply } = await startWorker(persist);
   reason = reason ?? reply.reason;
-  const persistOnce = () => void navigator.storage?.persist?.().catch(() => {});
+  // Resolves false only when the browser answered no; a browser without the API, or one that already persists, is left alone.
+  const persistOnce = async () => {
+    try {
+      if (await navigator.storage?.persisted?.()) return true;
+      return (await navigator.storage?.persist?.()) ?? true;
+    } catch {
+      return true;
+    }
+  };
   return createStore(workerCall(worker), { mode: reply.mode, reason, onFirstCreate: reply.mode === "local" ? persistOnce : undefined });
 }
 

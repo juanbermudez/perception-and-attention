@@ -753,7 +753,7 @@ export function createDocsApi(options: DocsApiOptions) {
    * where the ops carry them. The whole save is one transaction, so a large paste or reorder is saved
    * whole or not at all.
    */
-  function saveBlocks(ref: string, ops: BlockOp[], actor: Actor = "user"): Result<BlockOpsResult> {
+  function saveBlocks(ref: string, ops: BlockOp[], actor: Actor = "user", tag: { origin?: string } = {}): Result<BlockOpsResult> {
     return withStore(async (db) => {
       const id = artifactId(ref);
       if (!id) return fail("unknown_ref", `Expected doc:<id> or quiz:<id>, got "${ref}".`);
@@ -764,7 +764,7 @@ export function createDocsApi(options: DocsApiOptions) {
       }
       const blocked = writeBlocked(actor);
       if (blocked) return blocked;
-      return db.applyBlockOps(id, ops, actor);
+      return db.applyBlockOps(id, ops, actor, tag);
     });
   }
 

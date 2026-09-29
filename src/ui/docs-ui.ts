@@ -23,6 +23,7 @@ import { createWindowManager, KIND_ICONS, type WindowKind, type WindowState } fr
 
 export const DOCS_FLAG = "perception-attention:docs";
 const RENAME_MS = 700;
+const PERSIST_WARNED = "perception-attention:persist-warned";
 const TRASH_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg>';
 
 type SettingStorage = Pick<Storage, "getItem" | "setItem">;
@@ -53,6 +54,10 @@ interface DocWindow {
   banner: HTMLElement;
   ready: HTMLElement;
   lastEdit: { at: number; by: "user" | "agent" };
+  /** The tag on this editor's own saves, so their change events are not taken for someone else's. */
+  origin: string;
+  /** Saves a title that is still waiting for its debounce. */
+  flushTitle: () => void;
 }
 
 interface OpenRequest {
@@ -107,12 +112,18 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   let restoring = false;
   const pending = new Map<string, Promise<Result<{ ref: string; title: string }>>>();
 
+  let layoutWarned = false;
+  let editors = 0;
   const windows = createWindowManager({
     stage,
     onLayout: (rows) => {
       if (docs.status().store === "unopened") return;
       void docs.saveWindows(rows).then((saved) => {
-        if (isApiError(saved)) console.warn("Could not save the window layout", saved.error.message);
+        if (!isApiError(saved)) return;
+        console.warn("Could not save the window layout", saved.error.message);
+        // Once per visit: the windows still work, they just will not come back after a reload.
+        if (!layoutWarned) toast(`Window positions could not be saved: ${saved.error.message}`);
+        layoutWarned = true;
       });
     },
     onEvent: (event) => {
@@ -121,16 +132,16 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     },
   });
 
-  function remember() {
+  function remember(key = DOCS_FLAG) {
     try {
-      storage?.setItem(DOCS_FLAG, "1");
+      storage?.setItem(key, "1");
     } catch {
       // Storage blocked: windows are not restored on the next visit.
     }
   }
-  function remembered() {
+  function remembered(key = DOCS_FLAG) {
     try {
-      return storage?.getItem(DOCS_FLAG) === "1";
+      return storage?.getItem(key) === "1";
     } catch {
       return false;
     }
@@ -219,10 +230,11 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     if (existing) return showExisting(existing, request);
     const parts = paneFor(loaded);
     let window: DocWindow;
+    const origin = `editor:${++editors}`;
     const editor = createDocEditor(
       loaded.blocks,
       {
-        save: (ops) => docs.saveBlocks(loaded.ref, ops),
+        save: (ops) => docs.saveBlocks(loaded.ref, ops, "user", { origin }),
         fetch: async () => {
           const artifact = await docs.load(loaded.ref);
           return isApiError(artifact) ? null : artifact.blocks;
@@ -238,6 +250,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
           windows.setStatus(loaded.ref, status === "saving" ? "Saving…" : status === "error" ? "Not saved" : statusText());
           if (status === "error" && message) console.warn(`Could not save ${loaded.ref}:`, message);
         },
+        onSaveFailed: (message) =>
+          toast(`Could not save “${window.title}”: ${message} Your edits stay in the window.`, { label: "Try again", run: () => void editor.flush() }),
         notify: (message) => toast(message),
         onEscape: () => windows.minimize(loaded.ref, true),
         renderQuestion,
@@ -257,6 +271,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       banner: parts.banner,
       ready: parts.ready,
       lastEdit: lastEdit(loaded),
+      origin,
+      flushTitle: () => {},
     };
     docWindows.set(loaded.id, window);
     wirePane(window);
@@ -271,9 +287,13 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
           window.titleInput.value === "Untitled" || !window.titleInput.value ? window.titleInput : window.pane.querySelector<HTMLElement>(".doc-body"),
         download: () => void docs.doc({ action: "download", ref: loaded.ref }, "user"),
         close: () => {
+          window.flushTitle();
           editor.destroy();
           docWindows.delete(loaded.id);
         },
+        beforeClose: () =>
+          !editor.unsaved ||
+          confirm(`Some edits in “${window.title}” could not be saved. Close the window and lose them? Download the doc first to keep them.`),
       },
       at: request.at,
       size: request.size,
@@ -319,6 +339,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     let renameTimer: ReturnType<typeof setTimeout> | undefined;
     const rename = () => {
       clearTimeout(renameTimer);
+      renameTimer = undefined;
       const title = window.titleInput.value.trim();
       if (!title || title === window.title) return;
       window.title = title;
@@ -332,6 +353,9 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       clearTimeout(renameTimer);
       renameTimer = setTimeout(rename, RENAME_MS);
     });
+    window.flushTitle = () => {
+      if (renameTimer !== undefined) rename();
+    };
     window.titleInput.addEventListener("blur", rename);
     window.titleInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === "ArrowDown") {
@@ -358,11 +382,17 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   /* ---------- Store changes ---------- */
 
   docs.onChange((change) => {
+    if (change.kind === "storage") {
+      if (remembered(PERSIST_WARNED)) return;
+      remember(PERSIST_WARNED);
+      toast("This browser may clear saved notes when it runs low on space. Download notes you want to keep.");
+      return;
+    }
     if (change.kind === "blocks") {
       const window = docWindows.get(change.artifactId);
       if (!window) return;
-      // The editor's own saves come back as user changes; it already shows them.
-      if (change.actor === "user" && window.editor.saving) return;
+      // The editor's own saves come back tagged; it already shows them. Other writes as the user (Undo, restore) still refresh it.
+      if (change.origin === window.origin) return;
       window.lastEdit = { at: Date.now(), by: change.actor };
       renderMeta(window);
       void window.editor.refresh();
@@ -387,6 +417,22 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   setInterval(() => {
     for (const window of docWindows.values()) renderMeta(window);
   }, 60_000);
+
+  /* ---------- Leaving the page ---------- */
+
+  // Edits wait 400 ms, titles 700 ms and the layout 400 ms before they save. Save them now when the page
+  // is hidden or unloaded (a reload, closing the tab), so the last words typed are not lost (M5).
+  function flushAll() {
+    for (const window of docWindows.values()) {
+      window.flushTitle();
+      void window.editor.flush();
+    }
+    windows.flush();
+  }
+  addEventListener("pagehide", flushAll);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAll();
+  });
 
   /* ---------- Downloads ---------- */
 

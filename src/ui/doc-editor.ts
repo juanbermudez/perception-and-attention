@@ -42,7 +42,10 @@ export interface DocEditorHost {
   renderQuestion?(container: HTMLElement, data: BlockData, blockId: string): boolean;
   /** Blocks the user changed and saved, for the activity log. */
   onSaved?(ids: string[]): void;
+  /** "saving" as soon as there are edits to save, "saved" once the store has them, "error" when a save failed. */
   onStatus?(status: "saving" | "saved" | "error", message?: string): void;
+  /** The save failed again after its retries; the edits stay in the editor until a later save works. */
+  onSaveFailed?(message: string): void;
   /** Escape with a block already selected. */
   onEscape?(): void;
   notify?(message: string): void;
@@ -60,8 +63,11 @@ export interface BlockEditor {
   /** Scroll to a block and flash it. */
   reveal(id: string): void;
   focus(where?: "start" | "end"): void;
+  /** Saves pending edits now (the page is being hidden or closed). */
   flush(): Promise<void>;
   readonly saving: boolean;
+  /** A save failed and edits are still waiting: closing now would lose them. */
+  readonly unsaved: boolean;
   destroy(): void;
 }
 
@@ -198,6 +204,7 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
   let saving: Promise<void> | null = null;
   let saveAgain = false;
   let failures = 0;
+  let status: "saving" | "saved" | "error" = "saved";
   let refreshing: Promise<void> | null = null;
   let refreshAgain = false;
   let destroyed = false;
@@ -1203,9 +1210,17 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
 
   /* ---------- Sync ---------- */
 
+  function report(next: "saving" | "saved" | "error", message?: string) {
+    if (next === status && next !== "error") return;
+    status = next;
+    host.onStatus?.(next, message);
+  }
+
+  /** Saves 400 ms after typing stops. The header says "Saving…" from the first keystroke, not only once the save runs. */
   function scheduleSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => void save(), SAVE_DELAY_MS);
+    if (status !== "error") report("saving");
   }
 
   async function save(): Promise<void> {
@@ -1221,20 +1236,25 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
     const ops = planSave(base, current, new Set(versions.keys()));
     if (!ops.length) {
       for (const [id, version] of versions) if (dirty.get(id) === version) dirty.delete(id);
+      // Edits that cancel out (typed, then deleted) leave nothing to save.
+      if (!dirty.size && saveTimer === undefined) {
+        failures = 0;
+        report("saved");
+      }
       return;
     }
-    host.onStatus?.("saving");
+    report("saving");
     saving = (async () => {
       const result = await host.save(ops);
       if ("error" in result) {
         failures++;
-        host.onStatus?.("error", result.error.message);
+        report("error", result.error.message);
         // Someone else may have deleted a block this save refers to: take their changes, keep ours, retry.
         if (failures <= 2 && !destroyed) {
           saving = null;
           await reconcile();
           scheduleSave();
-        }
+        } else if (failures === 3) host.onSaveFailed?.(result.error.message);
         return;
       }
       failures = 0;
@@ -1242,7 +1262,7 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
       base = savedBase(base, current, saved);
       renameInserted(ops, result);
       for (const [id, version] of versions) if (dirty.get(id) === version) dirty.delete(id);
-      host.onStatus?.("saved");
+      report(dirty.size || saveTimer !== undefined ? "saving" : "saved");
       const touched = [...saved].filter((id) => current.some((block) => block.id === id));
       if (touched.length) host.onSaved?.(touched);
     })();
@@ -1355,6 +1375,9 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
     flush: () => save(),
     get saving() {
       return saving !== null;
+    },
+    get unsaved() {
+      return failures > 0 && (dirty.size > 0 || saveTimer !== undefined);
     },
     destroy() {
       void save().finally(() => {
