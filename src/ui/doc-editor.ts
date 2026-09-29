@@ -16,9 +16,9 @@ import { type EditorState, NodeSelection, Plugin, PluginKey, TextSelection, type
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { Lexer, type Tokens } from "marked";
 import { blocksToDoc, blockToNode, checkedNode, docBlocks, type EditorBlock, newBlockId, nodeToBlock } from "../editor/convert";
-import { BLOCK_OF_NODE, createDocSchema, NODE_NAMES, SAFE_HREF, schemaExtensions } from "../editor/schema";
+import { BLOCK_OF_NODE, createDocSchema, NODE_NAMES, schemaExtensions } from "../editor/schema";
 import { applyTarget, baseFrom, changedIds, planReconcile, planSave, type SyncBase, savedBase } from "../editor/sync";
-import { escapeHtml, regionById, renderInline } from "../model/inline";
+import { escapeHtml, regionById, renderInline, safeHref } from "../model/inline";
 import { blocksToMarkdown, describeView, markdownToBlocks, parseDocument } from "../model/markdown";
 import { type Block, type BlockData, type BlockOp, type BlockOpsResult, type BlockType, LIST_TYPES } from "../store/types";
 
@@ -761,8 +761,8 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
     const tr = editor.state.tr.removeMark(linkRange.from, linkRange.to, linkType);
     if (value) {
       const region = regionById(value.replace(/^region:/i, ""));
-      const href = region ? `region:${region.id}` : /^www\./i.test(value) ? `https://${value}` : value;
-      if (!SAFE_HREF.test(href)) {
+      const href = safeHref(region ? `region:${region.id}` : /^www\./i.test(value) ? `https://${value}` : value);
+      if (!href) {
         linkInput.setCustomValidity("Use a web address (https://…) or a region id such as v1.");
         linkInput.reportValidity();
         return;

@@ -11,6 +11,7 @@ import type { WindowCommand, WindowInfo, WindowsPort } from "../api/guide-api";
 import { fail, isFailure, type Result } from "../api/result";
 import type { ViewOutcome } from "../api/view-api";
 import type { RegionId } from "../content/types";
+import { regionById } from "../model/inline";
 import { resolveRef } from "../model/refs";
 import type { Artifact, Block, BlockData } from "../store/types";
 import { type BlockEditor, createDocEditor, type DocEditorHost } from "./doc-editor";
@@ -340,10 +341,10 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     explorer.watchRegionHover(window.pane);
     window.pane.addEventListener("click", (event) => {
       const mention = (event.target as HTMLElement).closest<HTMLElement>(".region-mention");
-      const id = mention?.dataset.region as RegionId | undefined;
-      if (!id) return;
+      const region = mention?.dataset.region ? regionById(mention.dataset.region) : undefined;
+      if (!region) return;
       event.preventDefault();
-      explorer.goTo({ kind: "region", path: null, id });
+      explorer.goTo({ kind: "region", path: null, id: region.id as RegionId });
     });
   }
 

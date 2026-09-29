@@ -14,7 +14,8 @@ export { transaction } from "./src/store/sql";
 export { LIMITS } from "./src/store/limits";
 export { createDocSchema } from "./src/editor/schema";
 export { blockToNode, checkedNode, nodeToBlock } from "./src/editor/convert";
-export { blocksToMarkdown, exportDocument, markdownToBlocks, parseDocument } from "./src/model/markdown";`;
+export { blocksToMarkdown, exportDocument, markdownToBlocks, parseDocument } from "./src/model/markdown";
+export { inlineRuns, renderInline, runsToMarkdown, safeHref } from "./src/model/inline";`;
 const result = await build({
   stdin: { contents: source, resolveDir: process.cwd(), loader: "ts" },
   bundle: true,
@@ -242,4 +243,27 @@ test("M10: table blocks whose source is not a table survive export and import", 
   assert.match(m.blocksToMarkdown([blocks[1]]), /^\| a \| b \|\n/, "A real table is written as a table.");
   const file = m.exportDocument("doc:k3f9", "Tables", blocks, new Date("2026-09-28T00:00:00Z"));
   assert.deepEqual(m.parseDocument(file).blocks.map(normal), blocks.map(normal));
+});
+
+/* ---------- L2, L13: links ---------- */
+
+test("L2: one link rule: http(s) URLs, and region links only to regions the guide knows", () => {
+  assert.equal(m.safeHref("https://example.org/a_(b)"), "https://example.org/a_(b)");
+  assert.equal(m.safeHref("region:V1"), "region:v1");
+  assert.equal(m.safeHref("REGION:lgn"), "region:lgn");
+  for (const href of ["region:foo", "region:", "javascript:alert(1)", "data:text/html,x", "http://a b", "//example.org"])
+    assert.equal(m.safeHref(href), null, href);
+  assert.equal(m.renderInline("[x](region:foo)"), "x");
+});
+
+test("L13: a link whose URL has an unbalanced parenthesis survives a save", () => {
+  const link = (href) => [{ text: "wiki", marks: [{ type: "link", href }] }];
+  for (const href of ["https://en.wikipedia.org/wiki/Foo_(bar", "https://example.org/a)b", "https://example.org/((x))"]) {
+    const text = m.runsToMarkdown(link(href));
+    const runs = m.inlineRuns(text);
+    assert.equal(runs.length, 1, text);
+    assert.equal(runs[0].text, "wiki");
+    assert.equal(decodeURI(runs[0].marks[0].href), href, text);
+  }
+  assert.equal(m.runsToMarkdown(link("https://example.org/a_(b)")), "[wiki](https://example.org/a_(b))", "Balanced ones stay as they are.");
 });

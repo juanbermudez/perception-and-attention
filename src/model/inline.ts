@@ -20,12 +20,23 @@ export type InlineNode =
 
 const PUNCTUATION = /[!-/:-@[-`{-~]/;
 const HTTP_URL = /^https?:\/\/[^\s<>"'`\\]+$/i;
-const REGION_URL = /^region:([A-Za-z0-9]+)$/;
+const REGION_URL = /^region:([A-Za-z0-9]+)$/i;
 
 const regionIds = new Map(Object.keys(regions).map((id) => [id.toLowerCase(), id as RegionId]));
 export function regionById(id: string) {
   const known = regionIds.get(id.toLowerCase());
   return known ? regions[known] : undefined;
+}
+
+/**
+ * The one link rule for docs (the renderer, the editor's paste and ⌘K): an http(s) URL as given, or a
+ * link to a region the guide knows, as `region:<id>` with the id's own case. Anything else is null.
+ */
+export function safeHref(href: string): string | null {
+  if (HTTP_URL.test(href)) return href;
+  const region = REGION_URL.exec(href);
+  const known = region ? regionById(region[1]) : undefined;
+  return known ? `region:${known.id}` : null;
 }
 
 /** Index of the next backtick run of exactly `length` at or after `from`, or -1. */
@@ -120,11 +131,10 @@ function parseSpan(text: string, links: boolean): InlineNode[] {
       const target = close > 0 && text[close + 1] === "(" ? /^\(((?:[^()\s]|\([^()\s]*\))*)\)/.exec(text.slice(close + 1)) : null;
       if (target) {
         const label = parseSpan(text.slice(index + 1, close), false);
-        const url = target[1];
-        const region = REGION_URL.exec(url);
-        const known = region ? regionById(region[1]) : undefined;
-        if (HTTP_URL.test(url)) out.push({ t: "link", href: url, children: label });
-        else if (known) out.push({ t: "region", id: known.id, label: known.label, children: label });
+        const href = safeHref(target[1]);
+        const known = href?.startsWith("region:") ? regionById(href.slice("region:".length)) : undefined;
+        if (known) out.push({ t: "region", id: known.id, label: known.label, children: label });
+        else if (href) out.push({ t: "link", href, children: label });
         else for (const node of label) node.t === "text" ? pushText(out, node.text) : out.push(node);
         index = close + 1 + target[0].length;
         continue;
@@ -307,6 +317,11 @@ function escapeInline(text: string, before: string, after: string): string {
   return out;
 }
 
+/** A link target the parser reads back: it takes one level of balanced parentheses, so others are percent-encoded. */
+function linkTarget(href: string): string {
+  return /^(?:[^()\s]|\([^()\s]*\))*$/.test(href) ? href : href.replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
+
 function codeSpan(text: string): string {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
   const ticks = "`".repeat(longest + 1);
@@ -323,7 +338,7 @@ function write(runs: InlineRun[], delimiters: Delimiters): string {
   const open: RunMark[] = [];
   const parts: string[] = [];
   const opener = (mark: RunMark) => (mark.type === "link" ? "[" : mark.type === "strong" ? delimiters.strong : mark.type === "em" ? delimiters.em : "~~");
-  const closer = (mark: RunMark) => (mark.type === "link" ? `](${mark.href})` : opener(mark));
+  const closer = (mark: RunMark) => (mark.type === "link" ? `](${linkTarget(mark.href)})` : opener(mark));
   runs.forEach((run, index) => {
     const wanted = run.br ? [] : run.marks.filter((mark) => mark.type !== "code");
     let keep = 0;
