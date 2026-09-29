@@ -43,6 +43,8 @@ export interface ArtifactSummary {
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
+  /** Made from a markdown file the user imported (its text may come from anywhere). */
+  imported?: true;
   /** Saved window state, if the artifact has a window. */
   window?: WindowState;
 }
@@ -55,6 +57,7 @@ export interface NewArtifact {
   kind: ArtifactKind;
   title: string;
   blocks: BlockContent[];
+  imported?: boolean;
 }
 
 /** Where an insert or move lands: after a block id, or at the start or end of the artifact. */
@@ -70,7 +73,8 @@ export type BlockOp =
   /** Send `block` to replace type, indent, text and data, or `text` alone to keep the rest. */
   | { op: "update"; id: string; rev?: number; block?: BlockContent; text?: string }
   | { op: "replace"; id: string; rev?: number; find: string; with: string }
-  | { op: "delete"; id: string }
+  /** `rev`, when given, must match: an undo does not delete a block someone changed since. */
+  | { op: "delete"; id: string; rev?: number }
   | { op: "move"; id: string; after: Anchor }
   | { op: "set"; id: string; rev?: number; data: BlockData }
   /** Undo of a delete: brings a soft-deleted block back after `after`, or at its old position. */
@@ -95,11 +99,15 @@ export interface BlockOpsResult {
 export interface Page<T> {
   items: T[];
   cursor?: string;
+  /** How many match, over every page. */
+  total: number;
 }
 
 export interface ListOptions {
   kind?: ArtifactKind;
   includeDeleted?: boolean;
+  /** Only soft-deleted artifacts (the "Recently deleted" list), newest deletion first. */
+  onlyDeleted?: boolean;
   limit?: number;
   cursor?: string;
 }
@@ -166,8 +174,14 @@ export interface ActivityRow extends Required<Omit<ActivityEntry, "ref" | "summa
 
 export type StoreChange =
   | { kind: "artifact"; id: string; rev: number; deleted?: boolean }
-  | { kind: "blocks"; artifactId: string; rev: number; actor: Actor; ids: string[] }
-  | { kind: "windows" };
+  /** `origin` is the tag the writer passed (the doc editor tags its own saves, so it can skip them). */
+  | { kind: "blocks"; artifactId: string; rev: number; actor: Actor; ids: string[]; origin?: string }
+  | { kind: "windows" }
+  /**
+   * Storage news for the page: the browser did not grant persistent storage (saved docs may be cleared
+   * when space runs low), or, in a memory tab, the tab that had the database let go of it.
+   */
+  | { kind: "storage"; reason: "not-persisted" | "freed" };
 
 export type StoreErrorCode = "bad_input" | "unknown_ref" | "stale_rev" | "limit" | "store_unavailable";
 
@@ -183,8 +197,8 @@ export class StoreError extends Error {
   }
 }
 
-/** Why the store runs in memory; `null` when it saves (spec §11.1). */
-export type MemoryReason = "file" | "insecure" | "no-opfs" | "other-tab" | "failed" | null;
+/** Why the store runs in memory; `null` when it saves (spec §11.1). "freed": another tab had the database and has let go; a reload opens it. */
+export type MemoryReason = "file" | "insecure" | "no-opfs" | "other-tab" | "freed" | "failed" | null;
 
 /** The persistence interface (spec §11.3). Every method is async because the engine runs in a worker. */
 export interface Store {
@@ -194,7 +208,7 @@ export interface Store {
   getArtifact(id: string, options?: { includeDeleted?: boolean }): Promise<Artifact | null>;
   createArtifact(input: NewArtifact, actor: Actor): Promise<Artifact>;
   updateArtifact(id: string, patch: { title?: string; deleted?: boolean }, actor: Actor): Promise<ArtifactSummary>;
-  applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor): Promise<BlockOpsResult>;
+  applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor, options?: { origin?: string }): Promise<BlockOpsResult>;
   blockHistory(blockId: string): Promise<HistoryEntry[]>;
   /** Finds the artifact that holds a live block. */
   locateBlock(blockId: string): Promise<{ artifactId: string; kind: ArtifactKind } | null>;

@@ -2,24 +2,46 @@
 import * as z from "zod";
 import { TOUR_LIMITS } from "../api/tour";
 import type { RegionId } from "../content/types";
-import { REGION_IDS, STREAMS_REF, suggest } from "../model/refs";
-import { DEFAULT_KEEP, LABEL_MODES, LAYER_IDS, type LabelMode, type LayerId, MAX_FRAME, PITCH_MAX, PITCH_MIN, SIDE_IDS, type Side } from "../model/view";
+import { canonicalRegion, REGION_IDS, STREAMS_REF, suggest } from "../model/refs";
+import {
+  DEFAULT_KEEP,
+  LABEL_MODES,
+  LAYER_IDS,
+  type LabelMode,
+  type LayerId,
+  MAX_FRAME,
+  normalizeViewPatch,
+  PITCH_MAX,
+  PITCH_MIN,
+  SIDE_IDS,
+  type Side,
+} from "../model/view";
 import { LIST_LIMIT, SEARCH_LIMIT } from "./help";
 
 export const refField = (description: string) => z.string().trim().min(1).max(200).describe(description);
 
-/** "unknown region id "V1"; closest: v1" — region fields are exact ids, so a near miss names the id to use. */
+/** "unknown region id "visual cortex"; closest: v1, …": a near miss names the ids to use. */
 function regionIdError(input: unknown) {
   if (input === undefined) return "a region id is required";
-  const closest = typeof input === "string" ? suggest(input, ["region"]).map((ref) => ref.slice("region:".length)) : [];
-  return `unknown region id ${JSON.stringify(input)}${closest.length ? `; closest: ${closest.join(", ")}` : `; every id is listed in read({ ref: "help" })`}`;
+  if (typeof input !== "string") return `expected a region id such as "v1", got ${JSON.stringify(input)}`;
+  const prefix = /^\s*([a-z]+):/i.exec(input)?.[1].toLowerCase();
+  const text = prefix ? input.slice(input.indexOf(":") + 1).trim() : input.trim();
+  const closest = suggest(text, ["region"]).map((ref) => ref.slice("region:".length));
+  const hint = closest.length ? `; closest: ${closest.join(", ")}` : `; every id is listed in read({ ref: "help" })`;
+  if (prefix && prefix !== "region") return `region fields take region ids such as "v1", not ${prefix}: refs${hint}`;
+  return `unknown region id ${JSON.stringify(text)}${hint}`;
 }
-/** For fields that accept only regions: bare ids, not refs (spec §5.1). */
-export const regionIdSchema = z.enum(REGION_IDS as [RegionId, ...RegionId[]], { error: (issue) => regionIdError(issue.input) });
+/** Region ids as the schema lists them. */
+export const regionIdEnum = z.enum(REGION_IDS as [RegionId, ...RegionId[]], { error: (issue) => regionIdError(issue.input) });
+/**
+ * For fields that take only regions (spec §5.1). Forgiving on input: "V1" and "region:v1" both mean v1, so a
+ * ref copied from go or read works here too. The JSON Schema still lists the exact ids.
+ */
+export const regionIdSchema = z.preprocess((value) => (typeof value === "string" ? (canonicalRegion(value) ?? value) : value), regionIdEnum);
 export const listLimit = z.number().int().min(1).max(LIST_LIMIT.max).describe(`Default ${LIST_LIMIT.default}`);
 export const searchLimit = z.number().int().min(1).max(SEARCH_LIMIT.max).describe(`Default ${SEARCH_LIMIT.default}`);
 
-/* ---------- ViewPatch (spec §5.3), for set_view and tour stops ---------- */
+/* ---------- ViewPatch (spec §5.3), in full for set_view ---------- */
 
 const presence = z.number().min(0).max(1);
 const regionList = (max: number) => z.array(regionIdSchema).max(max);
@@ -63,9 +85,49 @@ export const viewPatchSchema = z.strictObject({
   motion: z.enum(["smooth", "instant"]).optional().describe("Default smooth; reduced motion is always instant"),
 });
 
+/* ---------- A view patch inside another tool's input ---------- */
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const regionOrSelf = (value: unknown) => (typeof value === "string" ? (canonicalRegion(value) ?? value) : value);
+const regionsOrSelf = (value: unknown) => (Array.isArray(value) ? value.map(regionOrSelf) : value);
+
+/** The same forgiving region ids as set_view ("V1", "region:v1") in camera.focus, camera.frame and isolate. */
+function canonicalViewRegions(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const view = { ...value };
+  if (isRecord(view.camera)) {
+    const camera = { ...view.camera };
+    if (camera.focus !== undefined) camera.focus = regionOrSelf(camera.focus);
+    if (camera.frame !== undefined) camera.frame = regionsOrSelf(camera.frame);
+    view.camera = camera;
+  }
+  if (Array.isArray(view.isolate)) view.isolate = regionsOrSelf(view.isolate);
+  else if (isRecord(view.isolate) && view.isolate.regions !== undefined) view.isolate = { ...view.isolate, regions: regionsOrSelf(view.isolate.regions) };
+  return view;
+}
+
+/**
+ * A set_view patch inside another tool's input: tour stops, saved view blocks and a question's Show me.
+ * The JSON Schema spells the ViewPatch out once, on set_view; here it is a plain object that the view
+ * API's own rules check, so a tour stop and set_view accept exactly the same patches.
+ */
+export const viewPatchField = (description: string) =>
+  z
+    .preprocess(
+      canonicalViewRegions,
+      z.record(z.string(), z.unknown()).superRefine((view, context) => {
+        const checked = normalizeViewPatch(view);
+        if ("error" in checked) {
+          const options = checked.error.options?.length ? ` Options: ${checked.error.options.join(", ")}.` : "";
+          context.addIssue({ code: "custom", message: `${checked.error.message}${options}` });
+        }
+      }),
+    )
+    .describe(description);
+
 export const tourStopSchema = z.strictObject({
   ref: refField(`Where the stop goes: overview, topic:*, step:*, region:* or ${STREAMS_REF}`).optional(),
-  view: viewPatchSchema.optional().describe("Applied after going to ref, as set_view does"),
+  view: viewPatchField("A set_view patch (same fields as set_view), applied after going to ref").optional(),
   say: z.string().trim().max(TOUR_LIMITS.say).optional().describe("Caption shown during the stop"),
   seconds: z.number().min(TOUR_LIMITS.seconds.min).max(TOUR_LIMITS.seconds.max).optional().describe(`Default ${TOUR_LIMITS.seconds.default}`),
 });

@@ -8,13 +8,14 @@ import type { PathId, RegionId } from "../content/types";
 import { LIMITS } from "../store/limits";
 import { formatRef, resolveRef } from "./refs";
 import { pathwayById, topicRegions } from "./topics";
+import { normalizeViewPatch } from "./view";
 
 interface QuestionBase {
   prompt: string;
   explain?: string;
   /** Where "Show me" goes, e.g. `step:vision/parallel-channels` or `region:v1`. Stored in the stable form. */
   ref?: string;
-  /** A view to show with "Show me" (a ViewPatch; checked by the view API). */
+  /** A view to show with "Show me": a ViewPatch, checked with the view API's rules and kept as given. */
   view?: Record<string, unknown>;
 }
 
@@ -83,6 +84,8 @@ export function validateQuestion(input: unknown): Checked<Question> {
   }
   if (raw.view !== undefined) {
     if (typeof raw.view !== "object" || raw.view === null || Array.isArray(raw.view)) return bad("view must be a view object.");
+    const view = normalizeViewPatch(raw.view);
+    if ("error" in view) return bad(`view: ${view.error.message}`);
     base.view = raw.view as Record<string, unknown>;
   }
   switch (raw.kind) {

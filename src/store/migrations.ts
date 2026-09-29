@@ -47,6 +47,8 @@ export const MIGRATIONS: readonly string[] = [
     kind TEXT NOT NULL, ref TEXT, summary TEXT
   );
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  // 2: docs made from an imported file are marked, so agents can tell them from the user's own notes.
+  `ALTER TABLE artifacts ADD COLUMN imported INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

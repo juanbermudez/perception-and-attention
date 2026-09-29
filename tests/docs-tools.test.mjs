@@ -183,7 +183,7 @@ Second paragraph has a tpyo in it.
 const VALID = {
   doc: [
     { action: "create", title: "Notes" },
-    { action: "create", title: "Notes", markdown: "# Hi\n\n- a", open: false },
+    { action: "create", title: "Notes", markdown: "# Hi\n\n- a", show: false },
     { action: "rename", ref: "doc:k3f9", title: "New" },
     { action: "delete", ref: "doc:k3f9" },
     { action: "restore", ref: "doc:k3f9" },
@@ -208,12 +208,12 @@ const VALID = {
   ],
   window: [
     { action: "open", ref: "doc:k3f9" },
-    { action: "open", ref: "block:b7x2k", at: "top-left", size: "l" },
+    { action: "open", ref: "block:b7x2k", slot: "top-left", size: "l" },
     { action: "close" },
     { action: "minimize", ref: "quiz:k3f9" },
     { action: "restore", ref: "doc:k3f9" },
     { action: "focus", ref: "doc:k3f9" },
-    { action: "place", ref: "doc:k3f9", at: "bottom-right" },
+    { action: "place", ref: "doc:k3f9", slot: "bottom-right" },
     { action: "place", size: "s" },
     { action: "arrange" },
     { action: "arrange", layout: "stack" },
@@ -253,10 +253,10 @@ const INVALID = {
   window: [
     {},
     { action: "open" },
-    { action: "open", ref: "doc:k3f9", at: "middle" },
+    { action: "open", ref: "doc:k3f9", slot: "middle" },
     { action: "open", ref: "doc:k3f9", size: "xl" },
     { action: "open", ref: "doc:k3f9", layout: "tile" },
-    { action: "close", at: "left" },
+    { action: "close", slot: "left" },
     { action: "place", ref: "doc:k3f9" },
     { action: "arrange", ref: "doc:k3f9" },
     { action: "arrange", layout: "grid" },
@@ -324,7 +324,17 @@ test("acceptance prompt 7 through the tools: outline, then replace with the bloc
   const edit = ok(await call("edit_blocks", { ref, ops: [{ op: "replace", id: second.id, find: "tpyo", with: "typo", rev: second.rev }] }));
   assert.deepEqual(edit, { rev: 2, changed: [{ id: second.id, rev: 2 }], inserted: [], deleted: [], said: "Edited “My notes”: 1 changed" });
   const block = ok(await call("read", { ref: `block:${second.id}` }));
-  assert.deepEqual(block, { ref: `block:${second.id}`, in: ref, title: "My notes", n: 3, of: 5, type: "p", md: "Second paragraph has a typo in it.", rev: 2 });
+  assert.deepEqual(block, {
+    ref: `block:${second.id}`,
+    in: ref,
+    title: "My notes",
+    n: 3,
+    of: 5,
+    type: "p",
+    md: "Second paragraph has a typo in it.",
+    rev: 2,
+    by: "agent",
+  });
 });
 
 test("a stale rev rejects the whole batch and reports the block's current text", async () => {
@@ -417,9 +427,9 @@ test("acceptance prompt 5: notes on attention with a 3D view of the priority map
 
 test("window: open a block's doc, place, minimize, restore, arrange; commands default to the focused window", async () => {
   const { call, windows } = setup();
-  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, open: false }));
+  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, show: false }));
   assert.equal(windows.shown.size, 0);
-  const opened = ok(await call("window", { action: "open", ref: `block:${blocks[2].id}`, at: "left", size: "l" }));
+  const opened = ok(await call("window", { action: "open", ref: `block:${blocks[2].id}`, slot: "left", size: "l" }));
   assert.equal(opened.said, "Opened “Notes” at the left.");
   assert.deepEqual(windows.shown.get(ref), { title: "Notes", state: "open", at: "left", size: "l", block: blocks[2].id });
   assert.equal(ok(await call("window", { action: "place", size: "s" })).said, "Moved “Notes” size s.");
@@ -441,7 +451,7 @@ test("window: open a block's doc, place, minimize, restore, arrange; commands de
 
 test("go opens a doc or scrolls to a block in its window", async () => {
   const { call, windows } = setup();
-  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, open: false }));
+  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, show: false }));
   const went = ok(await call("go", { ref: `block:${blocks[3].id}` }));
   assert.equal(went.at, `block:${blocks[3].id}`);
   assert.equal(went.in, ref);
@@ -463,7 +473,7 @@ test("without a window manager, window and go(doc) are not_available; doc still 
 test("search: docs, all (merged with the guide), and never opening the store when no docs exist", async () => {
   const fresh = setup();
   const guideOnly = ok(await fresh.call("search", { query: "pulvinar" }));
-  assert.equal(guideOnly.scope, "guide");
+  assert.equal(guideOnly.scope, "all");
   assert.equal(fresh.opens(), 0, "search(all) does not start the store before any doc exists.");
   const context = ok(await fresh.call("get_context", {}));
   for (const field of ["windows", "editing", "store"]) assert.equal(context[field], undefined, field);

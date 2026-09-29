@@ -9,6 +9,7 @@ import { quizTool } from "./quiz";
 import { readTool } from "./read";
 import { searchTool } from "./search";
 import { setViewTool } from "./set-view";
+import { startTourTool } from "./start-tour";
 import { walkthroughTool } from "./walkthrough";
 import { windowTool } from "./window";
 
@@ -19,6 +20,7 @@ export const tools = [
   searchTool,
   goTool,
   walkthroughTool,
+  startTourTool,
   setViewTool,
   docTool,
   editBlocksTool,

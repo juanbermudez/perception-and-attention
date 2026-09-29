@@ -38,25 +38,77 @@ export function richText(text: string) {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let toastDelay = 0;
+/** While the pointer or keyboard focus is on the toast, it stays up; it hides a full delay after both leave. */
+const toastHeld = { pointer: false, focus: false };
+/** Where keyboard focus goes back to when the toast's action goes away while it has focus. */
+let toastReturn: HTMLElement | null = null;
+const toastsWired = new WeakSet<HTMLElement>();
+
+function armToast(node: HTMLElement) {
+  clearTimeout(toastTimer);
+  toastTimer = undefined;
+  if (!toastHeld.pointer && !toastHeld.focus && node.classList.contains("visible")) toastTimer = setTimeout(() => hideToast(node), toastDelay);
+}
+
+/** Remove the action button, so a faded toast leaves nothing clickable or focusable behind. */
+function removeToastAction(node: HTMLElement) {
+  const button = node.querySelector(".toast-action");
+  if (!button) return;
+  const hadFocus = button.contains(document.activeElement);
+  button.remove();
+  toastHeld.focus = false;
+  if (hadFocus) toastReturn?.focus({ preventScroll: true });
+}
+
+function hideToast(node: HTMLElement) {
+  clearTimeout(toastTimer);
+  toastTimer = undefined;
+  node.classList.remove("visible", "actionable");
+  toastHeld.pointer = false;
+  removeToastAction(node);
+}
+
+function wireToast(node: HTMLElement) {
+  if (toastsWired.has(node)) return;
+  toastsWired.add(node);
+  const hold = (key: keyof typeof toastHeld, on: boolean) => {
+    toastHeld[key] = on;
+    armToast(node);
+  };
+  node.addEventListener("pointerenter", () => hold("pointer", true));
+  node.addEventListener("pointerleave", () => hold("pointer", false));
+  node.addEventListener("focusin", (event) => {
+    if (!toastHeld.focus) toastReturn = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+    hold("focus", true);
+  });
+  node.addEventListener("focusout", (event) => {
+    if (!node.contains(event.relatedTarget as Node | null)) hold("focus", false);
+  });
+}
+
 /** A short status line over the stage. With an action (for example Undo) it stays longer and takes clicks. */
 export function toast(message: string, action?: { label: string; run: () => void }) {
   const node = byId("toast");
+  wireToast(node);
+  removeToastAction(node);
   node.textContent = message;
-  const hide = () => node.classList.remove("visible", "actionable");
+  // A plain toast takes no pointer events, so the pointer cannot be holding it.
+  toastHeld.pointer &&= Boolean(action);
   if (action) {
     const button = document.createElement("button");
     button.className = "toast-action";
     button.textContent = action.label;
     button.addEventListener("click", () => {
-      hide();
+      hideToast(node);
       action.run();
     });
     node.append(" ", button);
   }
   node.classList.toggle("actionable", Boolean(action));
   node.classList.add("visible");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(hide, action ? 6000 : 3400);
+  toastDelay = action ? 6000 : 3400;
+  armToast(node);
 }
 
 /** Arrow keys, Home and End move between the buttons of a tab list. */

@@ -124,7 +124,7 @@ test("acceptance prompt 7: fix the typo in the second paragraph (outline, then r
   const { api } = setup();
   const { ref } = ok(await api.doc({ action: "create", title: "Attention notes", markdown: NOTES }));
   const docs = ok(await api.outlineDocs());
-  assert.deepEqual(docs.docs, [{ ref, kind: "doc", title: "Attention notes", blocks: 6, updated: docs.docs[0].updated }]);
+  assert.deepEqual(docs.docs, [{ ref, kind: "doc", title: "Attention notes", blocks: 6, updated: docs.docs[0].updated, by: "agent" }]);
   const outline = ok(await api.outlineArtifact(ref));
   const second = outline.blocks.filter((block) => block.type === "p")[1];
   assert.equal(second.text, "Second paragraph has a tpyo in it.");
@@ -268,6 +268,7 @@ test("read: brief and full shapes; outline pages long docs", async () => {
     kind: "doc",
     title: "Long",
     rev: 1,
+    by: "agent",
     blocks: 47,
     updated: brief.updated,
     outline: [

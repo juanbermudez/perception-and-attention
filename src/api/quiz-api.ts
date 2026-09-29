@@ -15,6 +15,8 @@ export interface QuizOpened {
   at: number;
   /** The card already showed this quiz and kept its place. */
   resumed?: true;
+  /** Question blocks the card could not read, so it left them out. */
+  skipped?: number;
 }
 
 /** The card, as `get_context.quiz` reports it. */
@@ -88,7 +90,8 @@ export function createQuizApi({ docs, card }: QuizApiDeps) {
             : shown.resumed
               ? `Showing quiz ${quoted(shown.title)} at question ${shown.at} of ${shown.questions}.`
               : `Opened quiz ${quoted(shown.title)}: ${plural(shown.questions, "question")}.`;
-        return { ref: shown.ref, title: shown.title, questions: shown.questions, at: shown.at, said };
+        const left = shown.skipped ? ` ${plural(shown.skipped, "question")} could not be read and ${shown.skipped === 1 ? "was" : "were"} left out.` : "";
+        return { ref: shown.ref, title: shown.title, questions: shown.questions, at: shown.at, skipped: shown.skipped, said: said + left };
       }
       case "close": {
         const showing = card.status();

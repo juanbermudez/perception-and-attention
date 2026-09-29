@@ -11,15 +11,17 @@ export const docTool = defineTool({
   name: "doc",
   title: "Create or manage a doc",
   description:
-    "Create a markdown doc for the user (it opens in a floating window), rename it, delete it (restorable for 30 days), restore it, or download it as .md. Markdown becomes blocks: headings, paragraphs, lists, to-dos, quotes, callouts (> [!tip]), code, tables, dividers. Link regions as [text](region:v1). Returns the doc ref and its blocks with ids and revs for edit_blocks.",
+    'Create a doc from markdown (it opens in a window), or rename, delete (restorable for 30 days), restore or download a doc or quiz. To list the user\'s docs and their refs, call outline({ ref: "docs" }); to read one, read; to change its content, edit_blocks; to show or move its window, window. Markdown becomes blocks: headings, paragraphs, lists, to-dos, quotes, callouts (> [!tip]), code, tables, dividers. Link regions as [text](region:v1). Returns the ref and blocks with ids and revs.',
   readOnly: false,
+  untrustedContent: true,
+  destructive: true,
   input: z
     .strictObject({
       action: z.enum(ACTIONS),
       ref: refField("doc:<id> or quiz:<id>; for every action except create").optional(),
       title: z.string().trim().min(1).max(LIMITS.titleChars).optional().describe("create and rename"),
       markdown: z.string().max(MARKDOWN_CHARS).optional().describe("create only: the doc's content"),
-      open: z.boolean().optional().describe("create only: open it in a window (default true)"),
+      show: z.boolean().optional().describe("create only: show it in a window (default true)"),
     })
     .superRefine((input, context) => {
       const needs = (field: "ref" | "title", when: boolean) => {
@@ -29,9 +31,9 @@ export const docTool = defineTool({
       };
       needs("ref", input.action !== "create");
       needs("title", input.action === "create" || input.action === "rename");
-      for (const field of ["markdown", "open"] as const)
+      for (const field of ["markdown", "show"] as const)
         if (input.action !== "create" && input[field] !== undefined)
           context.addIssue({ code: "custom", path: [field], message: `${field} applies to create, not ${input.action}` });
     }),
-  run: (input, api) => api.doc(input as Parameters<typeof api.doc>[0]),
+  run: ({ show, ...input }, api) => api.doc({ ...input, ...(show === undefined ? {} : { open: show }) } as Parameters<typeof api.doc>[0]),
 });

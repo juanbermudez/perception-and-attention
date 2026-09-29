@@ -83,7 +83,7 @@ Notes for review:
 - The existing motion tests.
 
 **Status**: Complete in code (branches `webmcp/stage2` and `webmcp/stage2-tools`); acceptance prompt 3 in the ChatGPT desktop browser is still pending with the spike (spec §2).
-- Core (`webmcp/stage2`): `model/view.ts`, `api/view-api.ts` (`createViewApi(state, scene)`: `apply`, `undo`, `current`), scene pose API, layer presence with dissolve/fade, isolate, multi-region highlight, label modes, `viewFocus`, `ui/narration.ts`. Manual access: `explorerDebug.view(patch)`, `undoView()`, `currentView()`, `routes()`, `narrate(text, stop, of)`.
+- Core (`webmcp/stage2`): `model/view.ts`, `api/view-api.ts` (`createViewApi(state, scene)`: `apply`, `undo`, `current`), scene pose API, layer presence with dissolve/fade, isolate, multi-region highlight, label modes, `viewFocus`, `ui/narration.ts`. Manual access (with `?debug` or `?agent=shim`): `explorerDebug.view(patch)`, `undoView()`, `currentView()`, `routes()`, `narrate(text, stop, of)`.
 - Tools (`webmcp/stage2-tools`):
   - `set_view`: a zod schema over `ViewPatch` (region, layer, side and label enums from content; `focus` with `frame` rejected), over `view-api`. Returns `{ view, said }`; mid-gesture the camera part comes back as `skipped.camera` (`locked_by_user`) and the rest applies. The toast offers "Back to previous view".
   - `walkthrough` `tour` and `stop`: `api/tour.ts` runs 1–20 stops in order (`go(ref)`, then the stop's view), 2–30 s each (default 6, or the call's `seconds`), with the caption bar. Every stop is checked before the first plays. Any user pointer down, wheel or key (not Tab or modifiers) pauses it; the bar's pause, skip and close work; `go`, a new walkthrough, `stop` and the kill switch end it. User tour actions and the natural end go to the activity log; tour navigation is not logged as the user's.
@@ -140,7 +140,7 @@ Notes for review:
 **Done on `webmcp/stage3`**
 - Spike: sqlite-wasm with `opfs-sahpool` works from the single-file build (results in spec §2 and §14). The build grew by 829 KiB (5,648 → 6,477 KiB).
 - `src/store/`: `Store` interface, engine, migrations, worker, RPC client, storage mode and banner, tab lock. `src/model/markdown.ts`, `src/model/quiz.ts` (types and validation; grading is Stage 5), `src/api/docs-api.ts`.
-- `main.ts` exposes `window.docsDebug` (the docs API). The store boots on its first call, so the guide is unchanged until a doc is made.
+- `main.ts` exposes `window.docsDebug` (the docs API) with `?debug` or `?agent=shim`. The store boots on its first call, so the guide is unchanged until a doc is made.
 - Tests: `tests/store.test.mjs`, `tests/markdown.test.mjs`, `tests/docs-api.test.mjs` (45 tests; acceptance prompt 7 runs headlessly).
 
 **For the integrator** (all done on `webmcp/stage4`, except the browser checks in the ChatGPT desktop browser; the author's checks in Claude's browser pane passed)
@@ -149,7 +149,7 @@ Notes for review:
 - `get_context.store` comes from `docs.status()`, which never boots the store.
 - Activity log: this branch does not have Stage 1's `src/api/activity.ts`, so it was not moved. The store has `appendActivity` and `listActivity` with the same semantics (seq cursor, at most 30 per read, last 500 kept). Keep the in-memory ring as the source for `get_context`, and mirror entries into the store only once it is open; logging to the store from page load would boot the worker for every visitor.
 - Replace the ref parsing in `docs-api.ts` (`artifactId`, `blockId`) with `model/refs.ts`.
-- Browser checks still to run, including in the ChatGPT desktop browser: `pnpm preview`, then `await docsDebug.doc({ action: "create", title: "T", markdown: "- a" })`, reload, and `await docsDebug.outlineDocs()` lists it with `docsDebug.status().store === "local"`. A second tab reports `memory` / `other-tab`. `dist/index.html` opened from disk reports `memory` / `file`.
+- Browser checks still to run, including in the ChatGPT desktop browser: `pnpm preview`, open the page with `?debug`, then `await docsDebug.doc({ action: "create", title: "T", markdown: "- a" })`, reload, and `await docsDebug.outlineDocs()` lists it with `docsDebug.status().store === "local"`. A second tab reports `memory` / `other-tab`. `dist/index.html` opened from disk reports `memory` / `file`.
 
 ## Stage 4: Floating windows and the doc editor
 

@@ -65,8 +65,13 @@ try {
     '<div class="error-message">This browser could not start the 3D brain. Try a browser with WebGL enabled. The written topics are still available.</div>';
 }
 // Reload restores the place from the hash (#/vision/parallel-channels); the snapshot settles it before logging starts.
-explorer.restore(location.hash);
-explorer.snapshot();
+// A link that fails to open must not stop the rest of startup (notes, quizzes, the agent surface).
+try {
+  explorer.restore(location.hash);
+  explorer.snapshot();
+} catch (error) {
+  console.error("Could not open the place named in the link", error);
+}
 
 // Agent surface (spec §4): tools over GuideApi, an activity log the agent polls, presence and a kill switch.
 const activity = createActivityLog();
@@ -110,6 +115,8 @@ const docs = createDocsApi({
     else docsUi?.open(ref);
   },
   download: (file, text, ref) => docsUi?.download(file, text, ref) ?? false,
+  agentAllowed: () => agentControl.on,
+  notify: (message) => toast(message),
 });
 docs.onOpen((store) => activity.connect(store));
 docsUi = createDocsUi({
@@ -169,36 +176,43 @@ agentControl.onChange((on) => {
   }
 });
 
-const noScene: ViewOutcome = { error: { code: "not_available", message: "The 3D view is not running." } };
 // Inspection hooks for automated checks: render frames in background tabs, read label placement,
 // and drive the view API by hand, e.g. explorerDebug.view({ camera: { frame: ["lgn", "v1"], from: "left" } }).
-Object.defineProperty(window, "explorerDebug", {
-  value: {
-    state,
-    get walking() {
-      return explorer.walking;
-    },
-    diagnostics: () => explorer.scene?.diagnostics(),
-    advance: (frames = 1) => explorer.scene?.advance(frames),
-    labels: () => explorer.scene?.labelsSnapshot(),
-    head: () => explorer.scene?.headSnapshot(),
-    routes: () => explorer.scene?.routesSnapshot(),
-    get viewGap() {
-      return explorer.scene?.viewGap;
-    },
-    snapshot: () => explorer.snapshot(),
-    view: (patch: unknown) => view?.apply(patch) ?? noScene,
-    undoView: () => view?.undo() ?? noScene,
-    currentView: () => view?.current(),
-    pose: () => explorer.scene?.pose(),
-    visibleRegions: () => explorer.scene?.visibleRegions(),
-    narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
-    narration,
-    tour,
-    quiz: quizCard,
-    pick,
-  },
-});
+// They write around the assistant switch, presence and the activity log, so they are installed only with
+// ?debug or the dev shim (?agent=shim), never on an ordinary visit.
+const debugParams = new URLSearchParams(location.search);
+if (debugParams.has("debug") || debugParams.get("agent") === "shim") installDebugHooks();
 
-// The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
-Object.defineProperty(window, "docsDebug", { value: docs });
+function installDebugHooks() {
+  const noScene: ViewOutcome = { error: { code: "not_available", message: "The 3D view is not running." } };
+  Object.defineProperty(window, "explorerDebug", {
+    value: {
+      state,
+      get walking() {
+        return explorer.walking;
+      },
+      diagnostics: () => explorer.scene?.diagnostics(),
+      advance: (frames = 1) => explorer.scene?.advance(frames),
+      labels: () => explorer.scene?.labelsSnapshot(),
+      head: () => explorer.scene?.headSnapshot(),
+      routes: () => explorer.scene?.routesSnapshot(),
+      get viewGap() {
+        return explorer.scene?.viewGap;
+      },
+      snapshot: () => explorer.snapshot(),
+      view: (patch: unknown) => view?.apply(patch) ?? noScene,
+      undoView: () => view?.undo() ?? noScene,
+      currentView: () => view?.current(),
+      pose: () => explorer.scene?.pose(),
+      visibleRegions: () => explorer.scene?.visibleRegions(),
+      narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
+      narration,
+      tour,
+      quiz: quizCard,
+      pick,
+    },
+  });
+
+  // The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
+  Object.defineProperty(window, "docsDebug", { value: docs });
+}

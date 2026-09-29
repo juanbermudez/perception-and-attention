@@ -34,6 +34,7 @@ const DETAIL: Record<Exclude<MemoryReason, null>, string> = {
   insecure: "Saving needs https or localhost.",
   "no-opfs": "This browser cannot save docs.",
   "other-tab": "Docs are open in another tab.",
+  freed: "The other tab let go of your saved docs. Reload to open your saved docs; notes made in this tab are not kept.",
   failed: "The saved docs could not be opened.",
 };
 

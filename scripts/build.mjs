@@ -1,10 +1,12 @@
 // Bundles the app into one self-contained HTML file: dist/index.html.
 // The docs store worker (src/store/worker.ts) is bundled first, with sqlite3.wasm gzipped and
 // base64-encoded inside it, and then embedded in the page as a string (spec §11.1).
+// WEBMCP_OT_TOKEN / WEBMCP_OT_TOKEN_EDGE add WebMCP origin-trial tokens for the hosted origin (scripts/origin-trial.mjs).
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
 import { build } from "esbuild";
+import { ORIGIN_TRIAL_ENV, withOriginTrial } from "./origin-trial.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -49,8 +51,12 @@ const result = await build({
 const template = await readFile("src/index.html", "utf8");
 const css = await readFile("src/styles.css", "utf8");
 const script = result.outputFiles[0].text.replaceAll("</script", "<\\/script");
-const html = template.replace("/* STYLES */", () => css).replace("/* SCRIPT */", () => script);
+const html = withOriginTrial(template, process.env)
+  .replace("/* STYLES */", () => css)
+  .replace("/* SCRIPT */", () => script);
 await mkdir("dist", { recursive: true });
 await writeFile("dist/index.html", html);
 const kib = (bytes) => `${(bytes / 1024).toFixed(0)} KiB`;
 console.log(`Built dist/index.html (${kib(html.length)}; docs store worker ${kib(workerText.length)}, of which sqlite3.wasm ${kib(wasmText.length)})`);
+const tokens = ORIGIN_TRIAL_ENV.filter((name) => process.env[name]?.trim());
+if (tokens.length) console.log(`Added WebMCP origin-trial tokens from ${tokens.join(" and ")}; they work only on the origin they were registered for.`);

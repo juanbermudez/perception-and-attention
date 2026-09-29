@@ -4,6 +4,7 @@
 
 import { getSchema, type JSONContent, Mark, Node } from "@tiptap/core";
 import type { Schema } from "@tiptap/pm/model";
+import { safeHref } from "../model/inline";
 import type { BlockType } from "../store/types";
 
 /** Node name for each block type. Tiptap's own commands expect the paragraph to be called "paragraph". */
@@ -184,7 +185,7 @@ const Em = Mark.create({ name: "em", parseHTML: () => [{ tag: "em" }, { tag: "i"
 const Strike = Mark.create({ name: "strike", parseHTML: () => [{ tag: "s" }, { tag: "del" }, { tag: "strike" }], renderHTML: () => ["s", 0] });
 const CodeMark = Mark.create({ name: "code", code: true, parseHTML: () => [{ tag: "code" }], renderHTML: () => ["code", 0] });
 
-export const SAFE_HREF = /^(https?:\/\/[^\s<>"'`\\]+|region:[A-Za-z0-9]+)$/i;
+/** Pasted links keep only http(s) URLs and links to regions the guide knows (`safeHref`, shared with the renderer). */
 const Link = Mark.create({
   name: "link",
   inclusive: false,
@@ -193,15 +194,15 @@ const Link = Mark.create({
     {
       tag: "a[href]",
       getAttrs: (node) => {
-        const href = (node as HTMLElement).getAttribute("href") ?? "";
-        return SAFE_HREF.test(href) ? { href } : false;
+        const href = safeHref((node as HTMLElement).getAttribute("href") ?? "");
+        return href ? { href } : false;
       },
     },
     {
       tag: "[data-region]",
       getAttrs: (node) => {
-        const id = (node as HTMLElement).getAttribute("data-region") ?? "";
-        return /^[A-Za-z0-9]+$/.test(id) ? { href: `region:${id}` } : false;
+        const href = safeHref(`region:${(node as HTMLElement).getAttribute("data-region") ?? ""}`);
+        return href ? { href } : false;
       },
     },
   ],

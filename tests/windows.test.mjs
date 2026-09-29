@@ -89,3 +89,42 @@ test("mobile below 720 px", () => {
   assert.equal(g.isMobile(720), false);
   assert.equal(g.MAX_OPEN, 8);
 });
+
+// Real stages: the viewport minus the 332–560 px side panel (code-guide review L7).
+const REALISTIC = [
+  { width: 656, height: 768 },
+  { width: 1072, height: 600 },
+  { width: 940, height: 700 },
+  { width: 1600, height: 900 },
+  { width: 560, height: 400 },
+];
+
+test("tile never overlaps or runs past the stage at realistic sizes; it stacks when cells would be too small", () => {
+  for (const stage of REALISTIC)
+    for (let count = 1; count <= g.MAX_OPEN; count++) {
+      const rects = g.arrange("tile", count, stage);
+      assert.equal(rects.length, count);
+      for (const rect of rects) {
+        assert(inside(rect, stage), `${count} on ${JSON.stringify(stage)}: ${JSON.stringify(rect)}`);
+        assert(rect.w >= g.MIN_SIZE.w && rect.h >= g.MIN_SIZE.h, JSON.stringify(rect));
+      }
+      // When no grid fits, tile falls back to the stack, whose windows overlap on purpose.
+      if (count > 1 && JSON.stringify(rects) === JSON.stringify(g.arrange("stack", count, stage))) continue;
+      for (let i = 0; i < rects.length; i++)
+        for (let j = i + 1; j < rects.length; j++) assert(!overlap(rects[i], rects[j]), `${count} on ${JSON.stringify(stage)}: ${i} and ${j} overlap`);
+    }
+  // A 1024×768 viewport leaves a 656×768 stage: three windows fit as a 2×2 grid, eight only as a stack that stays inside.
+  const three = g.arrange("tile", 3, REALISTIC[0]);
+  assert.equal(new Set(three.map((rect) => rect.x)).size, 2);
+  assert.deepEqual(g.arrange("tile", 8, REALISTIC[0]), g.arrange("stack", 8, REALISTIC[0]));
+  // Wide stages keep windows side by side.
+  assert.equal(new Set(g.arrange("tile", 3, DESKTOP).map((rect) => rect.y)).size, 1);
+});
+
+test("constrain turns a non-finite size or position into a usable rect", () => {
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const rect = g.constrain({ x: bad, y: bad, w: bad, h: bad }, DESKTOP);
+    for (const value of Object.values(rect)) assert(Number.isFinite(value), JSON.stringify(rect));
+    assert(rect.w >= g.MIN_SIZE.w && rect.h >= g.MIN_SIZE.h);
+  }
+});
