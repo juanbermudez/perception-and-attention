@@ -35,9 +35,30 @@ for (const name of ["nervous", "skeletal"]) {
 }
 const random = mulberry32.create(9482);
 const sample = () => mulberry32.sample(random);
+const quantize = (v) => Math.round(v * 1000);
+const base64 = (typed) => Buffer.from(typed.buffer, typed.byteOffset, typed.byteLength).toString("base64");
 function pack(values) {
-  const a = new Int16Array(values.map((v) => Math.round(v * 1000)));
-  return Buffer.from(a.buffer).toString("base64");
+  return base64(new Int16Array(values.map(quantize)));
+}
+// Triangle meshes share corners: each quantized vertex is stored once (in first-use order, so a
+// nearest-vertex search finds the same one as in the unindexed list) and triangles index it.
+function packIndexed(values) {
+  const ids = new Map(),
+    positions = [],
+    index = [];
+  for (let i = 0; i < values.length; i += 3) {
+    const corner = [quantize(values[i]), quantize(values[i + 1]), quantize(values[i + 2])];
+    const key = corner.join(",");
+    let id = ids.get(key);
+    if (id === undefined) {
+      id = positions.length / 3;
+      ids.set(key, id);
+      positions.push(...corner);
+    }
+    index.push(id);
+  }
+  if (positions.length / 3 > 65536) throw new Error(`Too many vertices for a Uint16 index: ${positions.length / 3}`);
+  return { data: base64(new Int16Array(positions)), index: base64(new Uint16Array(index)) };
 }
 function surfacePoints(values, count) {
   const areas = [];
@@ -74,8 +95,7 @@ const landmarkMeshes = {};
 function add(name, group, mode = "triangles", count = 0) {
   const part = entries.get(name);
   if (!part) throw new Error(`Missing atlas part: ${name}`);
-  const values = mode === "points" ? surfacePoints(part.values, count) : part.values;
-  meshes.push({ name, group, mode, data: pack(values) });
+  meshes.push({ name, group, mode, ...(mode === "points" ? { data: pack(surfacePoints(part.values, count)) } : packIndexed(part.values)) });
   landmarkMeshes[name] = { center: part.center, min: part.min, max: part.max };
 }
 for (const [name, e] of entries) {
@@ -187,6 +207,7 @@ const manifest = {
   anchors,
   meshCount: meshes.length,
   quantizationSceneUnits: 0.001,
+  encoding: "base64 little-endian; data: Int16 x,y,z per vertex (scene units × 1000); index (triangle meshes): Uint16, three vertices per triangle",
 };
 await writeFile(
   join(project, "src/data/atlas-data.json"),

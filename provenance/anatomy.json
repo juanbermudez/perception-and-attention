@@ -3143,5 +3143,6 @@
     ]
   },
   "meshCount": 173,
-  "quantizationSceneUnits": 0.001
+  "quantizationSceneUnits": 0.001,
+  "encoding": "base64 little-endian; data: Int16 x,y,z per vertex (scene units × 1000); index (triangle meshes): Uint16, three vertices per triangle"
 }

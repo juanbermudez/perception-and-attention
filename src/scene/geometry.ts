@@ -32,28 +32,34 @@ export function sampleEdge(out: Vec3, edge: Edge, t: number): Vec3 {
   return vec3.bezier(out, a, _curve_b, _curve_c, d, clamp(t, 0, 1));
 }
 
-/** Decode quantized atlas positions. Every part already has the same uniform transform. */
-export function unpack(data: string, divisor = 1000): Float32Array {
+function bytesOf(data: string) {
   const raw = atob(data),
     bytes = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-  const ints = new Int16Array(bytes.buffer);
+  return bytes.buffer;
+}
+/** Decode quantized atlas positions. Every part already has the same uniform transform. */
+export function unpack(data: string, divisor = 1000): Float32Array {
+  const ints = new Int16Array(bytesOf(data));
   const values = new Float32Array(ints.length);
   for (let i = 0; i < ints.length; i++) values[i] = ints[i] / divisor;
   return values;
 }
-/** Area-weighted random points on a triangle soup (x,y,z × 3 per triangle). */
-export function sampleSurface(values: Float32Array, count: number): Float32Array {
-  const cumulative = new Float64Array(values.length / 9);
+/** Decode an atlas mesh's triangle index: three vertex numbers per triangle. */
+export function unpackIndex(data: string): Uint16Array {
+  return new Uint16Array(bytesOf(data));
+}
+/** Area-weighted random points on an indexed triangle mesh (x,y,z per vertex; three vertices per triangle). */
+export function sampleSurface(positions: Float32Array, index: ArrayLike<number>, count: number): Float32Array {
+  const cumulative = new Float64Array(index.length / 3);
   let total = 0;
   const a = new THREE.Vector3(),
     b = new THREE.Vector3(),
     c = new THREE.Vector3();
   for (let i = 0; i < cumulative.length; i++) {
-    const j = i * 9;
-    a.fromArray(values, j);
-    b.fromArray(values, j + 3).sub(a);
-    c.fromArray(values, j + 6).sub(a);
+    a.fromArray(positions, index[i * 3] * 3);
+    b.fromArray(positions, index[i * 3 + 1] * 3).sub(a);
+    c.fromArray(positions, index[i * 3 + 2] * 3).sub(a);
     total += b.cross(c).length() * 0.5;
     cumulative[i] = total;
   }
@@ -67,10 +73,12 @@ export function sampleSurface(values: Float32Array, count: number): Float32Array
       if (cumulative[m] < pick) lo = m + 1;
       else hi = m;
     }
-    const j = lo * 9,
+    const ja = index[lo * 3] * 3,
+      jb = index[lo * 3 + 1] * 3,
+      jc = index[lo * 3 + 2] * 3,
       u = Math.sqrt(sample()),
       v = sample();
-    for (let k = 0; k < 3; k++) points[i * 3 + k] = (1 - u) * values[j + k] + u * (1 - v) * values[j + 3 + k] + u * v * values[j + 6 + k];
+    for (let k = 0; k < 3; k++) points[i * 3 + k] = (1 - u) * positions[ja + k] + u * (1 - v) * positions[jb + k] + u * v * positions[jc + k];
   }
   return points;
 }

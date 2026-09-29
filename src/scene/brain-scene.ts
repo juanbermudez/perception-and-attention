@@ -40,7 +40,7 @@ import {
   zoomNearness,
 } from "../model/view";
 import type { ExplorerState } from "../state";
-import { bundleFrames, SAMPLES, sample, sampleEdge, sampleSurface, unpack } from "./geometry";
+import { bundleFrames, SAMPLES, sample, sampleEdge, sampleSurface, unpack, unpackIndex } from "./geometry";
 import {
   activityMaterial,
   applySurfaceEffects,
@@ -289,6 +289,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const cortexCount = 38000;
   let cortexPositions: Float32Array = new Float32Array(0);
   const groupNames = [...new Set(atlas.meshes.map((m) => m.group))];
+  /** A triangle mesh's index (point clouds have none). */
+  const trianglesOf = (part: (typeof atlas.meshes)[number]) => {
+    if (!part.index) throw new Error(`Atlas mesh ${part.name} has no triangle index.`);
+    return unpackIndex(part.index);
+  };
   for (const group of groupNames) {
     const parts = atlas.meshes.filter((m) => m.group === group);
     const arrays = parts.map((m) => unpack(m.data));
@@ -322,9 +327,21 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       cursor += a.length;
     });
     if (parts[0].mode === "triangles") {
+      // One index for the group: each part's triangles, offset by the vertices before it.
+      const indices = parts.map(trianglesOf);
+      const index = new (count / 3 > 65536 ? Uint32Array : Uint16Array)(indices.reduce((sum, a) => sum + a.length, 0));
+      let at = 0,
+        base = 0;
+      indices.forEach((part, i) => {
+        for (let j = 0; j < part.length; j++) index[at + j] = part[j] + base;
+        at += part.length;
+        base += arrays[i].length / 3;
+      });
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(values, 3));
       geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geo.setIndex(new THREE.BufferAttribute(index, 1));
+      // Shared vertices give smooth normals (the unindexed list used to give flat, faceted ones).
       geo.computeVertexNormals();
       const material = new THREE.MeshPhongMaterial({
         vertexColors: true,
@@ -346,9 +363,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         presence,
         opacity: createWeight(surfaceVisible(group) ? material.opacity : 0),
       });
-      if (group === "cortex") cortexPositions = sampleSurface(values, cortexCount);
+      if (group === "cortex") cortexPositions = sampleSurface(values, index, cortexCount);
       if (group === "deep") {
-        const clouds = arrays.map((a, i) => sampleSurface(a, parts[i].name.startsWith("Thalamus") ? 2000 : 300));
+        const clouds = arrays.map((a, i) => sampleSurface(a, indices[i], parts[i].name.startsWith("Thalamus") ? 2000 : 300));
         const positions = new Float32Array(clouds.reduce((n, a) => n + a.length, 0));
         let offset = 0;
         for (const cloud of clouds) {
@@ -431,7 +448,9 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const clouds = regionAnatomy[id].parts.map((name) => {
         const part = atlasParts.get(name)!;
         const values = unpack(part.data);
-        return part.mode === "triangles" ? sampleSurface(values, part.group === "cortex" ? 4000 : part.name.startsWith("Thalamus") ? 3200 : 1200) : values;
+        return part.mode === "triangles"
+          ? sampleSurface(values, trianglesOf(part), part.group === "cortex" ? 4000 : part.name.startsWith("Thalamus") ? 3200 : 1200)
+          : values;
       });
       const positions = new Float32Array(clouds.reduce((n, cloud) => n + cloud.length, 0));
       let offset = 0;

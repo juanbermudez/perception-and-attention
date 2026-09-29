@@ -20,7 +20,8 @@ for (const [id, highlight] of Object.entries(regionAnatomy)) {
     assert(part, `${id}: missing atlas part ${name}`);
     const bytes = Buffer.from(part.data, "base64");
     assert(bytes.length > 0);
-    assert.equal(bytes.length % (part.mode === "triangles" ? 18 : 6), 0);
+    assert.equal(bytes.length % 6, 0);
+    if (part.mode === "triangles") assert.equal(Buffer.from(part.index, "base64").length % 6, 0, `${name}: index is not whole triangles`);
   }
   assert.deepEqual(regions[id].position, atlas.anchors[id] ?? areas[id]?.position ?? atlas.landmarks[highlight.parts[0]].center, `${id}: landmark moved`);
 }
