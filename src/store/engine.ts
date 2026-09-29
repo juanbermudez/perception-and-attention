@@ -47,7 +47,7 @@ const ID_ATTEMPTS = 12;
 const RESERVED_IDS = new Set(["start", "end"]);
 const TEXT_TYPES = new Set<BlockType>(["h1", "h2", "h3", "p", "bullet", "number", "todo", "quote", "callout", "view", "question"]);
 const SINGLE_LINE_TYPES = new Set<BlockType>(["h1", "h2", "h3", "view"]);
-const ARTIFACT_COLUMNS = `a.id, a.kind, a.title, a.rev, a.created_by, a.created_at, a.updated_at, a.deleted_at, w.state AS window,
+const ARTIFACT_COLUMNS = `a.id, a.kind, a.title, a.rev, a.created_by, a.created_at, a.updated_at, a.deleted_at, a.imported, w.state AS window,
   (SELECT count(*) FROM blocks b WHERE b.artifact_id = a.id AND b.deleted_at IS NULL) AS block_count`;
 
 export function randomBase36(length: number): string {
@@ -105,6 +105,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       updatedAt: Number(record.updated_at),
     };
     if (record.deleted_at !== null && record.deleted_at !== undefined) summary.deletedAt = Number(record.deleted_at);
+    if (Number(record.imported) === 1) summary.imported = true;
     if (record.window) summary.window = record.window as ArtifactSummary["window"];
     return summary;
   }
@@ -278,13 +279,14 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
         throw new StoreError("limit", `There are already ${LIMITS.artifacts} docs and quizzes. Delete one first.`, { max: LIMITS.artifacts });
       const artifactId = newId("artifacts", ARTIFACT_ID_LENGTH);
       const at = now();
-      run("INSERT INTO artifacts (id, kind, title, rev, created_by, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?, ?)", [
+      run("INSERT INTO artifacts (id, kind, title, rev, created_by, created_at, updated_at, imported) VALUES (?, ?, ?, 1, ?, ?, ?, ?)", [
         artifactId,
         input.kind,
         title,
         actor,
         at,
         at,
+        input.imported === true ? 1 : 0,
       ]);
       insertBlocks(artifactId, 0, blocks.map(normalize), actor, at);
       checkQuestionCount(artifactId);

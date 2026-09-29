@@ -43,6 +43,8 @@ export interface ArtifactSummary {
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
+  /** Made from a markdown file the user imported (its text may come from anywhere). */
+  imported?: true;
   /** Saved window state, if the artifact has a window. */
   window?: WindowState;
 }
@@ -55,6 +57,7 @@ export interface NewArtifact {
   kind: ArtifactKind;
   title: string;
   blocks: BlockContent[];
+  imported?: boolean;
 }
 
 /** Where an insert or move lands: after a block id, or at the start or end of the artifact. */

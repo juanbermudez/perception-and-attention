@@ -115,7 +115,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     if (isApiError(found)) return found;
     const artifact = await docs.read(found.ref, "full");
     if (isApiError(artifact)) return artifact;
-    const blocks = (artifact as { blocks: { id: string; type: string; md: string; rev: number; indent?: number; data?: object }[] }).blocks;
+    const blocks = (artifact as { blocks: { id: string; type: string; md: string; rev: number; by: string; indent?: number; data?: object }[] }).blocks;
     const index = blocks.findIndex((block) => block.id === id);
     const block = blocks[index];
     if (!block) return fail("unknown_ref", `No block ${id}.`);
@@ -128,6 +128,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       type: block.type,
       md: block.md,
       rev: block.rev,
+      by: block.by,
       indent: block.indent,
       data: full ? block.data : undefined,
     };

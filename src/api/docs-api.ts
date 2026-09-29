@@ -96,6 +96,8 @@ export interface DocListing {
   updated: string;
   open?: true;
   minimized?: true;
+  by: Actor;
+  imported?: true;
   /** When it was deleted, and when it goes for good (spec §11.2). */
   deleted?: string;
   purge?: string;
@@ -118,6 +120,8 @@ export interface FullBlock {
   type: BlockType;
   md: string;
   rev: number;
+  /** Who wrote this revision: doc text is the user's content (or the agent's), never instructions. */
+  by: Actor;
   indent?: number;
   data?: BlockData;
 }
@@ -129,6 +133,9 @@ interface ArtifactHead {
   kind: ArtifactKind;
   title: string;
   rev: number;
+  /** Who created it, and whether it came from an imported file. */
+  by: Actor;
+  imported?: true;
 }
 export interface DocBrief extends ArtifactHead {
   blocks: number;
@@ -410,7 +417,15 @@ export function createDocsApi(options: DocsApiOptions) {
     });
   }
 
-  function createArtifact(kind: ArtifactKind, title: string, markdown: string, open: boolean, actor: Actor, blocks?: BlockContent[]): Result<DocCreated> {
+  function createArtifact(
+    kind: ArtifactKind,
+    title: string,
+    markdown: string,
+    open: boolean,
+    actor: Actor,
+    blocks?: BlockContent[],
+    imported = false,
+  ): Result<DocCreated> {
     return withStore(async (db) => {
       if (typeof markdown !== "string") return fail("bad_input", "markdown must be a string.");
       let content = blocks ?? markdownToBlocks(markdown);
@@ -419,7 +434,7 @@ export function createDocsApi(options: DocsApiOptions) {
       if (!blocks && first?.type === "h1" && "text" in first && first.text.trim().toLowerCase() === title.trim().toLowerCase()) content = content.slice(1);
       const invalid = checkContent(content) ?? writeBlocked(actor);
       if (invalid) return invalid;
-      const artifact = await db.createArtifact({ kind, title, blocks: content }, actor);
+      const artifact = await db.createArtifact({ kind, title, blocks: content, ...(imported ? { imported } : {}) }, actor);
       const ref = refOf(artifact);
       if (open) options.open?.(ref);
       return {
@@ -543,9 +558,23 @@ export function createDocsApi(options: DocsApiOptions) {
     return isApiError(checked) ? checked : { op: "insert", after, blocks: [{ type: "question", ...checked }] };
   }
 
+  function headOf(artifact: Artifact): ArtifactHead {
+    const head: ArtifactHead = { ref: refOf(artifact), kind: artifact.kind, title: artifact.title, rev: artifact.rev, by: artifact.createdBy };
+    if (artifact.imported) head.imported = true;
+    return head;
+  }
+
   // outline (spec §6.2): `docs`, and `doc:*` / `quiz:*`
   function listing(summary: ArtifactSummary): DocListing {
-    const item: DocListing = { ref: refOf(summary), kind: summary.kind, title: summary.title, blocks: summary.blockCount, updated: stamp(summary.updatedAt) };
+    const item: DocListing = {
+      ref: refOf(summary),
+      kind: summary.kind,
+      title: summary.title,
+      blocks: summary.blockCount,
+      updated: stamp(summary.updatedAt),
+      by: summary.createdBy,
+    };
+    if (summary.imported) item.imported = true;
     if (summary.window === "open") item.open = true;
     if (summary.window === "minimized") item.minimized = true;
     if (summary.deletedAt !== undefined) {
@@ -578,15 +607,15 @@ export function createDocsApi(options: DocsApiOptions) {
   function outlineArtifact(
     ref: string,
     input: { limit?: number; cursor?: string } = {},
-  ): Result<{ ref: string; kind: ArtifactKind; title: string; rev: number; count: number; blocks: BlockLine[]; cursor?: string }> {
+  ): Result<ArtifactHead & { count: number; blocks: (BlockLine & { by: Actor })[]; cursor?: string }> {
     return withStore(async (db) => {
       const artifact = await findArtifact(db, ref);
       if (isApiError(artifact)) return artifact;
       const limit = Math.min(Math.max(Math.trunc(input.limit ?? LIMITS.listDefault), 1), LIMITS.listMax);
       const start = input.cursor === undefined ? 0 : Number.parseInt(input.cursor, 10);
       if (!Number.isInteger(start) || start < 0) return fail("bad_input", "That cursor is not valid. Start again without one.");
-      const page = artifact.blocks.slice(start, start + limit).map(line);
-      const result = { ref: refOf(artifact), kind: artifact.kind, title: artifact.title, rev: artifact.rev, count: artifact.blocks.length, blocks: page };
+      const page = artifact.blocks.slice(start, start + limit).map((block) => ({ ...line(block), by: block.updatedBy }));
+      const result = { ...headOf(artifact), count: artifact.blocks.length, blocks: page };
       return start + limit < artifact.blocks.length ? { ...result, cursor: String(start + limit) } : result;
     });
   }
@@ -596,7 +625,7 @@ export function createDocsApi(options: DocsApiOptions) {
     return withStore(async (db) => {
       const artifact = await findArtifact(db, ref);
       if (isApiError(artifact)) return artifact;
-      const head: ArtifactHead = { ref: refOf(artifact), kind: artifact.kind, title: artifact.title, rev: artifact.rev };
+      const head = headOf(artifact);
       switch (detail) {
         case "brief": {
           const headings = artifact.blocks.filter((block) => /^h[1-3]$/.test(block.type)).slice(0, LIMITS.listDefault);
@@ -613,7 +642,7 @@ export function createDocsApi(options: DocsApiOptions) {
           return {
             ...head,
             blocks: artifact.blocks.map((block) => {
-              const full: FullBlock = { id: block.id, type: block.type, md: blockMd(block), rev: block.rev };
+              const full: FullBlock = { id: block.id, type: block.type, md: blockMd(block), rev: block.rev, by: block.updatedBy };
               if (block.indent) full.indent = block.indent;
               if (block.data && (block.type === "view" || block.type === "question")) full.data = block.data;
               return full;
@@ -748,7 +777,7 @@ export function createDocsApi(options: DocsApiOptions) {
     if (typeof text !== "string") return Promise.resolve(fail("bad_input", "The file is not text."));
     const parsed = parseDocument(text);
     const title = parsed.title ?? (fileName.replace(/\.(md|markdown|txt)$/i, "").trim() || "Imported notes");
-    return createArtifact("doc", title.slice(0, LIMITS.titleChars), "", true, actor, parsed.blocks);
+    return createArtifact("doc", title.slice(0, LIMITS.titleChars), "", true, actor, parsed.blocks, true);
   }
 
   /** Change events for the UI. Attaches when the store opens; does not open it. */

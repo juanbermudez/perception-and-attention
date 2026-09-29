@@ -324,7 +324,17 @@ test("acceptance prompt 7 through the tools: outline, then replace with the bloc
   const edit = ok(await call("edit_blocks", { ref, ops: [{ op: "replace", id: second.id, find: "tpyo", with: "typo", rev: second.rev }] }));
   assert.deepEqual(edit, { rev: 2, changed: [{ id: second.id, rev: 2 }], inserted: [], deleted: [], said: "Edited “My notes”: 1 changed" });
   const block = ok(await call("read", { ref: `block:${second.id}` }));
-  assert.deepEqual(block, { ref: `block:${second.id}`, in: ref, title: "My notes", n: 3, of: 5, type: "p", md: "Second paragraph has a typo in it.", rev: 2 });
+  assert.deepEqual(block, {
+    ref: `block:${second.id}`,
+    in: ref,
+    title: "My notes",
+    n: 3,
+    of: 5,
+    type: "p",
+    md: "Second paragraph has a typo in it.",
+    rev: 2,
+    by: "agent",
+  });
 });
 
 test("a stale rev rejects the whole batch and reports the block's current text", async () => {
