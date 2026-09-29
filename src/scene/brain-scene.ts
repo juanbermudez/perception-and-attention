@@ -97,11 +97,11 @@ const GLOW_TAU = 0.35;
 // (zoomNearness and LAYER_ZOOM_KEEP in model/view.ts). Fading starts as soon as you
 // zoom in past the default focus distance (0.94 of the overview) and is complete at half.
 const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
+const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
 // Keyboard control of the view: turn per arrow press (radians), pan per press (px), distance factor per + press.
 const KEY_TURN = Math.PI / 18;
 const KEY_PAN = 20;
 const KEY_ZOOM = 0.85;
-const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
 // Walkthrough spotlight: routes and markers outside the current step fade to these levels
 // (regions: SPOT_DIM_REGION in model/scene-rules.ts).
 const SPOT_DIM_ROUTE = 0.24;
@@ -1164,7 +1164,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     if (!label || e.altKey || e.ctrlKey || e.metaKey) return;
     const order = readingOrder(markers.filter(reachable));
     const at = order.findIndex((marker) => marker.label === label);
-    if (at < 0 || !order.length) return;
+    if (at < 0) return;
     const last = order.length - 1;
     const next =
       e.key === "ArrowDown" || e.key === "ArrowRight"
@@ -1326,6 +1326,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     highlightTargetColor.toArray(selectedHighlight.target);
     // A region is being shown: inside a topic, during a hover preview, or while an agent's view focus is set.
     const focusActive = !state.overview || preview !== null || state.viewFocus !== null;
+    const highlightView = { focusActive, overview: state.overview, isolate };
     for (const layer of highlightLayers) {
       const selected = layer === selectedHighlight;
       if (home) {
@@ -1338,7 +1339,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         layer.object.material.uniforms.pulse.value = weight * 0.725;
         continue;
       }
-      const target = highlightWeight(selected, isolateHighlights.has(layer), contextHighlights.has(layer), { focusActive, overview: state.overview, isolate });
+      const target = highlightWeight(selected, isolateHighlights.has(layer), contextHighlights.has(layer), highlightView);
       const weight = stepWeight(layer.weight, target, dt, reduced);
       layer.object.visible = weight > ACTIVITY_CUTOFF;
       layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
