@@ -117,6 +117,17 @@ test("step numbers out of range and bad sections say what exists", () => {
   assert.equal(failure("region:").code, "unknown_ref");
 });
 
+test("refs with extra segments are rejected, naming the ref without them", () => {
+  const step = failure("step:vision/2/anything");
+  assert.equal(step.code, "unknown_ref");
+  assert.match(step.message, /extra/i);
+  assert.deepEqual(step.options, [stepRef("vision", 1)]);
+  const section = failure("region:v1#mechanism#x");
+  assert.equal(section.code, "unknown_ref");
+  assert.deepEqual(section.options, ["region:v1#mechanism"]);
+  assert.equal(failure("step:vision/parallel-channels/").code, "unknown_ref", "An empty trailing segment is still extra.");
+});
+
 test("[[id|text]] is rewritten to [text](region:id); unknown ids keep only their text", () => {
   assert.equal(markdownLinks("See [[v1|primary visual cortex]] and [[lgn|the LGN]]."), "See [primary visual cortex](region:v1) and [the LGN](region:lgn).");
   assert.equal(markdownLinks("A [[nope|made-up area]] here."), "A made-up area here.");
@@ -139,6 +150,11 @@ test("the URL hash round-trips every place and accepts step numbers", () => {
   assert.deepEqual(parseHash("#/region/V1"), { kind: "region", path: null, id: "v1" });
   for (const bad of ["#/nope", "#/vision/99", "#/vision/streams", "#/vision/region/nope", "#/doc/k3f9", "#/vision/1/2"])
     assert.equal(parseHash(bad), null, bad);
+});
+
+test("a hash with a malformed % escape names nothing instead of throwing", () => {
+  for (const bad of ["#/%", "#/vision/50%", "#/%E0%A4%A", "#/region/%zz"]) assert.equal(parseHash(bad), null, bad);
+  assert.deepEqual(parseHash("#/region/v%31"), { kind: "region", path: null, id: "v1" }, "Valid escapes still decode.");
 });
 
 test("places map to refs, and refs with a place map back", () => {
