@@ -6,7 +6,7 @@ export const outlineTool = defineTool({
   name: "outline",
   title: "Outline the guide",
   description:
-    "List what is inside a ref, one level down. No ref: the guide's topics. topic:<id>: its steps in order and its regions. region:<id>: its sections, topics and steps. docs: the user's docs and quizzes, newest first (use this to find a doc's ref). doc:<id> or quiz:<id>: its blocks with id, type, first 80 characters and rev (edit_blocks needs the rev). For the text itself use read; to find something by keyword, search. If a result has more, pass its cursor back for the next page.",
+    "List what is inside a ref, one level down. No ref: the guide's topics. topic:<id>: its steps in order and its regions. region:<id>: its sections, topics and steps. docs: the user's docs and quizzes, newest first (use this to find a doc's ref). doc:<id> or quiz:<id>: its blocks with id, type, opening text and rev (edit_blocks needs it). For the text itself use read; to find by keyword, search. With more: true, pass cursor back for the next page.",
   readOnly: true,
   untrustedContent: true,
   input: z.strictObject({
