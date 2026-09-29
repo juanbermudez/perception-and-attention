@@ -59,15 +59,18 @@ const snapshot = (db) =>
 
 test("migrations run once, in order, gated on user_version", () => {
   const db = new sqlite3.oo1.DB(":memory:");
-  assert.deepEqual(migrate(db), [1]);
+  assert.deepEqual(
+    migrate(db),
+    MIGRATIONS.map((_, index) => index + 1),
+  );
   assert.equal(db.selectValue("PRAGMA user_version"), SCHEMA_VERSION);
   const tables = db.selectValues("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
   assert.deepEqual(tables, ["activity", "artifacts", "attempts", "block_history", "blocks", "settings", "windows"]);
   assert.deepEqual(migrate(db), [], "a migrated database is left alone");
 
   const next = [...MIGRATIONS, "ALTER TABLE settings ADD COLUMN note TEXT"];
-  assert.deepEqual(migrate(db, next), [2], "only the new migration runs on an existing database");
-  assert.equal(db.selectValue("PRAGMA user_version"), 2);
+  assert.deepEqual(migrate(db, next), [SCHEMA_VERSION + 1], "only the new migration runs on an existing database");
+  assert.equal(db.selectValue("PRAGMA user_version"), SCHEMA_VERSION + 1);
   assert.throws(() => migrate(db, MIGRATIONS), /newer than this page/);
 });
 
@@ -75,7 +78,7 @@ test("a failing migration rolls back and leaves user_version unchanged", () => {
   const db = new sqlite3.oo1.DB(":memory:");
   migrate(db);
   assert.throws(() => migrate(db, [...MIGRATIONS, "CREATE TABLE half (a); SELECT no_such_function()"]));
-  assert.equal(db.selectValue("PRAGMA user_version"), 1);
+  assert.equal(db.selectValue("PRAGMA user_version"), SCHEMA_VERSION);
   assert.equal(db.selectValue("SELECT count(*) FROM sqlite_master WHERE name = 'half'"), 0);
 });
 

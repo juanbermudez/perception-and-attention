@@ -36,6 +36,8 @@ export interface WindowBody {
   download?(): void;
   /** The window closed (not minimized): flush and release. */
   close?(): void;
+  /** Asked before the user closes the window; false keeps it open (for example, edits that could not be saved). */
+  beforeClose?(): boolean;
 }
 
 export interface OpenOptions {
@@ -129,7 +131,18 @@ export function createWindowManager({
 
   function persist() {
     clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => onLayout(layout()), PERSIST_MS);
+    persistTimer = setTimeout(() => {
+      persistTimer = undefined;
+      onLayout(layout());
+    }, PERSIST_MS);
+  }
+
+  /** Saves a layout change that is still waiting for its debounce (the page is being hidden). */
+  function flush() {
+    if (persistTimer === undefined) return;
+    clearTimeout(persistTimer);
+    persistTimer = undefined;
+    onLayout(layout());
   }
 
   function layout(): WindowLayoutRow[] {
@@ -228,8 +241,9 @@ export function createWindowManager({
     node.querySelector(".window-actions")!.addEventListener("click", (event) => {
       const action = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-action]")?.dataset.action;
       if (action === "minimize") minimize(window.ref, true);
-      else if (action === "close") close(window.ref, true);
-      else if (action === "download") window.body.download?.();
+      else if (action === "close") {
+        if (window.body.beforeClose?.() !== false) close(window.ref, true);
+      } else if (action === "download") window.body.download?.();
     });
     node.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !event.defaultPrevented) {
@@ -468,6 +482,7 @@ export function createWindowManager({
     },
     focusedRef: () => focusedRef,
     layout,
+    flush,
   };
 }
 

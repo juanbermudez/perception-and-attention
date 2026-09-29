@@ -47,7 +47,7 @@ const ID_ATTEMPTS = 12;
 const RESERVED_IDS = new Set(["start", "end"]);
 const TEXT_TYPES = new Set<BlockType>(["h1", "h2", "h3", "p", "bullet", "number", "todo", "quote", "callout", "view", "question"]);
 const SINGLE_LINE_TYPES = new Set<BlockType>(["h1", "h2", "h3", "view"]);
-const ARTIFACT_COLUMNS = `a.id, a.kind, a.title, a.rev, a.created_by, a.created_at, a.updated_at, a.deleted_at, w.state AS window,
+const ARTIFACT_COLUMNS = `a.id, a.kind, a.title, a.rev, a.created_by, a.created_at, a.updated_at, a.deleted_at, a.imported, w.state AS window,
   (SELECT count(*) FROM blocks b WHERE b.artifact_id = a.id AND b.deleted_at IS NULL) AS block_count`;
 
 export function randomBase36(length: number): string {
@@ -105,6 +105,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       updatedAt: Number(record.updated_at),
     };
     if (record.deleted_at !== null && record.deleted_at !== undefined) summary.deletedAt = Number(record.deleted_at);
+    if (Number(record.imported) === 1) summary.imported = true;
     if (record.window) summary.window = record.window as ArtifactSummary["window"];
     return summary;
   }
@@ -166,10 +167,15 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       case "view":
         if (!data) throw new StoreError("bad_input", "A view block needs view data.");
         return data;
-      case "question":
+      case "question": {
         if (!data || typeof data.kind !== "string" || typeof data.prompt !== "string")
           throw new StoreError("bad_input", "A question block needs question data with a kind and a prompt.");
+        // The docs API checks the whole question; this keeps a text edit (replace, update) from breaking its prompt.
+        const prompt = data.prompt.trim();
+        if (!prompt || prompt.length > LIMITS.promptChars)
+          throw new StoreError("bad_input", `A question prompt is 1–${LIMITS.promptChars} characters (this would make ${prompt.length}).`);
         return data;
+      }
       default:
         if (data !== undefined && Object.keys(data).length > 0) throw new StoreError("bad_input", `${type} blocks have no data.`);
         return undefined;
@@ -231,7 +237,9 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       where.push("a.kind = ?");
       bind.push(options.kind);
     }
-    if (!options.includeDeleted) where.push("a.deleted_at IS NULL");
+    if (options.onlyDeleted) where.push("a.deleted_at IS NOT NULL");
+    else if (!options.includeDeleted) where.push("a.deleted_at IS NULL");
+    const total = count(`SELECT count(*) FROM artifacts a WHERE ${where.join(" AND ")}`, bind.length ? [...bind] : undefined);
     if (options.cursor) {
       const match = /^([0-9a-z]+)\.([0-9a-z]+)$/.exec(options.cursor);
       if (!match) throw new StoreError("bad_input", "That cursor is not valid. Start again without one.");
@@ -247,7 +255,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
     );
     const items = records.slice(0, limit).map(toSummary);
     const last = items.at(-1);
-    return records.length > limit && last ? { items, cursor: `${last.updatedAt.toString(36)}.${last.id}` } : { items };
+    return records.length > limit && last ? { items, cursor: `${last.updatedAt.toString(36)}.${last.id}`, total } : { items, total };
   }
 
   function getArtifact(id: string, options: { includeDeleted?: boolean } = {}): Artifact | null {
@@ -271,13 +279,14 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
         throw new StoreError("limit", `There are already ${LIMITS.artifacts} docs and quizzes. Delete one first.`, { max: LIMITS.artifacts });
       const artifactId = newId("artifacts", ARTIFACT_ID_LENGTH);
       const at = now();
-      run("INSERT INTO artifacts (id, kind, title, rev, created_by, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?, ?)", [
+      run("INSERT INTO artifacts (id, kind, title, rev, created_by, created_at, updated_at, imported) VALUES (?, ?, ?, 1, ?, ?, ?, ?)", [
         artifactId,
         input.kind,
         title,
         actor,
         at,
         at,
+        input.imported === true ? 1 : 0,
       ]);
       insertBlocks(artifactId, 0, blocks.map(normalize), actor, at);
       checkQuestionCount(artifactId);
@@ -392,8 +401,9 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
 
   function applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor): BlockOpsResult {
     if (!Array.isArray(ops) || ops.length === 0) throw new StoreError("bad_input", "Send at least one op.");
-    if (ops.length > LIMITS.opsPerCall)
-      throw new StoreError("limit", `At most ${LIMITS.opsPerCall} ops per call (got ${ops.length}). Split the batch.`, { max: LIMITS.opsPerCall });
+    // 50 ops is the agent's limit per call; the user's editor saves (and undo) in one transaction of up to 2,000.
+    const max = actor === "agent" ? LIMITS.opsPerCall : LIMITS.opsPerSave;
+    if (ops.length > max) throw new StoreError("limit", `At most ${max} ops per call (got ${ops.length}). Split the batch.`, { max });
     return transaction(db, () => {
       const artifact = artifactRow(artifactId);
       const at = now();
@@ -460,6 +470,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
             }
             case "delete": {
               const record = blockRow(artifactId, op.id);
+              checkRev(record, op.rev);
               run("UPDATE blocks SET deleted_at = ?, updated_by = ?, updated_at = ? WHERE id = ?", [at, actor, at, op.id]);
               closeGap(artifactId, Number(record.ord));
               changed.delete(op.id);

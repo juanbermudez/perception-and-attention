@@ -1,8 +1,8 @@
 // Markdown ↔ blocks (spec §9.2) and the safe inline renderer (§9.1, §13). Pure: tested in Node.
 //
 // Import: `marked`'s block lexer gives top-level tokens and each becomes one block; list items
-// become one block each with an indent. HTML comments are read only for the `view` and `question`
-// metadata; any other raw HTML is kept as text, which the renderer escapes.
+// become one block each with an indent. HTML comments are read only for the `view`, `question` and
+// `table` metadata; any other raw HTML is kept as text, which the renderer escapes.
 //
 // Export: one block per paragraph-level element. Text that would read as block syntax (a line
 // starting with "# ", "- ", "1. ", ">" and so on) gets a backslash, and import removes exactly
@@ -17,6 +17,7 @@ const CODE_LANG = /^[\w+#.-]{1,32}$/;
 const VIEW_COMMENT = /^<!--\s*view\s+(\{[\s\S]*\})\s*-->\s*$/;
 const QUESTION_COMMENT = /^<!--\s*question\s+(\{[\s\S]*\})\s*-->\s*$/;
 const QUESTION_END = /^<!--\s*\/question\s*-->\s*$/;
+const TABLE_COMMENT = /^<!--\s*table\s*-->\s*$/;
 const EXPORT_HEADER = /^<!--\s*perception-attention\b[\s\S]*-->\s*$/;
 const VIEW_PREFIX = "**3D view:**";
 
@@ -126,16 +127,26 @@ export function describeView(view: BlockData): string {
   return line[0].toUpperCase() + line.slice(1);
 }
 
+/**
+ * One line of a question's readable part. The data lives in the comment, so this text is only for
+ * people: newlines are flattened and "<!--" is written as an entity, so no field can end the
+ * question early or start a block of its own.
+ */
+const readable = (text: unknown) =>
+  String(text ?? "")
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/<!--/g, "&lt;!--");
+
 function questionLines(question: BlockData): string[] {
-  const lines = [`**Question:** ${String(question.prompt ?? "").replace(/\s*\n\s*/g, " ")}`];
-  const list = (items: unknown[], ordered: boolean) => items.map((item, index) => `${ordered ? `${index + 1}.` : "-"} ${String(item)}`).join("\n");
+  const lines = [`**Question:** ${readable(question.prompt)}`];
+  const list = (items: unknown[], ordered: boolean) => items.map((item, index) => `${ordered ? `${index + 1}.` : "-"} ${readable(item)}`).join("\n");
   const answer = (text: string) => lines.push(`*Answer:* ${text}`);
   switch (question.kind) {
     case "choice": {
       const choices = Array.isArray(question.choices) ? question.choices : [];
       const correct = Array.isArray(question.answer) ? question.answer.filter((index): index is number => typeof index === "number") : [];
       lines.push(list(choices, true));
-      answer(correct.map((index) => `${index + 1}. ${String(choices[index] ?? "?")}`).join("; "));
+      answer(correct.map((index) => `${index + 1}. ${readable(choices[index] ?? "?")}`).join("; "));
       break;
     }
     case "truefalse":
@@ -147,12 +158,12 @@ function questionLines(question: BlockData): string[] {
       break;
     }
     case "order":
-      answer((Array.isArray(question.items) ? question.items : []).map(String).join(" → "));
+      answer((Array.isArray(question.items) ? question.items : []).map(readable).join(" → "));
       break;
     default:
-      answer(String(question.answer ?? ""));
+      answer(readable(question.answer));
   }
-  if (typeof question.explain === "string" && question.explain) lines.push(`*Why:* ${question.explain.replace(/\s*\n\s*/g, " ")}`);
+  if (typeof question.explain === "string" && question.explain) lines.push(`*Why:* ${readable(question.explain)}`);
   return lines;
 }
 
@@ -179,6 +190,22 @@ function quoteBlock(text: string): BlockContent {
     return { type: "callout", text: unescapeText(body, "text"), data: { tone } };
   }
   return { type: "quote", text: unescapeText(text, "quote") };
+}
+
+/**
+ * Where a question's readable part ends: at its own end marker. A marker is its own only if no other
+ * question or view comment comes first, so a hand-edited file that lost one cannot hide the next
+ * question. Without one, the readable lines are read as ordinary blocks.
+ */
+function questionEnd(tokens: readonly Token[], start: number): number {
+  for (let index = start + 1; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token.type !== "html") continue;
+    const html = (token as Tokens.HTML).text.trim();
+    if (QUESTION_END.test(html)) return index;
+    if (QUESTION_COMMENT.test(html) || VIEW_COMMENT.test(html)) break;
+  }
+  return start;
 }
 
 /** Parses markdown into blocks. Never throws; unknown or unsafe syntax becomes plain text. */
@@ -242,8 +269,16 @@ export function markdownToBlocks(markdown: string): BlockContent[] {
         const questionData = question && parseObject(question[1]);
         if (questionData) {
           out.push({ type: "question", text: String(questionData.prompt ?? ""), data: questionData });
-          const end = tokens.findIndex((candidate, at) => at > index && candidate.type === "html" && QUESTION_END.test((candidate as Tokens.HTML).text.trim()));
-          if (end > index) index = end;
+          index = questionEnd(tokens, index);
+          break;
+        }
+        if (TABLE_COMMENT.test(html)) {
+          const after = next(index + 1);
+          const code = tokens[after];
+          if (code?.type === "code") {
+            out.push({ type: "table", text: (code as Tokens.Code).text });
+            index = after;
+          }
           break;
         }
         out.push({ type: "p", text: html });
@@ -293,8 +328,12 @@ function blockLines(block: BlockContent, pad: string, number: number): string[] 
       const ticks = fence(block.text);
       return [`${ticks}${typeof data.lang === "string" ? data.lang : ""}`, ...block.text.split("\n"), ticks];
     }
-    case "table":
-      return block.text.split("\n");
+    case "table": {
+      if (isTable(block.text)) return block.text.split("\n");
+      // Source that does not read back as one table (the editor lets people type anything) is kept as is.
+      const ticks = fence(block.text);
+      return ["<!-- table -->", ticks, ...block.text.split("\n"), ticks];
+    }
     case "divider":
       return ["---"];
     case "view":
@@ -304,6 +343,12 @@ function blockLines(block: BlockContent, pad: string, number: number): string[] 
     default:
       return escapeText(block.text, "text");
   }
+}
+
+/** True when the source reads back as exactly one GFM table, with nothing around it. */
+function isTable(source: string): boolean {
+  const tokens = new Lexer({ gfm: true }).lex(source).filter((token) => token.type !== "space");
+  return tokens.length === 1 && tokens[0].type === "table" && tokens[0].raw.trim() === source;
 }
 
 const isList = (block: BlockContent) => block.type === "bullet" || block.type === "number" || block.type === "todo";

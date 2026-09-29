@@ -6,12 +6,14 @@
 // saved windows from an earlier visit (remembered with one localStorage flag).
 
 import type { ActivityLog } from "../api/activity";
-import { type DocsApi, isApiError } from "../api/docs-api";
+import { type ApiError, type DocListing, type DocsApi, isApiError } from "../api/docs-api";
 import type { WindowCommand, WindowInfo, WindowsPort } from "../api/guide-api";
 import { fail, isFailure, type Result } from "../api/result";
 import type { ViewOutcome } from "../api/view-api";
 import type { RegionId } from "../content/types";
+import { regionById } from "../model/inline";
 import { resolveRef } from "../model/refs";
+import { LIMITS } from "../store/limits";
 import type { Artifact, Block, BlockData } from "../store/types";
 import { type BlockEditor, createDocEditor, type DocEditorHost } from "./doc-editor";
 import { toast } from "./dom";
@@ -21,6 +23,7 @@ import { createWindowManager, KIND_ICONS, type WindowKind, type WindowState } fr
 
 export const DOCS_FLAG = "perception-attention:docs";
 const RENAME_MS = 700;
+const PERSIST_WARNED = "perception-attention:persist-warned";
 const TRASH_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg>';
 
 type SettingStorage = Pick<Storage, "getItem" | "setItem">;
@@ -51,6 +54,10 @@ interface DocWindow {
   banner: HTMLElement;
   ready: HTMLElement;
   lastEdit: { at: number; by: "user" | "agent" };
+  /** The tag on this editor's own saves, so their change events are not taken for someone else's. */
+  origin: string;
+  /** Saves a title that is still waiting for its debounce. */
+  flushTitle: () => void;
 }
 
 interface OpenRequest {
@@ -105,12 +112,18 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   let restoring = false;
   const pending = new Map<string, Promise<Result<{ ref: string; title: string }>>>();
 
+  let layoutWarned = false;
+  let editors = 0;
   const windows = createWindowManager({
     stage,
     onLayout: (rows) => {
       if (docs.status().store === "unopened") return;
       void docs.saveWindows(rows).then((saved) => {
-        if (isApiError(saved)) console.warn("Could not save the window layout", saved.error.message);
+        if (!isApiError(saved)) return;
+        console.warn("Could not save the window layout", saved.error.message);
+        // Once per visit: the windows still work, they just will not come back after a reload.
+        if (!layoutWarned) toast(`Window positions could not be saved: ${saved.error.message}`);
+        layoutWarned = true;
       });
     },
     onEvent: (event) => {
@@ -119,16 +132,16 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     },
   });
 
-  function remember() {
+  function remember(key = DOCS_FLAG) {
     try {
-      storage?.setItem(DOCS_FLAG, "1");
+      storage?.setItem(key, "1");
     } catch {
       // Storage blocked: windows are not restored on the next visit.
     }
   }
-  function remembered() {
+  function remembered(key = DOCS_FLAG) {
     try {
-      return storage?.getItem(DOCS_FLAG) === "1";
+      return storage?.getItem(key) === "1";
     } catch {
       return false;
     }
@@ -137,10 +150,26 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   /** Whether docs may exist, so agent searches include them only then. */
   const present = () => docs.status().store !== "unopened" || remembered();
 
-  function bannerHtml(): string {
+  /** The storage banner (spec §11.1) in a doc window or the Notes list; hidden while docs save normally. */
+  function renderBanner(element: HTMLElement) {
     const status = docs.status();
-    if (!("banner" in status) || !status.banner) return "";
-    return `<b>${status.banner.text}</b>${status.banner.detail ? ` ${status.banner.detail}` : ""}`;
+    const banner = "banner" in status ? status.banner : undefined;
+    element.hidden = !banner;
+    if (!banner) {
+      element.replaceChildren();
+      return;
+    }
+    const text = document.createElement("b");
+    text.textContent = banner.text;
+    element.replaceChildren(text, banner.detail ? ` ${banner.detail}` : "");
+    if ("reason" in status && status.reason === "freed") {
+      const reload = document.createElement("button");
+      reload.type = "button";
+      reload.className = "banner-reload";
+      reload.textContent = "Reload";
+      reload.addEventListener("click", () => location.reload());
+      element.append(" ", reload);
+    }
   }
 
   function statusText(): string {
@@ -181,9 +210,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
 
   function renderMeta(window: DocWindow) {
     window.meta.textContent = `Edited ${ago(window.lastEdit.at)} · ${window.lastEdit.by === "agent" ? "Assistant" : "You"}`;
-    const banner = bannerHtml();
-    window.banner.hidden = !banner;
-    window.banner.innerHTML = banner;
+    renderBanner(window.banner);
   }
 
   function showView(data: BlockData, caption: string) {
@@ -211,10 +238,11 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     if (existing) return showExisting(existing, request);
     const parts = paneFor(loaded);
     let window: DocWindow;
+    const origin = `editor:${++editors}`;
     const editor = createDocEditor(
       loaded.blocks,
       {
-        save: (ops) => docs.saveBlocks(loaded.ref, ops),
+        save: (ops) => docs.saveBlocks(loaded.ref, ops, "user", { origin }),
         fetch: async () => {
           const artifact = await docs.load(loaded.ref);
           return isApiError(artifact) ? null : artifact.blocks;
@@ -230,6 +258,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
           windows.setStatus(loaded.ref, status === "saving" ? "Saving…" : status === "error" ? "Not saved" : statusText());
           if (status === "error" && message) console.warn(`Could not save ${loaded.ref}:`, message);
         },
+        onSaveFailed: (message) =>
+          toast(`Could not save “${window.title}”: ${message} Your edits stay in the window.`, { label: "Try again", run: () => void editor.flush() }),
         notify: (message) => toast(message),
         onEscape: () => windows.minimize(loaded.ref, true),
         renderQuestion,
@@ -249,6 +279,8 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       banner: parts.banner,
       ready: parts.ready,
       lastEdit: lastEdit(loaded),
+      origin,
+      flushTitle: () => {},
     };
     docWindows.set(loaded.id, window);
     wirePane(window);
@@ -263,9 +295,13 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
           window.titleInput.value === "Untitled" || !window.titleInput.value ? window.titleInput : window.pane.querySelector<HTMLElement>(".doc-body"),
         download: () => void docs.doc({ action: "download", ref: loaded.ref }, "user"),
         close: () => {
+          window.flushTitle();
           editor.destroy();
           docWindows.delete(loaded.id);
         },
+        beforeClose: () =>
+          !editor.unsaved ||
+          confirm(`Some edits in “${window.title}” could not be saved. Close the window and lose them? Download the doc first to keep them.`),
       },
       at: request.at,
       size: request.size,
@@ -311,6 +347,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     let renameTimer: ReturnType<typeof setTimeout> | undefined;
     const rename = () => {
       clearTimeout(renameTimer);
+      renameTimer = undefined;
       const title = window.titleInput.value.trim();
       if (!title || title === window.title) return;
       window.title = title;
@@ -324,6 +361,9 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       clearTimeout(renameTimer);
       renameTimer = setTimeout(rename, RENAME_MS);
     });
+    window.flushTitle = () => {
+      if (renameTimer !== undefined) rename();
+    };
     window.titleInput.addEventListener("blur", rename);
     window.titleInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === "ArrowDown") {
@@ -340,21 +380,34 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     explorer.watchRegionHover(window.pane);
     window.pane.addEventListener("click", (event) => {
       const mention = (event.target as HTMLElement).closest<HTMLElement>(".region-mention");
-      const id = mention?.dataset.region as RegionId | undefined;
-      if (!id) return;
+      const region = mention?.dataset.region ? regionById(mention.dataset.region) : undefined;
+      if (!region) return;
       event.preventDefault();
-      explorer.goTo({ kind: "region", path: null, id });
+      explorer.goTo({ kind: "region", path: null, id: region.id as RegionId });
     });
   }
 
   /* ---------- Store changes ---------- */
 
   docs.onChange((change) => {
+    if (change.kind === "storage") {
+      if (change.reason === "freed") {
+        // M8: this tab ran in memory because another had the database; that tab has let go.
+        for (const window of docWindows.values()) renderBanner(window.banner);
+        if (!notesPanel.hidden) renderBanner(notesPanel.querySelector<HTMLElement>(".notes-banner")!);
+        toast("Your saved docs are free now. Reload to open them; notes made in this tab are not kept.", { label: "Reload", run: () => location.reload() });
+        return;
+      }
+      if (remembered(PERSIST_WARNED)) return;
+      remember(PERSIST_WARNED);
+      toast("This browser may clear saved notes when it runs low on space. Download notes you want to keep.");
+      return;
+    }
     if (change.kind === "blocks") {
       const window = docWindows.get(change.artifactId);
       if (!window) return;
-      // The editor's own saves come back as user changes; it already shows them.
-      if (change.actor === "user" && window.editor.saving) return;
+      // The editor's own saves come back tagged; it already shows them. Other writes as the user (Undo, restore) still refresh it.
+      if (change.origin === window.origin) return;
       window.lastEdit = { at: Date.now(), by: change.actor };
       renderMeta(window);
       void window.editor.refresh();
@@ -379,6 +432,22 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   setInterval(() => {
     for (const window of docWindows.values()) renderMeta(window);
   }, 60_000);
+
+  /* ---------- Leaving the page ---------- */
+
+  // Edits wait 400 ms, titles 700 ms and the layout 400 ms before they save. Save them now when the page
+  // is hidden or unloaded (a reload, closing the tab), so the last words typed are not lost (M5).
+  function flushAll() {
+    for (const window of docWindows.values()) {
+      window.flushTitle();
+      void window.editor.flush();
+    }
+    windows.flush();
+  }
+  addEventListener("pagehide", flushAll);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAll();
+  });
 
   /* ---------- Downloads ---------- */
 
@@ -457,33 +526,80 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     notesPanel.style.right = `${Math.max(12, box.right - button.right - 4)}px`;
   }
 
+  /** Every page of a listing: the store keeps up to 200 docs, and a page holds 100. */
+  async function listAll(deleted: boolean): Promise<DocListing[] | ApiError> {
+    const all: DocListing[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await docs.outlineDocs({ limit: 100, cursor, deleted });
+      if (isApiError(page)) return page;
+      all.push(...page.docs);
+      cursor = page.cursor;
+    } while (cursor);
+    return all;
+  }
+
+  function noteItem(doc: DocListing): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "note-item";
+    item.innerHTML = `<button type="button" class="note-row" data-ref="${doc.ref}">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></button><button type="button" class="note-delete" data-delete="${doc.ref}">${TRASH_ICON}</button>`;
+    item.querySelector(".note-title")!.textContent = doc.title;
+    item.querySelector(".note-meta")!.textContent = `${ago(Date.parse(doc.updated))}${doc.open || doc.minimized ? " · open" : ""}`;
+    const remove = item.querySelector<HTMLButtonElement>(".note-delete")!;
+    remove.setAttribute("aria-label", `Delete ${doc.title}`);
+    remove.title = "Delete";
+    return item;
+  }
+
+  function deletedItem(doc: DocListing): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "note-item is-deleted";
+    item.innerHTML = `<span class="note-row">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></span><button type="button" class="note-restore" data-restore="${doc.ref}">Restore</button>`;
+    item.querySelector(".note-title")!.textContent = doc.title;
+    const days = Math.max(0, Math.ceil((Date.parse(doc.purge ?? "") - Date.now()) / 86_400_000));
+    item.querySelector(".note-meta")!.textContent = `${days} ${days === 1 ? "day" : "days"} left`;
+    item.querySelector(".note-restore")!.setAttribute("aria-label", `Restore ${doc.title}`);
+    return item;
+  }
+
+  /** "Recently deleted": docs deleted in the last 30 days, with Restore. Stays open across renders once opened. */
+  let deletedOpen = false;
+  function deletedSection(deleted: DocListing[]): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "notes-deleted";
+    const details = document.createElement("details");
+    details.open = deletedOpen;
+    details.addEventListener("toggle", () => {
+      deletedOpen = details.open;
+    });
+    details.innerHTML = `<summary>Recently deleted (${deleted.length})</summary><p class="notes-deleted-note">Deleted notes are kept for ${LIMITS.purgeAfterDays} days, then removed for good.</p>`;
+    const list = document.createElement("ul");
+    list.append(...deleted.map(deletedItem));
+    details.append(list);
+    item.append(details);
+    return item;
+  }
+
   async function renderNotes() {
-    const listed = await docs.outlineDocs({ limit: 100 });
+    const [listed, deleted] = await Promise.all([listAll(false), listAll(true)]);
     const banner = notesPanel.querySelector<HTMLElement>(".notes-banner")!;
-    const bannerText = bannerHtml();
-    banner.hidden = !bannerText;
-    banner.innerHTML = bannerText;
+    renderBanner(banner);
     if (isApiError(listed)) {
-      notesList.innerHTML = `<li class="notes-empty">${listed.error.message}</li>`;
+      const item = document.createElement("li");
+      item.className = "notes-empty";
+      item.textContent = listed.error.message;
+      notesList.replaceChildren(item);
       return;
     }
-    if (!listed.docs.length) {
-      notesList.innerHTML = '<li class="notes-empty">No notes yet. Start one, or import a Markdown file.</li>';
-      return;
+    const items: HTMLLIElement[] = listed.map(noteItem);
+    if (!items.length) {
+      const empty = document.createElement("li");
+      empty.className = "notes-empty";
+      empty.textContent = "No notes yet. Start one, or import a Markdown file.";
+      items.push(empty);
     }
-    notesList.replaceChildren(
-      ...listed.docs.map((doc) => {
-        const item = document.createElement("li");
-        item.className = "note-item";
-        item.innerHTML = `<button type="button" class="note-row" data-ref="${doc.ref}">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></button><button type="button" class="note-delete" data-delete="${doc.ref}">${TRASH_ICON}</button>`;
-        item.querySelector(".note-title")!.textContent = doc.title;
-        item.querySelector(".note-meta")!.textContent = `${ago(Date.parse(doc.updated))}${doc.open || doc.minimized ? " · open" : ""}`;
-        const remove = item.querySelector<HTMLButtonElement>(".note-delete")!;
-        remove.setAttribute("aria-label", `Delete ${doc.title}`);
-        remove.title = "Delete";
-        return item;
-      }),
-    );
+    if (!isApiError(deleted) && deleted.length) items.push(deletedSection(deleted));
+    notesList.replaceChildren(...items);
   }
 
   function openNotes() {
@@ -491,7 +607,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     placeNotes();
     notesPanel.hidden = false;
     notesButton.setAttribute("aria-expanded", "true");
-    void renderNotes().then(() => (notesPanel.querySelector<HTMLElement>(".note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus());
+    void renderNotes().then(() => (notesPanel.querySelector<HTMLElement>("button.note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus());
   }
 
   function closeNotes(refocus = true) {
@@ -507,7 +623,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       event.stopPropagation();
       closeNotes();
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      const rows = [...notesPanel.querySelectorAll<HTMLElement>(".note-row")];
+      const rows = [...notesPanel.querySelectorAll<HTMLElement>("button.note-row")];
       const index = rows.indexOf(document.activeElement as HTMLElement);
       if (!rows.length) return;
       event.preventDefault();
@@ -517,23 +633,60 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   document.addEventListener("pointerdown", (event) => {
     if (!notesPanel.hidden && !notesPanel.contains(event.target as Node) && !notesButton.contains(event.target as Node)) closeNotes(false);
   });
+  function restoreDoc(ref: string) {
+    void docs.doc({ action: "restore", ref }, "user").then((result) => {
+      if (isApiError(result)) return toast(`Could not restore: ${result.error.message}`);
+      activity.append({ by: "user", kind: "restored", ref });
+      toast(result.said);
+      if (!notesPanel.hidden) void renderNotes();
+    });
+  }
+
+  function deleteDoc(ref: string) {
+    void docs.doc({ action: "delete", ref }, "user").then((result) => {
+      if (isApiError(result)) return toast(result.error.message);
+      activity.append({ by: "user", kind: "deleted", ref });
+      toast(`${result.said}. Find it under Recently deleted.`, { label: "Undo", run: () => restoreDoc(ref) });
+      void renderNotes();
+    });
+  }
+
+  /** The trash button asks once: the first click arms it ("Delete?"), a second click within 4 s deletes. */
+  let armed: { button: HTMLButtonElement; timer: ReturnType<typeof setTimeout> } | null = null;
+  function disarm() {
+    if (!armed) return;
+    clearTimeout(armed.timer);
+    armed.button.classList.remove("armed");
+    armed.button.innerHTML = TRASH_ICON;
+    armed.button.setAttribute("aria-label", armed.button.dataset.label ?? "Delete");
+    armed = null;
+  }
+  function arm(button: HTMLButtonElement) {
+    disarm();
+    button.dataset.label = button.getAttribute("aria-label") ?? "Delete";
+    button.classList.add("armed");
+    button.textContent = "Delete?";
+    button.setAttribute("aria-label", `${button.dataset.label}: press again to confirm`);
+    armed = { button, timer: setTimeout(disarm, 4000) };
+    button.addEventListener("blur", () => armed?.button === button && disarm(), { once: true });
+  }
+
   notesPanel.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
-    const row = target.closest<HTMLElement>(".note-row");
-    const remove = target.closest<HTMLElement>(".note-delete");
+    const row = target.closest<HTMLElement>("button.note-row");
+    const remove = target.closest<HTMLButtonElement>(".note-delete");
+    const restore = target.closest<HTMLElement>(".note-restore");
     if (row?.dataset.ref) {
       closeNotes(false);
       void openWindow(row.dataset.ref, { focus: true }).then((opened) => {
         if ("error" in opened) toast(opened.error.message);
       });
     } else if (remove?.dataset.delete) {
-      const ref = remove.dataset.delete;
-      void docs.doc({ action: "delete", ref }, "user").then((result) => {
-        if (isApiError(result)) return toast(result.error.message);
-        activity.append({ by: "user", kind: "deleted", ref });
-        toast(result.said, { label: "Undo", run: () => void docs.doc({ action: "restore", ref }, "user") });
-        void renderNotes();
-      });
+      if (armed?.button !== remove) return arm(remove);
+      disarm();
+      deleteDoc(remove.dataset.delete);
+    } else if (restore?.dataset.restore) {
+      restoreDoc(restore.dataset.restore);
     } else if (target.closest(".notes-new")) {
       closeNotes(false);
       void docs.doc({ action: "create", title: "Untitled", markdown: "" }, "user").then((created) => {

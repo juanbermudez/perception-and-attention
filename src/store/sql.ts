@@ -19,7 +19,11 @@ export function transaction<T>(db: SqlDb, work: () => T): T {
     db.exec("COMMIT");
     return result;
   } catch (error) {
-    db.exec("ROLLBACK");
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // SQLite already rolled back (for example on a full disk); the original error says why.
+    }
     throw error;
   }
 }

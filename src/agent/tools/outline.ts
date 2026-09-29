@@ -13,6 +13,7 @@ export const outlineTool = defineTool({
     ref: refField("Default guide. For example topic:vision, region:lgn, docs or doc:k3f9.").optional(),
     limit: listLimit.optional(),
     cursor: z.string().max(20).optional().describe("From the previous result, for the next page"),
+    deleted: z.boolean().optional().describe("With ref docs: list recently deleted docs instead (kept 30 days; restore with doc)"),
   }),
-  run: (input, api) => api.outline(input.ref, { limit: input.limit, cursor: input.cursor }),
+  run: (input, api) => api.outline(input.ref, { limit: input.limit, cursor: input.cursor, ...(input.deleted ? { deleted: true } : {}) }),
 });

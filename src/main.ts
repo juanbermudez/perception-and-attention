@@ -115,6 +115,8 @@ const docs = createDocsApi({
     else docsUi?.open(ref);
   },
   download: (file, text, ref) => docsUi?.download(file, text, ref) ?? false,
+  agentAllowed: () => agentControl.on,
+  notify: (message) => toast(message),
 });
 docs.onOpen((store) => activity.connect(store));
 docsUi = createDocsUi({

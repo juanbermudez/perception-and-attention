@@ -3,12 +3,12 @@
 // unchanged for visitors who never make a doc.
 
 import workerSource from "virtual:store-worker";
+import { acquireLock, type Locks } from "./lock";
 import { planStorage, type StorageEnvironment } from "./mode";
 import type { BootMessage, BootReply, CallMessage, CallReply } from "./protocol";
 import { createStore, type EngineCall } from "./store";
 import { type MemoryReason, type Store, StoreError } from "./types";
 
-const LOCK = "pa-db";
 const BOOT_TIMEOUT_MS = 15_000;
 
 function browserEnvironment(): StorageEnvironment {
@@ -20,18 +20,6 @@ function browserEnvironment(): StorageEnvironment {
     workers: typeof Worker === "function",
     locks: typeof navigator.locks?.request === "function",
   };
-}
-
-/** Holds the database lock for the life of the page. Resolves false when another tab has it. */
-function acquireLock(): Promise<boolean> {
-  return new Promise((resolve) => {
-    navigator.locks
-      .request(LOCK, { ifAvailable: true }, (lock) => {
-        resolve(lock !== null);
-        return lock ? new Promise<void>(() => {}) : undefined;
-      })
-      .catch(() => resolve(false));
-  });
 }
 
 function startWorker(persist: boolean): Promise<{ worker: Worker; reply: Extract<BootReply, { type: "ready" }> }> {
@@ -87,14 +75,27 @@ async function openBrowserStore(): Promise<Store> {
   const plan = planStorage(browserEnvironment());
   let reason: MemoryReason = plan.reason;
   let persist = plan.persist;
-  if (persist && !(await acquireLock())) {
-    persist = false;
-    reason = "other-tab";
+  let released: Promise<void> | undefined;
+  if (persist) {
+    const lock = await acquireLock(navigator.locks as unknown as Locks);
+    if (!lock.held) {
+      persist = false;
+      reason = "other-tab";
+      released = lock.released;
+    }
   }
   const { worker, reply } = await startWorker(persist);
   reason = reason ?? reply.reason;
-  const persistOnce = () => void navigator.storage?.persist?.().catch(() => {});
-  return createStore(workerCall(worker), { mode: reply.mode, reason, onFirstCreate: reply.mode === "local" ? persistOnce : undefined });
+  // Resolves false only when the browser answered no; a browser without the API, or one that already persists, is left alone.
+  const persistOnce = async () => {
+    try {
+      if (await navigator.storage?.persisted?.()) return true;
+      return (await navigator.storage?.persist?.()) ?? true;
+    } catch {
+      return true;
+    }
+  };
+  return createStore(workerCall(worker), { mode: reply.mode, reason, onFirstCreate: reply.mode === "local" ? persistOnce : undefined, released });
 }
 
 let opening: Promise<Store> | null = null;

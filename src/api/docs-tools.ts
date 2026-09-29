@@ -6,11 +6,12 @@
 import { inlinePlainText } from "../model/inline";
 import { formatRef, type Ref, resolveRef } from "../model/refs";
 import { createSearchIndex, type SearchDoc } from "../model/search";
+import { LIMITS } from "../store/limits";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
-import { type DocInput, type DocsApi, type EditBlocksInput, isApiError, undoOps } from "./docs-api";
+import { type ApiError, CREATE_DOC, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
 import type { WindowCommand, WindowInput, WindowsPort } from "./guide-api";
-import { guideHits, outline as guideOutline, type Page } from "./guide-content";
-import { type Failure, fail, type Result, type WriteResult } from "./result";
+import { guideHits, outline as guideOutline, noMatchesHint, type Page } from "./guide-content";
+import { fail, type Result, type Undo, type WriteResult } from "./result";
 
 export type { DocInput, DocsApi, EditBlocksInput };
 
@@ -32,17 +33,31 @@ function resolved(refText: string | undefined): Ref | null {
   return "ref" in result ? result.ref : null;
 }
 
-/** A docs API error as a tool failure (the codes are the same). */
-function failure(error: { error: { code: string; message: string } }): Failure {
-  return error as Failure;
-}
-
-/** The store's errors already use the tool codes; this narrows the type. */
-function asResult<T>(value: T | { error: { code: string; message: string } }): Result<T> {
-  return value as Result<T>;
+/** Why an Undo could not run, in the user's words. Block errors from the store name the block (`id`, `op`). */
+function undoFailed(error: ApiError["error"]): string {
+  if (error.code === "stale_rev" && error.id) return "Could not undo: you changed that text after the assistant did.";
+  if (error.code === "unknown_ref" && error.op) return "Could not undo: a block the assistant changed has been deleted since.";
+  return `Could not undo: ${error.message}`;
 }
 
 export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
+  /**
+   * The Undo on an agent's toast. It runs as the user through the docs API, whose ops carry revs, so
+   * it never overwrites what the user changed since; when it cannot run, the user is told why.
+   */
+  function undoable(run: () => Promise<unknown>): Undo {
+    return {
+      label: "Undo",
+      run: () =>
+        void run().then(
+          (result) => {
+            if (isApiError(result)) docs.notify(undoFailed(result.error));
+          },
+          (error: unknown) => docs.notify(`Could not undo: ${error instanceof Error ? error.message : String(error)}`),
+        ),
+    };
+  }
+
   /* ---------- Queries ---------- */
 
   function context() {
@@ -64,33 +79,41 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       const base = guideOutline(refText, page);
       if ("error" in base) return base;
       if (!present()) return { ...base, docs: { ref: "docs", count: 0 } };
-      return docs
-        .outlineDocs({ limit: 100 })
-        .then((listed) => (isApiError(listed) ? base : { ...base, docs: { ref: "docs", count: listed.docs.length, more: listed.cursor ? true : undefined } }));
+      return docs.outlineDocs({ limit: 1 }).then((listed) => (isApiError(listed) ? base : { ...base, docs: { ref: "docs", count: listed.count } }));
     }
-    if (ref.kind === "docs") return docs.outlineDocs({ limit: page.limit, cursor: page.cursor }).then(asResult);
-    if (ref.kind === "doc" || ref.kind === "quiz") return docs.outlineArtifact(`${ref.kind}:${ref.id}`, page).then(asResult);
+    if (!ARTIFACT_KINDS.has(ref.kind)) return undefined;
+    // Reads do not start the store while no doc can exist (M8): another tab may hold the database.
+    if (!present()) return noDocsYet(ref);
+    if (ref.kind === "docs") return docs.outlineDocs({ limit: page.limit, cursor: page.cursor, deleted: (page as { deleted?: boolean }).deleted });
+    if (ref.kind === "doc" || ref.kind === "quiz") return docs.outlineArtifact(`${ref.kind}:${ref.id}`, page);
     if (ref.kind === "block") return readBlock(ref.id, false);
     return undefined;
+  }
+
+  /** What reads of docs return before any doc exists in this browser. */
+  function noDocsYet(ref: Ref): Result<object> {
+    if (ref.kind === "docs") return { ref: "docs", count: 0, docs: [], hint: NO_DOCS };
+    return fail("unknown_ref", `No ${formatRef(ref)}: there are no docs or quizzes in this browser yet. ${CREATE_DOC}`);
   }
 
   function read(refText: string, detail?: string): Maybe<Result<object>> | undefined {
     const ref = resolved(refText);
     if (!ref || !ARTIFACT_KINDS.has(ref.kind)) return undefined;
-    if (ref.kind === "docs") return docs.outlineDocs().then(asResult);
+    if (!present()) return noDocsYet(ref);
+    if (ref.kind === "docs") return docs.outlineDocs();
     if (ref.kind !== "doc" && ref.kind !== "quiz" && ref.kind !== "block") return undefined;
     if (ref.kind === "block") return readBlock(ref.id, detail === "full");
     if (detail === "sources") return fail("bad_input", 'Docs and quizzes have no sources. Use detail "brief", "full", "markdown" or "results".');
-    return docs.read(`${ref.kind}:${ref.id}`, (detail ?? "brief") as "brief").then(asResult);
+    return docs.read(`${ref.kind}:${ref.id}`, (detail ?? "brief") as "brief", { maxChars: LIMITS.readChars });
   }
 
   /** One block with its doc: where it is and its markdown. */
   async function readBlock(id: string, full: boolean): Promise<Result<object>> {
     const found = await docs.locate(`block:${id}`);
-    if (isApiError(found)) return asResult(found);
+    if (isApiError(found)) return found;
     const artifact = await docs.read(found.ref, "full");
-    if (isApiError(artifact)) return asResult(artifact);
-    const blocks = (artifact as { blocks: { id: string; type: string; md: string; rev: number; indent?: number; data?: object }[] }).blocks;
+    if (isApiError(artifact)) return artifact;
+    const blocks = (artifact as { blocks: { id: string; type: string; md: string; rev: number; by: string; indent?: number; data?: object }[] }).blocks;
     const index = blocks.findIndex((block) => block.id === id);
     const block = blocks[index];
     if (!block) return fail("unknown_ref", `No block ${id}.`);
@@ -103,20 +126,32 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       type: block.type,
       md: block.md,
       rev: block.rev,
+      by: block.by,
       indent: block.indent,
       data: full ? block.data : undefined,
     };
   }
 
+  /**
+   * The search result: the scope asked for, hits without empty snippets, for `all` how many hits are
+   * doc blocks, and a next step when nothing matched (tool-design R6).
+   */
+  function searchResult(query: string, scope: "docs" | "all", hits: { ref: string; in?: string; title: string; snip?: string }[]) {
+    const result: { scope: string; hits: object[]; docs?: number; hint?: string } = {
+      scope,
+      hits: hits.map((hit) => ({ ref: hit.ref, in: hit.in, title: hit.title, snip: hit.snip || undefined })),
+    };
+    if (scope === "all") result.docs = hits.filter((hit) => hit.in !== undefined || /^(doc|quiz):/.test(hit.ref)).length;
+    if (!hits.length) result.hint = noMatchesHint(query);
+    return result;
+  }
+
   /** Guide and doc hits ranked by one scorer (spec §6.4); docs are searched only when they may exist. */
   async function search(query: string, scope: "docs" | "all", limit: number): Promise<Result<object>> {
     const guide = scope === "all" ? guideHits(query, limit) : [];
-    if (scope === "all" && !present()) return { scope: "guide", hits: guide.map(({ ref, title, snip }) => ({ ref, title, snip })) };
+    if (!present()) return searchResult(query, scope, guide);
     const rows = await docs.searchRows();
-    if (isApiError(rows)) {
-      if (scope === "docs") return asResult(rows);
-      return { scope: "guide", hits: guide.map(({ ref, title, snip }) => ({ ref, title, snip })) };
-    }
+    if (isApiError(rows)) return scope === "docs" ? rows : searchResult(query, scope, guide);
     const entries: SearchDoc[] = [];
     const artifacts = new Map<string, string>();
     for (const row of rows) {
@@ -132,14 +167,15 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     const hits = [...guide, ...docHits]
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map((hit) => ({ ref: hit.ref, in: "in" in hit ? hit.in : undefined, title: hit.title, snip: hit.snip || undefined }));
-    return { scope, hits };
+      .map((hit) => ({ ref: hit.ref, in: "in" in hit ? (hit.in as string | undefined) : undefined, title: hit.title, snip: hit.snip }));
+    return searchResult(query, scope, hits);
   }
 
   /* ---------- Commands ---------- */
 
   async function go(ref: Ref): Promise<Result<WriteResult>> {
     if (ref.kind === "docs") {
+      if (!present()) return fail("not_available", `Docs open in their own windows, and there are none yet. ${CREATE_DOC}`);
       const listed = await docs.outlineDocs({ limit: 5 });
       return fail("not_available", "Docs open in their own windows. Go to one of them.", isApiError(listed) ? [] : listed.docs.map((doc) => doc.ref));
     }
@@ -163,18 +199,18 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     if (!ref || (ref.kind !== "doc" && ref.kind !== "quiz" && ref.kind !== "block")) return fail("bad_input", WINDOW_REFS);
     if (ref.kind !== "block") return { ref: `${ref.kind}:${ref.id}` };
     const found = await docs.locate(`block:${ref.id}`);
-    return isApiError(found) ? failure(found) : { ref: found.ref, block: found.block };
+    return isApiError(found) ? found : { ref: found.ref, block: found.block };
   }
 
   async function doc(input: DocInput): Promise<Result<WriteResult>> {
     const before = input.action === "rename" ? await docs.load(input.ref) : null;
     const result = await docs.doc(input, "agent");
-    if (isApiError(result)) return asResult(result);
+    if (isApiError(result)) return result;
     const ref = result.ref;
     const out: WriteResult = { ...result };
     switch (input.action) {
       case "create":
-        out.undo = { label: "Undo", run: () => void docs.doc({ action: "delete", ref }, "user") };
+        out.undo = undoable(() => docs.doc({ action: "delete", ref }, "user"));
         // The docs API asked the page to open it; wait for the window so the list includes it.
         if (windows && input.open !== false) {
           await windows.open(ref);
@@ -182,15 +218,20 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
         }
         break;
       case "delete":
-        out.undo = { label: "Undo", run: () => void docs.doc({ action: "restore", ref }, "user") };
+        out.undo = undoable(() => docs.doc({ action: "restore", ref }, "user"));
         break;
       case "restore":
-        out.undo = { label: "Undo", run: () => void docs.doc({ action: "delete", ref }, "user") };
+        out.undo = undoable(() => docs.doc({ action: "delete", ref }, "user"));
         break;
       case "rename":
         if (before && !isApiError(before)) {
-          const title = before.title;
-          out.undo = { label: "Undo", run: () => void docs.doc({ action: "rename", ref, title }, "user") };
+          const [title, given] = [before.title, result.title];
+          out.undo = undoable(async () => {
+            const now = await docs.load(ref);
+            if (isApiError(now)) return now;
+            if (now.title !== given) return fail("stale_rev", `the title changed to “${now.title}” after the assistant renamed it.`);
+            return docs.doc({ action: "rename", ref, title }, "user");
+          });
         }
         break;
     }
@@ -200,7 +241,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
   async function editBlocks(input: EditBlocksInput): Promise<Result<WriteResult>> {
     const before = await docs.load(input.ref);
     const result = await docs.editBlocks(input, "agent");
-    if (isApiError(result)) return asResult(result);
+    if (isApiError(result)) return result;
     const out: WriteResult = { ...result };
     if (!isApiError(before)) {
       const after = await docs.load(before.ref);
@@ -210,7 +251,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
           after.blocks.map((block) => block.id),
           result,
         );
-        if (ops.length) out.undo = { label: "Undo", run: () => void docs.saveBlocks(before.ref, ops) };
+        if (ops.length) out.undo = undoable(() => docs.saveBlocks(before.ref, ops));
       }
     }
     return out;
