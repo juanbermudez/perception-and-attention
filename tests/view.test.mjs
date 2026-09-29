@@ -122,7 +122,7 @@ const at = (id) => regions[id].position;
 {
   const target = [0, 0, 0],
     position = [0, 0, 0];
-  homeCamera(true, 0.4, target, position);
+  homeCamera(0.4, target, position);
   const home = Math.hypot(...sub(position, target));
   close(home, 11.9, 0.01, "overview distance with the skull");
   const limits = zoomLimits(home);
@@ -379,7 +379,7 @@ const at = (id) => regions[id].position;
   assert.equal(now.gated, undefined, "The overview (Attention, all senses on) hides no layer.");
   state.path = "vision";
   assert.deepEqual(api.current().gated, ["ears", "auditory_nerve", "temporal_bone"]);
-  assert.deepEqual(gatedLayers({ ...state, path: "hearing", bones: false, skull: false }), ["skull", "eyes", "optic", "temporal_bone"]);
+  assert.deepEqual(gatedLayers({ ...state, path: "hearing" }), ["eyes", "optic"]);
   state.path = "attention";
 
   // focus + frame is rejected as a whole: nothing changes and nothing is pushed.

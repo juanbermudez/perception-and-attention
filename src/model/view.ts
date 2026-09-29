@@ -178,10 +178,10 @@ export function frameFit(points: readonly Vec3[], fovDegrees: number, aspect: nu
   return { target, radius, distance };
 }
 
-/** The overview framing: the whole head when the skull is shown. */
-export function homeCamera(skull: boolean, skullCenterY: number, outTarget: Vec3, outPosition: Vec3) {
-  vec3.set(outTarget, 0, skull ? skullCenterY : -0.1, 0);
-  vec3.set(outPosition, skull ? -5.65 : -4.8, skull ? skullCenterY + 2.95 : 2.6, skull ? 10.05 : 8.5);
+/** The overview framing: the whole head, centred on the skull. */
+export function homeCamera(skullCenterY: number, outTarget: Vec3, outPosition: Vec3) {
+  vec3.set(outTarget, 0, skullCenterY, 0);
+  vec3.set(outPosition, -5.65, skullCenterY + 2.95, 10.05);
 }
 
 /**
@@ -213,12 +213,10 @@ export function hearingShown(view: TopicView) {
   return view.path === "hearing" || (view.path === "attention" && view.enabledSenses.hearing);
 }
 /** Layers the current topic or toggles hide, whatever their presence (eyes appear only with vision, ears only with hearing). */
-export function gatedLayers(view: TopicView & { skull: boolean; bones: boolean }): LayerId[] {
+export function gatedLayers(view: TopicView): LayerId[] {
   const gated: LayerId[] = [];
-  if (!view.skull) gated.push("skull");
   if (!visionShown(view)) gated.push("eyes", "optic");
   if (!hearingShown(view)) gated.push("ears", "auditory_nerve", "temporal_bone");
-  else if (!view.bones) gated.push("temporal_bone");
   return gated;
 }
 /** Presence a layer eases toward: its own setting, capped at `keep` for anatomy while regions are isolated. */

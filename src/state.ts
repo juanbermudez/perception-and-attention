@@ -10,8 +10,6 @@ export interface ExplorerState extends AttentionSettings {
   step: number;
   selected: RegionId;
   playing: boolean;
-  /** Simulation speed multiplier. */
-  speed: number;
   /** Simulated seconds; advances only while playing. */
   simTime: number;
   /** Labels on or off; the same as `labelMode !== "none"`. Turning labels on restores the automatic label rules. */
@@ -19,9 +17,6 @@ export interface ExplorerState extends AttentionSettings {
   /** auto: per-topic label sets · focus: selected and isolated regions · all: every visible marker · none. */
   labelMode: LabelMode;
   xray: boolean;
-  skull: boolean;
-  /** Temporal bones around the inner ear, shown in the hearing topic. */
-  bones: boolean;
   /** Dim routes and regions the current walkthrough step is not about. */
   spotlight: boolean;
   /** Presence per layer, 0 (gone) to 1 (normal). It multiplies the topic and zoom rules. */
@@ -45,7 +40,6 @@ export function createState(reducedMotion: boolean): ExplorerState {
     step: 0,
     selected: "pfc",
     playing: !reducedMotion,
-    speed: 2,
     simTime: 0,
     labelMode: "auto",
     get labels() {
@@ -55,8 +49,6 @@ export function createState(reducedMotion: boolean): ExplorerState {
       if (on !== this.labels) this.labelMode = on ? "auto" : "none";
     },
     xray: true,
-    skull: true,
-    bones: true,
     spotlight: true,
     layers: defaultLayers(),
     layerEffect: "dissolve",

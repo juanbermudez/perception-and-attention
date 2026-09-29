@@ -54,6 +54,8 @@ import {
 } from "./materials";
 
 const PER_EDGE = 32;
+// Simulated seconds per wall-clock second while the flow plays.
+const FLOW_TIME_SCALE = 2;
 const TRAIL = 14;
 const CLUSTER_POINTS = 96;
 const VOLLEY_PARTICLES = 16;
@@ -257,17 +259,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const zoneColor = new THREE.Color();
   const hearingVisible = () => hearingShown(state);
   const visionVisible = () => visionShown(state);
+  // Eyes appear only with vision and ears (with their bone and nerve) only with hearing.
   function surfaceVisible(group: string) {
-    return group === "bone" ? hearingVisible() && state.bones : group !== "ear" || hearingVisible();
+    return group === "bone" || group === "ear" ? hearingVisible() : true;
   }
   function pointsVisible(group: string) {
-    return group === "bone"
-      ? hearingVisible() && state.bones
-      : group === "auditory-nerve"
-        ? hearingVisible()
-        : group === "eye" || group === "optic"
-          ? visionVisible()
-          : true;
+    return group === "bone" || group === "auditory-nerve" ? hearingVisible() : group === "eye" || group === "optic" ? visionVisible() : true;
   }
   const pointLayers: { group: string; layer: LayerId; object: THREE.Points; material: THREE.ShaderMaterial; presence: LayerPresence; opacity: WeightMotion }[] =
     [];
@@ -544,7 +541,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   function resetOverview() {
     focusStarted = -1;
     clearDamping();
-    homeCamera(state.skull, skullCenterY, _pose_target, _home_position);
+    homeCamera(skullCenterY, _pose_target, _home_position);
     controls.target.fromArray(_pose_target);
     camera.position.fromArray(_home_position);
     controls.update();
@@ -555,7 +552,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     highlightRegion(id);
     if (!focusCamera) return;
     // Each region has a viewing direction that keeps it in front of the skull.
-    focusPreset(id, state.skull ? skullCenterY : -0.1, lookAt, _pose_direction);
+    focusPreset(id, skullCenterY, lookAt, _pose_direction);
     viewFrom.fromArray(_pose_direction);
     animateCamera(lookAt, viewFrom, clamp(contextDistance * 0.94, controls.minDistance, controls.maxDistance));
   }
@@ -863,7 +860,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     });
   }
   const projection = new THREE.Vector3();
-  const inputEvents = new AbortController();
   const pointers = new Map<number, { x: number; y: number; region?: RegionId; moved: boolean }>();
   // Mouse position for label proximity; touch has no hover, so it is ignored.
   let hover: { x: number; y: number } | null = null;
@@ -891,25 +887,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, region: label?.dataset.region as RegionId | undefined, moved: false });
       orbitSurface.style.cursor = "grabbing";
     },
-    { capture: true, signal: inputEvents.signal },
+    { capture: true },
   );
-  orbitSurface.addEventListener(
-    "pointermove",
-    (e) => {
-      const down = pointers.get(e.pointerId);
-      if (down && (e.clientX - down.x) ** 2 + (e.clientY - down.y) ** 2 > 25) down.moved = true;
-      hover = e.pointerType === "touch" ? null : { x: e.clientX, y: e.clientY };
-      if (!pointers.size) orbitSurface.style.cursor = pickMarker(e.clientX, e.clientY) ? "pointer" : "grab";
-    },
-    { signal: inputEvents.signal },
-  );
-  orbitSurface.addEventListener(
-    "pointerleave",
-    () => {
-      hover = null;
-    },
-    { signal: inputEvents.signal },
-  );
+  orbitSurface.addEventListener("pointermove", (e) => {
+    const down = pointers.get(e.pointerId);
+    if (down && (e.clientX - down.x) ** 2 + (e.clientY - down.y) ** 2 > 25) down.moved = true;
+    hover = e.pointerType === "touch" ? null : { x: e.clientX, y: e.clientY };
+    if (!pointers.size) orbitSurface.style.cursor = pickMarker(e.clientX, e.clientY) ? "pointer" : "grab";
+  });
+  orbitSurface.addEventListener("pointerleave", () => {
+    hover = null;
+  });
   orbitSurface.addEventListener(
     "pointerup",
     (e) => {
@@ -930,18 +918,14 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const id = down.region ?? pickMarker(e.clientX, e.clientY);
       if (id) onRegion(id);
     },
-    { capture: true, signal: inputEvents.signal },
+    { capture: true },
   );
-  orbitSurface.addEventListener(
-    "pointercancel",
-    (e) => {
-      pointers.delete(e.pointerId);
-      multiplePointers = true;
-      orbitSurface.style.cursor = "grab";
-    },
-    { signal: inputEvents.signal },
-  );
-  orbitSurface.addEventListener("dragstart", (e) => e.preventDefault(), { signal: inputEvents.signal });
+  orbitSurface.addEventListener("pointercancel", (e) => {
+    pointers.delete(e.pointerId);
+    multiplePointers = true;
+    orbitSurface.style.cursor = "grab";
+  });
+  orbitSurface.addEventListener("dragstart", (e) => e.preventDefault());
   let width = 1,
     height = 1;
   function resize() {
@@ -958,9 +942,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   observer.observe(container);
   resize();
   let lastTime = 0;
-  let frameId = 0;
   let frameCount = 0;
-  let destroyed = false;
   const activeRegionIds = new Set<RegionId>();
   const attentionLabels = new Set<RegionId>(["pfc", "fef", "parietal", "tpj", "sc", "lc", "pulvinar", "extrastriate", "v1", "a1", "s1"]);
   const visibleMarkers: Marker[] = new Array(markers.length);
@@ -976,13 +958,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     }
     return out;
   }
-  const skullOutline = outlineSample(skullGeometry.getAttribute("position").array, 480),
-    cortexOutline = outlineSample(cortexPositions, 360);
+  const skullOutline = outlineSample(skullGeometry.getAttribute("position").array, 480);
   const head: Silhouette = { left: 0, right: 0, top: 0, bottom: 0 },
     calloutBounds: CalloutBounds = { width: 0, top: 0, bottom: 0, margin: 10 };
   const dock = stage.querySelector<HTMLElement>(".dock");
   function measureHead() {
-    const outline = state.skull ? skullOutline : cortexOutline;
+    const outline = skullOutline;
     head.left = Infinity;
     head.right = -Infinity;
     head.top = Infinity;
@@ -1063,7 +1044,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const dissolveMix = createWeight(state.layerEffect === "dissolve" ? 1 : 0);
   let snapPresence = false;
   function frame(ms: number, dt: number) {
-    const simDt = state.playing ? dt * state.speed : 0;
+    const simDt = state.playing ? dt * FLOW_TIME_SCALE : 0;
     state.simTime += simDt;
     const time = state.simTime;
     const current = pathways.find((p) => p.id === state.path)!;
@@ -1150,7 +1131,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     // Presence multiplies the topic, x-ray and zoom rules below, so gating (ears only in hearing) still applies.
     cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, (state.xray ? 0.3 : 0.62) * layerZoomFade("cortex", near), dt, reduced);
     cortex.visible = showPresence(cortexPresence, layerPresence.cortex.value, dissolve) && cortexOpacity.value > ACTIVITY_CUTOFF;
-    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, state.skull ? 0.7 * layerZoomFade("skull", near) : 0, dt, reduced);
+    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, 0.7 * layerZoomFade("skull", near), dt, reduced);
     skull.visible = showPresence(skullPresence, layerPresence.skull.value, dissolve) && skullOpacity.value > ACTIVITY_CUTOFF;
     for (const layer of surfaceLayers) {
       const target =
@@ -1433,14 +1414,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     frameCount++;
   }
   function animate(ms: number) {
-    if (destroyed) return;
-    frameId = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
     const dt = lastTime ? Math.min((ms - lastTime) / 1000, 0.05) : 0;
     lastTime = ms;
     if (document.hidden) return;
     frame(ms, dt);
   }
-  frameId = requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
   renderer.domElement.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
     state.playing = false;
@@ -1474,13 +1454,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   }
   /** The overview framing as a pose. */
   function homePose(): Pose {
-    homeCamera(state.skull, skullCenterY, _pose_target, _home_position);
+    homeCamera(skullCenterY, _pose_target, _home_position);
     vec3.subtract(_pose_direction, _home_position, _pose_target);
     return { target: vec3.clone(_pose_target), ...anglesFromDirection(_pose_direction), distance: vec3.length(_pose_direction) };
   }
   /** The pose selecting a region would animate to: its preset side, at the current context distance. */
   function focusPose(id: RegionId): Pose {
-    focusPreset(id, state.skull ? skullCenterY : -0.1, _pose_target, _pose_direction);
+    focusPreset(id, skullCenterY, _pose_target, _pose_direction);
     return {
       target: vec3.clone(_pose_target),
       ...anglesFromDirection(_pose_direction),
@@ -1596,7 +1576,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         frames: frameCount,
         cortexPoints: cortexCount,
         skullPoints: skullData.count,
-        skull: state.skull,
         routeCount: routes.length,
         particles: particleCount,
         width,
@@ -1610,19 +1589,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         presence: Object.fromEntries(LAYER_IDS.map((id) => [id, Number(layerPresence[id].value.toFixed(3))])),
         dissolve: Number(dissolveMix.value.toFixed(3)),
       };
-    },
-    destroy() {
-      destroyed = true;
-      cancelAnimationFrame(frameId);
-      inputEvents.abort();
-      observer.disconnect();
-      controls.dispose();
-      for (const layer of highlightLayers) {
-        layer.object.geometry.dispose();
-        layer.object.material.dispose();
-      }
-      highlightTemplate.dispose();
-      renderer.dispose();
     },
   };
 }
