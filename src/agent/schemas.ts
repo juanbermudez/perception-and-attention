@@ -2,20 +2,30 @@
 import * as z from "zod";
 import { TOUR_LIMITS } from "../api/tour";
 import type { RegionId } from "../content/types";
-import { REGION_IDS, STREAMS_REF, suggest } from "../model/refs";
+import { canonicalRegion, REGION_IDS, STREAMS_REF, suggest } from "../model/refs";
 import { DEFAULT_KEEP, LABEL_MODES, LAYER_IDS, type LabelMode, type LayerId, MAX_FRAME, PITCH_MAX, PITCH_MIN, SIDE_IDS, type Side } from "../model/view";
 import { LIST_LIMIT, SEARCH_LIMIT } from "./help";
 
 export const refField = (description: string) => z.string().trim().min(1).max(200).describe(description);
 
-/** "unknown region id "V1"; closest: v1" — region fields are exact ids, so a near miss names the id to use. */
+/** "unknown region id "visual cortex"; closest: v1, …": a near miss names the ids to use. */
 function regionIdError(input: unknown) {
   if (input === undefined) return "a region id is required";
-  const closest = typeof input === "string" ? suggest(input, ["region"]).map((ref) => ref.slice("region:".length)) : [];
-  return `unknown region id ${JSON.stringify(input)}${closest.length ? `; closest: ${closest.join(", ")}` : `; every id is listed in read({ ref: "help" })`}`;
+  if (typeof input !== "string") return `expected a region id such as "v1", got ${JSON.stringify(input)}`;
+  const prefix = /^\s*([a-z]+):/i.exec(input)?.[1].toLowerCase();
+  const text = prefix ? input.slice(input.indexOf(":") + 1).trim() : input.trim();
+  const closest = suggest(text, ["region"]).map((ref) => ref.slice("region:".length));
+  const hint = closest.length ? `; closest: ${closest.join(", ")}` : `; every id is listed in read({ ref: "help" })`;
+  if (prefix && prefix !== "region") return `region fields take region ids such as "v1", not ${prefix}: refs${hint}`;
+  return `unknown region id ${JSON.stringify(text)}${hint}`;
 }
-/** For fields that accept only regions: bare ids, not refs (spec §5.1). */
-export const regionIdSchema = z.enum(REGION_IDS as [RegionId, ...RegionId[]], { error: (issue) => regionIdError(issue.input) });
+/** Region ids as the schema lists them. */
+export const regionIdEnum = z.enum(REGION_IDS as [RegionId, ...RegionId[]], { error: (issue) => regionIdError(issue.input) });
+/**
+ * For fields that take only regions (spec §5.1). Forgiving on input: "V1" and "region:v1" both mean v1, so a
+ * ref copied from go or read works here too. The JSON Schema still lists the exact ids.
+ */
+export const regionIdSchema = z.preprocess((value) => (typeof value === "string" ? (canonicalRegion(value) ?? value) : value), regionIdEnum);
 export const listLimit = z.number().int().min(1).max(LIST_LIMIT.max).describe(`Default ${LIST_LIMIT.default}`);
 export const searchLimit = z.number().int().min(1).max(SEARCH_LIMIT.max).describe(`Default ${SEARCH_LIMIT.default}`);
 

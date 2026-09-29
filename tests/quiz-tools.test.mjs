@@ -161,7 +161,7 @@ test("quiz inputs are checked before they reach the page, with messages that say
     return result.error.message;
   };
   const one = (question) => ({ action: "create", title: "T", questions: [question] });
-  assert.match(await message(one({ kind: "region", prompt: "p", answer: ["V1"] })), /^questions\.0\.answer\.0: unknown region id "V1"; closest: v1/);
+  assert.match(await message(one({ kind: "region", prompt: "p", answer: ["LGM"] })), /^questions\.0\.answer\.0: unknown region id "LGM"; closest: lgn/);
   assert.equal(
     await message(one({ kind: "choice", prompt: "p", choices: ["a", "b"], answer: [2] })),
     "questions.0.answer: index 2 is past the last choice (1)",

@@ -129,6 +129,8 @@ const VALID = {
     { camera: { reset: true, yaw: -90, pitch: 88, orbit: [15, -5], zoom: 7.4 } },
     { layers: { skull: 0, cortex: 0.3, auditory_nerve: 1 }, effect: "fade" },
     { isolate: ["lgn", "v1"] },
+    { camera: { focus: "V1" } },
+    { camera: { frame: ["region:lgn", "Region:V1"] }, isolate: ["region:retinar"] },
     { isolate: { regions: ["tpj"], keep: 0.2 } },
     { isolate: null },
     { isolate: [] },
@@ -158,7 +160,7 @@ const INVALID = {
   ],
   set_view: [
     { camera: { focus: "v1", frame: ["lgn"] } },
-    { camera: { focus: "V1" } },
+    { camera: { focus: "topic:vision" } },
     { camera: { focus: "visual cortex" } },
     { camera: { frame: [] } },
     { camera: { frame: ["retina", "retinaR", "chiasm", "lgn", "v1", "l6", "l5", "trn", "pfc", "parietal", "pulvinar", "extrastriate", "mt"] } },
@@ -343,7 +345,8 @@ test("set_view's schema lists region, layer, side and label names from content",
 test("set_view and tour errors say what to fix", async () => {
   const message = async (name, args) => (await setup().runner.call(name, args)).error.message;
   assert.equal(await message("set_view", { camera: { focus: "v1", frame: ["lgn"] } }), "camera: focus and frame cannot be used together; use one");
-  assert.match(await message("set_view", { camera: { focus: "V1" } }), /^camera\.focus: unknown region id "V1"; closest: v1/);
+  assert.match(await message("set_view", { camera: { focus: "LGM" } }), /^camera\.focus: unknown region id "LGM"; closest: lgn/);
+  assert.match(await message("set_view", { isolate: ["step:vision/2"] }), /^isolate\.0: region fields take region ids such as "v1", not step: refs/);
   assert.match(await message("set_view", { camera: { focus: "visual cortex" } }), /closest: .*\bv1\b/);
   assert.match(await message("set_view", { isolate: ["lgn", "nope"] }), /^isolate\.1: unknown region id "nope"/, "The list form's own error, not the union's.");
   assert.match(await message("set_view", { isolate: { regions: ["v1"], keep: 2 } }), /^isolate\.keep: /);

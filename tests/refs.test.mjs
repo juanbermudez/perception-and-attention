@@ -17,7 +17,7 @@ async function bundle(source) {
 const refs = await bundle(`
   export * from "./src/model/refs.ts";
   export { pathways, regions } from "./src/content/index.ts";
-  export { regionIdSchema } from "./src/agent/schemas.ts";
+  export { regionIdEnum, regionIdSchema } from "./src/agent/schemas.ts";
   export { helpCard } from "./src/agent/help.ts";
 `);
 const { resolveRef, formatRef, stepRef, markdownLinks, plainText, parseHash, placeHash, placeRef, refPlace, pathways, regions } = refs;
@@ -96,11 +96,32 @@ test("unknown refs return unknown_ref with at most 5 suggestions", () => {
 
   assert.deepEqual(failure("region:lgm").options, ["region:lgn"]);
   assert.equal(failure("topic:heairng").options[0], "topic:hearing");
-  assert.equal(failure("pulvinar").options[0], "region:pulvinar", "A bare name suggests its ref.");
-  assert.equal(failure("vision").options[0], "topic:vision");
+  assert.equal(failure("visual cortex").options[0], "region:v1", "A bare name that is not an id suggests refs.");
   assert.equal(failure("step:vision/parallel-chanels").options[0], "step:vision/parallel-channels");
   assert.equal(failure("source:hubel-wiesle").options[0], "source:hubel-wiesel");
-  for (const text of ["region:visual cortex", "pulvinar", "topic:heairng", "x:y", "about/credits"]) assert(failure(text).options.length <= 5, text);
+  for (const text of ["region:visual cortex", "pulvin", "topic:heairng", "x:y", "about/credits"]) assert(failure(text).options.length <= 5, text);
+});
+
+test("a bare topic or region id resolves to its ref; region fields accept V1 and region:v1", () => {
+  assert.deepEqual(ok("pulvinar"), { kind: "region", id: "pulvinar" });
+  assert.deepEqual(ok("V1"), { kind: "region", id: "v1" });
+  assert.deepEqual(ok("retinar#Mechanism"), { kind: "region", id: "retinaR", section: "mechanism" });
+  assert.deepEqual(ok("Vision"), { kind: "topic", path: "vision" });
+  assert.equal(failure("vision#role").code, "unknown_ref", "Only regions have sections.");
+  for (const [input, id] of [
+    ["v1", "v1"],
+    ["V1", "v1"],
+    ["region:V1", "v1"],
+    [" Region: retinar ", "retinaR"],
+  ])
+    assert.equal(refs.canonicalRegion(input), id, input);
+  assert.equal(refs.canonicalRegion("topic:vision"), undefined);
+  assert.equal(refs.canonicalRegion("visual"), undefined);
+  assert.equal(refs.regionIdSchema.parse("region:LGN"), "lgn");
+  const prefixed = refs.regionIdSchema.safeParse("topic:vision").error.issues[0].message;
+  assert.match(prefixed, /^region fields take region ids such as "v1", not topic: refs/);
+  assert.match(refs.regionIdSchema.safeParse("region:visual cortex").error.issues[0].message, /^unknown region id "visual cortex"; closest: v1/);
+  assert.match(failure("region:nope").message, /read\(\{ ref: "help" \}\) lists every region id/, "One pointer syntax for help.");
 });
 
 test("step numbers out of range and bad sections say what exists", () => {
@@ -168,7 +189,7 @@ test("places map to refs, and refs with a place map back", () => {
 
 test("the region enum and the help card are generated from content", () => {
   const ids = Object.keys(regions);
-  assert.deepEqual(refs.regionIdSchema.options, ids);
+  assert.deepEqual(refs.regionIdEnum.options, ids);
   assert.deepEqual(refs.REGION_IDS, ids);
   const card = refs.helpCard();
   assert.deepEqual(Object.keys(card.regions), ids);
