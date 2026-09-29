@@ -345,3 +345,13 @@ test("focus the user moved out of the panel is left alone", async () => {
   await settle();
   assert.equal(active(), "<body>");
 });
+
+/* ---------- Page structure ---------- */
+
+test("the topic dock comes before the 3D region labels in tab order", () => {
+  const order = dom.document.querySelectorAll("nav.dock, #region-labels").map((node) => label(node));
+  assert.deepEqual(order, ["<nav.dock.framed-card>", "<div#region-labels>"]);
+  // The scene takes label clicks and drags through the orbit surface, so the labels stay inside it.
+  assert(byId("orbit-surface").contains(byId("region-labels")));
+  assert.equal(byId("region-labels").getAttribute("role"), "group", "An aria-label needs a role to be read.");
+});
