@@ -465,7 +465,7 @@ export function createDocsApi(options: DocsApiOptions) {
       const blocks = new Map(artifact.blocks.map((block) => [block.id, block]));
       const ops: BlockOp[] = [];
       for (const [index, op] of input.ops.entries()) {
-        const translated = translateOp(op, blocks, artifact.kind, actor);
+        const translated = translateOp(op, blocks, artifact, actor);
         if (isApiError(translated)) {
           const { code, message, ...details } = translated.error;
           return fail(code, `Op ${index + 1}: ${message}`, { ...details, op: index + 1 });
@@ -490,12 +490,19 @@ export function createDocsApi(options: DocsApiOptions) {
     });
   }
 
-  function translateOp(op: EditOp, blocks: Map<string, Block>, kind: ArtifactKind, actor: Actor): BlockOp | ApiError {
+  function translateOp(op: EditOp, blocks: Map<string, Block>, artifact: { kind: ArtifactKind; id: string }, actor: Actor): BlockOp | ApiError {
     if (!isObject(op)) return fail("bad_input", "Each op must be an object.");
     if (op.op === "insert") return translateInsert(op);
     const id = blockId((op as { id?: unknown }).id);
     const block = blocks.get(id);
-    if (!block) return fail("unknown_ref", `No block ${String((op as { id?: unknown }).id)} in this ${kind}.`, { options: [...blocks.keys()].slice(0, 5) });
+    if (!block)
+      return fail(
+        "unknown_ref",
+        `No block ${String((op as { id?: unknown }).id)} in this ${artifact.kind}. Every block: outline({ ref: "${refOf(artifact)}" }).`,
+        {
+          options: [...blocks.keys()].slice(0, 5).map((blockRef) => `block:${blockRef}`),
+        },
+      );
     if (actor === "agent" && options.isLocked?.(id)) return fail("locked_by_user", `The user is editing block ${id}. Try again in a few seconds.`, { id });
     const rev = (op as { rev?: unknown }).rev;
     if (actor === "agent" && ["update", "replace", "set"].includes(op.op) && !Number.isInteger(rev))
@@ -615,7 +622,7 @@ export function createDocsApi(options: DocsApiOptions) {
   function outlineArtifact(
     ref: string,
     input: { limit?: number; cursor?: string } = {},
-  ): Result<ArtifactHead & { count: number; blocks: (BlockLine & { by: Actor })[]; cursor?: string }> {
+  ): Result<ArtifactHead & { count: number; blocks: (BlockLine & { by: Actor })[]; cursor?: string; more?: true }> {
     return withStore(async (db) => {
       const artifact = await findArtifact(db, ref);
       if (isApiError(artifact)) return artifact;
@@ -624,7 +631,7 @@ export function createDocsApi(options: DocsApiOptions) {
       if (!Number.isInteger(start) || start < 0) return fail("bad_input", "That cursor is not valid. Start again without one.");
       const page = artifact.blocks.slice(start, start + limit).map((block) => ({ ...line(block), by: block.updatedBy }));
       const result = { ...headOf(artifact), count: artifact.blocks.length, blocks: page };
-      return start + limit < artifact.blocks.length ? { ...result, cursor: String(start + limit) } : result;
+      return start + limit < artifact.blocks.length ? { ...result, cursor: String(start + limit), more: true as const } : result;
     });
   }
 

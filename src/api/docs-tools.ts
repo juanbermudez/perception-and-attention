@@ -4,13 +4,13 @@
 // No DOM, so it runs against the real store engine in Node tests.
 
 import { inlinePlainText } from "../model/inline";
-import { formatRef, type Ref, resolveRef, suggest } from "../model/refs";
+import { formatRef, type Ref, resolveRef } from "../model/refs";
 import { createSearchIndex, type SearchDoc } from "../model/search";
 import { LIMITS } from "../store/limits";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
 import { type ApiError, CREATE_DOC, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
 import type { WindowCommand, WindowInput, WindowsPort } from "./guide-api";
-import { guideHits, outline as guideOutline, type Page } from "./guide-content";
+import { guideHits, outline as guideOutline, noMatchesHint, type Page } from "./guide-content";
 import { fail, type Result, type Undo, type WriteResult } from "./result";
 
 export type { DocInput, DocsApi, EditBlocksInput };
@@ -142,10 +142,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       hits: hits.map((hit) => ({ ref: hit.ref, in: hit.in, title: hit.title, snip: hit.snip || undefined })),
     };
     if (scope === "all") result.docs = hits.filter((hit) => hit.in !== undefined || /^(doc|quiz):/.test(hit.ref)).length;
-    if (!hits.length) {
-      const closest = suggest(query).slice(0, 3);
-      result.hint = `No matches for "${query}". ${closest.length ? `Closest refs: ${closest.join(", ")}. ` : ""}Try fewer or different keywords, or browse with outline().`;
-    }
+    if (!hits.length) result.hint = noMatchesHint(query);
     return result;
   }
 

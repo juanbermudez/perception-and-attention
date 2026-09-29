@@ -717,3 +717,28 @@ test("M9: a quiz with a bad question is rejected before the store opens", async 
   err(await api.createQuiz({ title: "Q", questions: [{ kind: "truefalse", prompt: "?", answer: true, view: BAD_VIEW }] }), "bad_input");
   assert.equal(opens(), 0);
 });
+
+/* ---------- R6, R11 leftovers from the tools branch ---------- */
+
+test("R6: an unknown block id offers block refs and says where the full list is", async () => {
+  const { api } = setup();
+  const { ref, blocks } = ok(await api.doc({ action: "create", title: "Notes", markdown: "One\n\nTwo" }));
+  const missing = err(await api.editBlocks({ ref, ops: [{ op: "delete", id: "zzzzz" }] }), "unknown_ref");
+  assert.deepEqual(
+    missing.options,
+    blocks.map((block) => `block:${block.id}`),
+  );
+  assert.match(missing.message, new RegExp(`Every block: outline\\(\\{ ref: "${ref}" \\}\\)\\.$`));
+});
+
+test("R11: a paged doc outline says there is more next to its cursor", async () => {
+  const { api } = setup();
+  const markdown = Array.from({ length: 25 }, (_, index) => `Paragraph ${index + 1}`).join("\n\n");
+  const { ref } = ok(await api.doc({ action: "create", title: "Long", markdown }));
+  const first = ok(await api.outlineArtifact(ref, { limit: 20 }));
+  assert.equal(first.more, true);
+  assert.equal(first.cursor, "20");
+  const last = ok(await api.outlineArtifact(ref, { limit: 20, cursor: first.cursor }));
+  assert.equal(last.more, undefined);
+  assert.equal(last.cursor, undefined);
+});
