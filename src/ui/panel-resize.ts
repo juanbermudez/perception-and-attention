@@ -1,8 +1,13 @@
 // Drag or arrow-key resizing along the panel's framed edge, between it and the 3D view. On narrow
-// screens the panel sits below the stage, so the same handle resizes its height instead.
+// screens the panel sits below the stage, so the same handle resizes its height instead. The size the
+// user picks is remembered in this browser, one for each layout.
 import { byId } from "./dom";
 
-export function setupPanelResize() {
+type SettingStorage = Pick<Storage, "getItem" | "setItem">;
+
+export const PANEL_SIZE_KEYS = { width: "perception-attention:panel-width", height: "perception-attention:drawer-height" };
+
+export function setupPanelResize(storage: SettingStorage | null = null) {
   const NARROW = matchMedia("(max-width: 740px)");
   // The stylesheet's narrower default panel width starts here (styles.css, @media (max-width: 1000px)).
   const COMPACT = matchMedia("(max-width: 1000px)");
@@ -36,11 +41,40 @@ export function setupPanelResize() {
     handle.setAttribute("aria-valuetext", `${size} pixels ${NARROW.matches ? "tall" : "wide"}`);
   }
 
-  function setSize(value: number) {
+  const sizeKey = () => (NARROW.matches ? PANEL_SIZE_KEYS.height : PANEL_SIZE_KEYS.width);
+  /** The size the user last picked for this layout, if the browser kept it. */
+  function savedSize(): number | null {
+    try {
+      const value = Number(storage?.getItem(sizeKey()) ?? Number.NaN);
+      return Number.isFinite(value) && value > 0 ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Set the size within the current bounds; `remember` keeps it for the next visit. */
+  function setSize(value: number, remember = false) {
     const { min, max } = bounds();
     const size = Math.round(Math.max(min, Math.min(max, value)));
     workspace?.style.setProperty(NARROW.matches ? "--drawer-height" : "--inspector-width", `${size}px`);
+    if (remember)
+      try {
+        storage?.setItem(sizeKey(), String(size));
+      } catch {
+        // Private mode or blocked storage: the size still applies for this visit.
+      }
     updateHandle();
+  }
+
+  /**
+   * After a load, a window resize or a change of layout: the user's size for this layout, kept inside the
+   * new bounds (so it comes back when the window grows again); without one, the stylesheet's default.
+   */
+  function fitSize() {
+    const set = workspace?.style.getPropertyValue(NARROW.matches ? "--drawer-height" : "--inspector-width");
+    const size = savedSize() ?? (set ? currentSize() : null);
+    if (size !== null) setSize(size);
+    else updateHandle();
   }
 
   function finish() {
@@ -61,7 +95,7 @@ export function setupPanelResize() {
   handle.addEventListener("pointermove", (event) => {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     // The panel grows as the pointer moves right, toward the 3D view (or up on narrow screens).
-    setSize(gesture.vertical ? gesture.size + gesture.start - event.clientY : gesture.size + event.clientX - gesture.start);
+    setSize(gesture.vertical ? gesture.size + gesture.start - event.clientY : gesture.size + event.clientX - gesture.start, true);
   });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) handle.addEventListener(type, finish);
   handle.addEventListener("keydown", (event) => {
@@ -71,22 +105,19 @@ export function setupPanelResize() {
     event.preventDefault();
     event.stopPropagation();
     const { min, max } = bounds();
-    setSize(event.key === "Home" ? min : event.key === "End" ? max : currentSize() + (event.key === grow ? 24 : -24));
+    setSize(event.key === "Home" ? min : event.key === "End" ? max : currentSize() + (event.key === grow ? 24 : -24), true);
   });
   window.addEventListener("resize", () => {
     finish();
-    // A size the user set stays inside the new bounds; without one, the stylesheet's default applies.
-    if (workspace.style.getPropertyValue(NARROW.matches ? "--drawer-height" : "--inspector-width")) setSize(currentSize());
-    else updateHandle();
+    fitSize();
   });
-  // Crossing a breakpoint drops the size the user set, so the inline value never overrides that
-  // breakpoint's default (it would, being more specific than the stylesheet's :root value).
-  const resetSize = () => {
+  // Between the wide and the narrow layout the handle changes axis: the other axis's size is dropped,
+  // and this layout's saved size (if any) applies.
+  NARROW.addEventListener("change", () => {
     workspace.style.removeProperty("--inspector-width");
     workspace.style.removeProperty("--drawer-height");
-    updateHandle();
-  };
-  NARROW.addEventListener("change", resetSize);
-  COMPACT.addEventListener("change", resetSize);
-  updateHandle();
+    fitSize();
+  });
+  COMPACT.addEventListener("change", fitSize);
+  fitSize();
 }

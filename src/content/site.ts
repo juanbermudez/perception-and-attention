@@ -2,8 +2,8 @@
 export const overview = {
   title: "Perception & Attention",
   lede: [
-    "A review of some basics of human perception and attention. Attention acts on the signals that arrive from the senses, as well as on memories and plans, so this review covers both: how sight, touch and sound (including speech) reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
-    "The 3D view maps each topic in its own colour. Point at a topic to see its regions and routes, and select it to go through it step by step.",
+    "A review of some basics of human perception and attention: how sight, touch and sound (including speech) reach the brain, how the cortex adjusts that input, and which brain networks set priorities between signals.",
+    "Each topic has its own colour in the 3D view. Point at a topic to see its regions and routes; select it to go through it step by step.",
   ],
   modelNotes: [
     "The brain, eyes and ears use 175 structures from the Z-Anatomy atlas (based on BodyParts3D), and the skull another 22 bones and 28 teeth, all placed with one shared transform. It is one reference model assembled from atlas meshes (BodyParts3D itself was built from one volunteer’s MRI and redrawn by illustrators); real brains differ from it in size and folding.",

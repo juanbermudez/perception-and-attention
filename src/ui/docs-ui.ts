@@ -38,6 +38,8 @@ export interface DocsUiDeps {
   /** True while an agent's tool runs, so its window changes are not logged as the user's. */
   agentActive: () => boolean;
   storage: SettingStorage | null;
+  /** False hides the Notes button and file-drop import (features.ts); docs still open in windows. */
+  notes?: boolean;
   /** Stage 5: question blocks as inline quiz cards (otherwise a read-only preview). */
   renderQuestion?: DocEditorHost["renderQuestion"];
 }
@@ -106,7 +108,7 @@ function saveFile(file: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-export function createDocsUi({ docs, stage, notesButton, view, explorer, activity, agentActive, storage, renderQuestion }: DocsUiDeps) {
+export function createDocsUi({ docs, stage, notesButton, view, explorer, activity, agentActive, storage, notes = true, renderQuestion }: DocsUiDeps) {
   const docWindows = new Map<string, DocWindow>();
   /** While windows from an earlier visit come back, which is not a user action to log. */
   let restoring = false;
@@ -479,7 +481,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     }
   }
 
-  const hasFiles = (event: DragEvent) => [...(event.dataTransfer?.types ?? [])].includes("Files");
+  const hasFiles = (event: DragEvent) => notes && [...(event.dataTransfer?.types ?? [])].includes("Files");
   stage.addEventListener("dragover", (event) => {
     if (!hasFiles(event)) return;
     event.preventDefault();
@@ -515,6 +517,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     <footer class="notes-foot"><label class="notes-import"><input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple>Import .md</label><span>or drop a file on the page</span></footer>
   </div>`;
   stage.append(notesPanel);
+  notesButton.hidden = !notes;
   notesButton.setAttribute("aria-controls", notesPanel.id);
   notesButton.setAttribute("aria-expanded", "false");
   const notesList = notesPanel.querySelector<HTMLElement>(".notes-list")!;

@@ -9,7 +9,7 @@ export const pathways: Pathway[] = [
     color: "#77e8db",
     icon: "vision",
     intro:
-      "The main visual pathway runs from the retina to the thalamus (LGN) and then to primary visual cortex (V1). From V1, two streams carry the signal onward: one into the temporal lobe, which identifies objects, and one into the parietal lobe, which locates them and guides movement.",
+      "The main visual pathway runs from the retina through the thalamus (LGN) to primary visual cortex (V1). From V1, a temporal stream identifies objects and a parietal stream locates them and guides movement.",
     insight:
       "The retina splits the image into parallel channels before it leaves the eye, and the LGN keeps them separate. At the chiasm, fibres are regrouped so that each hemisphere receives the opposite half of the visual field. V1 represents the visual field as local features such as edges. Beyond V1, the ventral stream identifies objects, with regions that prefer faces, places, bodies and words, and the dorsal stream processes motion and location to guide action.",
     caveat:
@@ -194,11 +194,11 @@ export const pathways: Pathway[] = [
     id: "touch",
     title: "Touch",
     short: "Touch",
-    subtitle: "Touch, position, pain and temperature, from the body to cortex",
+    subtitle: "Touch, position, pain and temperature",
     color: "#89bdf4",
     icon: "touch",
     intro:
-      "Signals from the body reach the brain by two main routes. Fine touch, vibration and body position run up the dorsal columns of the spinal cord and cross to the other side in the medulla. Pain, temperature and itch cross in the spinal cord, near where they enter, and run up the spinothalamic tract. Both routes pass through the thalamus to the cortex, so each hemisphere receives signals mainly from the opposite side of the body.",
+      "Fine touch and body position cross to the other side in the medulla; pain and temperature cross in the spinal cord. Both routes pass through the thalamus, so each hemisphere receives signals mainly from the opposite side of the body.",
     insight:
       "The two routes cross at different levels, so damage to one half of the spinal cord affects fine touch on one side of the body and pain on the other. The touch route leads to S1, which maps the body surface in detail, and on to parietal cortex, which uses touch to guide action. The pain and temperature route reaches S1 and S2, and also the posterior insula, which represents the body’s internal condition, and the cingulate cortex, whose activity follows how unpleasant pain feels. Whether any cortical area responds to pain alone is debated.",
     caveat:
@@ -350,11 +350,11 @@ export const pathways: Pathway[] = [
     id: "hearing",
     title: "Hearing",
     short: "Hearing",
-    subtitle: "From the ear to auditory cortex, and back to the ear",
+    subtitle: "From the ear to auditory cortex and back",
     color: "#ed9bcc",
     icon: "hearing",
     intro:
-      "Sound is converted into nerve signals in the cochlea and sorted by frequency. Several brainstem relays process the signal, including comparing the two ears to locate the sound, before it reaches the thalamus (MGN) and primary auditory cortex. Surrounding belt and parabelt areas then process more complex sounds and send signals along two proposed streams, one mainly for identifying sounds and one mainly for locating them. The brain also sends signals back down to the ear.",
+      "The cochlea turns sound into nerve signals sorted by frequency. Brainstem relays compare the two ears to locate sounds, then the thalamus (MGN) passes the signal to auditory cortex. The brain also sends signals back down to the ear.",
     insight:
       "The auditory brainstem processes timing very precisely, which is needed to locate sounds. The frequency map set up in the cochlea (tonotopy) is kept at each stage up to the cortex. In the cortex, processing runs from core to belt to parabelt, with neurons preferring increasingly complex sounds; a stream toward the front of the temporal lobe helps identify sounds, and a stream toward parietal cortex helps locate them. Medial olivocochlear fibres from the brainstem turn down the cochlea’s amplification, and in animals the auditory cortex can act on them.",
     caveat:
@@ -588,7 +588,7 @@ export const pathways: Pathway[] = [
     color: "#f8a47f",
     icon: "speech",
     intro:
-      "In the widely used dual-stream model, speech is processed along two connected streams. The ventral stream, in both hemispheres, maps speech sounds to meaning. The dorsal stream, mainly in the left hemisphere, maps speech sounds to the movements needed to produce them. Repeating an unfamiliar word relies mainly on the dorsal stream; understanding a word relies on the ventral stream.",
+      "In the widely used dual-stream model, a ventral stream in both hemispheres maps speech sounds to meaning, and a dorsal stream, mainly on the left, maps them to the movements that produce them.",
     insight:
       "In most people, language depends on a network of regions mainly in the left hemisphere. Brain imaging shows word meaning represented across both hemispheres, although studies of brain damage point to a larger role for the left side. Speech also uses memory, attention and motor systems.",
     caveat:
@@ -688,11 +688,11 @@ export const pathways: Pathway[] = [
     id: "loop",
     title: "Cortex–thalamus feedback",
     short: "Feedback",
-    subtitle: "How the cortex adjusts its input and relays through the thalamus",
+    subtitle: "How the cortex adjusts its own input",
     color: "#bda0ff",
     icon: "loop",
     intro:
-      "Sensory signals pass from the thalamus to the cortex, and the cortex sends two kinds of output back to the thalamus. Layer 6 feedback increases or reduces how much the thalamus passes on. Layer 5 output drives higher-order thalamic nuclei, such as the pulvinar, which relay it to other cortical areas. The example uses vision; hearing and touch have a similar circuit.",
+      "The cortex sends two kinds of output back to the thalamus. Layer 6 adjusts how much the thalamus passes on; layer 5 drives higher-order nuclei, such as the pulvinar, that relay to other cortical areas. The example uses vision.",
     insight:
       "The cortex can adjust its own sensory input at the thalamus, through direct excitation from layer 6 and through inhibition via the TRN. In monkeys, attention raises LGN responses and lowers TRN responses, and the same thalamic circuit produces sleep spindles, a brain rhythm seen in light (non-REM) sleep. Through layer 5, the thalamus also carries signals from one cortical area to another, in parallel with the direct connections between them.",
     caveat:
@@ -803,7 +803,7 @@ export const pathways: Pathway[] = [
     color: "#eed183",
     icon: "attention",
     intro:
-      "The senses provide more information than the brain can process in detail. Attention increases the processing of some signals and reduces others. Several systems are involved: a frontal and parietal network that follows current goals, networks that respond to unexpected or important events, brainstem nuclei that set arousal, and the superior colliculus and thalamus below the cortex.",
+      "The senses provide more than the brain can process in detail, so attention increases the processing of some signals and reduces others. Frontal and parietal networks, brainstem arousal systems, and the superior colliculus and thalamus all take part.",
     insight:
       "Attention changes how strongly sensory neurons respond (their gain). Directing the eyes and directing attention share much of their circuitry: the frontal eye fields, parietal cortex and superior colliculus each hold a map of space used for both, although researchers disagree about how completely the two overlap. Goal-driven and event-driven networks interact, neuromodulators such as noradrenaline and acetylcholine adjust alertness and the strength of attention effects, and, in monkeys and mice, the thalamus has been shown to help coordinate the areas involved. Unattended signals are weakened but still processed.",
     caveat:

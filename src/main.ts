@@ -7,6 +7,7 @@ import { createQuizApi } from "./api/quiz-api";
 import { isFailure } from "./api/result";
 import { createTourRunner } from "./api/tour";
 import { createViewApi, type ViewApi, type ViewOutcome } from "./api/view-api";
+import { FEATURES } from "./features";
 import { type Question, showMeRef } from "./model/quiz";
 import { createBrainScene } from "./scene/brain-scene";
 import { createState } from "./state";
@@ -35,7 +36,7 @@ const setPlaying = (value: boolean) => {
 // The quiz card, while open, takes keys 1–6, Enter and → before the topic and step shortcuts.
 let quizCard: QuizCard | undefined;
 setupKeyboard(state, explorer, setPlaying, about.isOpen, () => quizCard?.keyOwner() ?? null);
-setupPanelResize();
+setupPanelResize(browserStorage());
 setupRailTips(byId("rail"));
 byId("about-button").addEventListener("click", () => about.open());
 reducedMotion.addEventListener("change", (event) => {
@@ -130,6 +131,7 @@ docsUi = createDocsUi({
   activity,
   agentActive: () => agent?.runner.running ?? false,
   storage: browserStorage(),
+  notes: FEATURES.notes,
 });
 docsUi.restoreWindows();
 

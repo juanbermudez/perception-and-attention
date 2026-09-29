@@ -119,3 +119,16 @@ export function nextTabIndex(key: string, index: number, count: number): number 
   if (key === "ArrowLeft") return (index - 1 + count) % count;
   return null;
 }
+
+/**
+ * Shrink an element's text until it fits on one line (it has white-space: nowrap), down to `min` px. For
+ * headings that must stay on one line, such as a long region name in a narrow panel.
+ */
+export function fitOneLine(element: HTMLElement, min = 14) {
+  element.style.fontSize = "";
+  let size = Number.parseFloat(globalThis.getComputedStyle?.(element).fontSize ?? "");
+  while (element.scrollWidth > element.clientWidth + 0.5 && size > min) {
+    size -= 1;
+    element.style.fontSize = `${size}px`;
+  }
+}

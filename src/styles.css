@@ -248,15 +248,23 @@ kbd {
   border-radius: 0 2px 2px 0;
   background: var(--path-color, var(--accent));
 }
-.rail-divider {
-  width: 22px;
-  height: 1px;
-  margin: var(--space-2) 0;
-  flex: none;
-  background: var(--line);
+/* Notes, About and the source link sit together at the bottom of the rail. */
+.rail-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  padding-top: var(--space-3);
 }
 .rail-tool {
   margin: var(--space-1) 0;
+}
+/* A filled mark, unlike the stroked line icons. */
+.rail-button svg.brand-icon {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+  stroke: none;
 }
 /* One tooltip for the rail, placed beside the button by rail-tips.ts (the rail scrolls, so it cannot hold it). */
 .rail-tip {
@@ -1289,7 +1297,7 @@ kbd {
 
 /* Pathway view. The header's first slot (the way back and the title) is centred on the rail's first icon. */
 .inspector-heading {
-  padding: var(--rail-top) var(--space-5) var(--space-3);
+  padding: var(--rail-top) var(--space-5) var(--space-5);
   flex: none;
 }
 .heading-slot {
@@ -1298,6 +1306,9 @@ kbd {
   justify-content: center;
   align-items: flex-start;
   min-height: var(--rail-pitch);
+}
+.heading-slot > * {
+  max-width: 100%;
 }
 /* A region page has no tabs, so the header keeps the line the tabs would draw. */
 .region-page .inspector-heading {
@@ -1325,13 +1336,16 @@ kbd {
 #path-title:focus {
   outline: none;
 }
+/* One line: fitOneLine (dom.ts) shrinks a name that would not fit. */
 #path-title {
   margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  text-wrap: balance;
 }
 #path-title::before {
   content: "";
@@ -1344,6 +1358,9 @@ kbd {
 }
 .path-subtitle {
   margin: var(--space-1) 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 12.5px;
   color: var(--quiet);
 }
@@ -1381,7 +1398,7 @@ kbd {
   outline-offset: -2px;
 }
 .path-intro {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-5);
   font-size: 13px;
   line-height: 1.65;
   color: var(--muted);

@@ -11,7 +11,7 @@ import { hostTopic, signalFor, topicHasRegion, WALK_SECONDS } from "../model/top
 import { clearViewOnNavigate } from "../model/view";
 import type { BrainScene } from "../scene/brain-scene";
 import type { ExplorerState } from "../state";
-import { byId, linkedText, nextTabIndex, toast } from "./dom";
+import { byId, fitOneLine, linkedText, nextTabIndex, toast } from "./dom";
 import {
   introHtml,
   normalizationHtml,
@@ -251,8 +251,14 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     const path = current();
     const region = panel === "region" && shownRegion !== null ? regions[shownRegion] : null;
     const origin = regionFrom === "list" ? "Regions" : `Step ${state.step + 1}`;
-    byId("path-title").textContent = region ? region.label : path.title;
-    byId("path-subtitle").textContent = region ? region.where : path.subtitle;
+    const title = byId("path-title"),
+      subtitle = byId("path-subtitle");
+    title.textContent = region ? region.label : path.title;
+    subtitle.textContent = region ? region.where : path.subtitle;
+    // Both stay on one line: the title shrinks a little if it must, and the subtitle, which is kept short,
+    // ends in an ellipsis only in a very narrow panel, with the full text on hover.
+    subtitle.title = subtitle.textContent;
+    fitOneLine(title);
     byId("back-label").textContent = region ? `${path.short} / ${origin}` : "Overview";
     byId("back-link").setAttribute("aria-label", region ? `Back to ${path.title}, ${origin.toLowerCase()}` : "Back to the overview");
     byId("panel-tabs").hidden = region !== null;
@@ -628,6 +634,8 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     });
   }
   watchRegionHover(inspector);
+  // A narrower or wider panel refits the header's title.
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => fitOneLine(byId("path-title"))).observe(inspector);
 
   return {
     attachScene(next: BrainScene) {

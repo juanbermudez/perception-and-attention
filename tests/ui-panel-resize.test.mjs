@@ -20,9 +20,14 @@ async function bundle(source) {
 const page = await readFile("src/index.html", "utf8");
 // Some code reads the media queries when it is loaded, so a DOM is installed before importing it.
 installDom(page);
-const { setupPanelResize } = await bundle(`export { setupPanelResize } from "./src/ui/panel-resize.ts";`);
+const { setupPanelResize, PANEL_SIZE_KEYS } = await bundle(`export { setupPanelResize, PANEL_SIZE_KEYS } from "./src/ui/panel-resize.ts";`);
 
-let dom, workspace, handle, narrow, compact;
+let dom, workspace, handle, narrow, compact, stored;
+/** localStorage, reduced to a Map. */
+const memoryStorage = (entries = {}) => {
+  const map = new Map(Object.entries(entries));
+  return { getItem: (key) => map.get(key) ?? null, setItem: (key, value) => map.set(key, String(value)), map };
+};
 /** The stylesheet, reduced to what sizes the panel: an inline size wins over the media-query defaults. */
 function layout() {
   // The rail beside the panel is 56 px wide on wide screens.
@@ -44,7 +49,8 @@ function resizeTo(width, height = dom.window.innerHeight) {
   compact.set(width <= 1000);
   dom.window.dispatchEvent(new StubEvent("resize"));
 }
-function start(width, height = 900) {
+function start(width, height = 900, storage = null) {
+  stored = storage;
   dom = installDom(page, { width, height });
   workspace = dom.document.querySelector(".workspace");
   handle = dom.document.getElementById("inspector-resize");
@@ -53,7 +59,7 @@ function start(width, height = 900) {
   narrow.matches = width <= 740;
   compact.matches = width <= 1000;
   layout();
-  setupPanelResize();
+  setupPanelResize(storage);
 }
 const key = (name) => handle.dispatchEvent(new StubEvent("keydown", { key: name, bubbles: true }));
 const inlineWidth = () => workspace.style.getPropertyValue("--inspector-width");
@@ -77,12 +83,36 @@ test("arrow keys, Home and End resize the panel within its bounds", () => {
   assert.equal(handle.getAttribute("aria-valuemax"), "560");
 });
 
-test("a width the user set is dropped when the window crosses into the narrower default", () => {
+test("a width the user set is kept, within the new bounds, when the window crosses into the narrower default", () => {
   key("End");
   assert.equal(inlineWidth(), "560px");
   resizeTo(900);
-  assert.equal(inlineWidth(), "", "The inline width would override the 332 px default.");
-  assert.equal(now(), "332");
+  assert.equal(inlineWidth(), "424px", "900 px less the 56 px rail and 420 px of stage.");
+});
+
+test("the width the user picks is saved and comes back on the next visit, clamped to the window", () => {
+  start(1400, 900, memoryStorage());
+  key("ArrowRight");
+  assert.equal(stored.map.get(PANEL_SIZE_KEYS.width), "392");
+  // Next visit: the saved width applies before any interaction.
+  start(1400, 900, memoryStorage({ [PANEL_SIZE_KEYS.width]: "480" }));
+  assert.equal(inlineWidth(), "480px");
+  assert.equal(now(), "480");
+  // A smaller window clamps it; the saved choice is kept, so it returns when the window grows again.
+  resizeTo(900);
+  assert.equal(inlineWidth(), "424px");
+  assert.equal(stored.map.get(PANEL_SIZE_KEYS.width), "480");
+  resizeTo(1400);
+  assert.equal(inlineWidth(), "480px");
+});
+
+test("the narrow layout keeps its own saved drawer height, and bad saved values are ignored", () => {
+  start(700, 900, memoryStorage({ [PANEL_SIZE_KEYS.width]: "480", [PANEL_SIZE_KEYS.height]: "300" }));
+  assert.equal(inlineHeight(), "300px");
+  assert.equal(inlineWidth(), "");
+  start(1400, 900, memoryStorage({ [PANEL_SIZE_KEYS.width]: "wide" }));
+  assert.equal(inlineWidth(), "");
+  assert.equal(now(), "368");
 });
 
 test("a width the user set is clamped again when the window shrinks", () => {
