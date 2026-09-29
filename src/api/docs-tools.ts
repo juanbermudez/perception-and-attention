@@ -6,6 +6,7 @@
 import { inlinePlainText } from "../model/inline";
 import { formatRef, type Ref, resolveRef, suggest } from "../model/refs";
 import { createSearchIndex, type SearchDoc } from "../model/search";
+import { LIMITS } from "../store/limits";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
 import { type ApiError, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
 import type { WindowCommand, WindowInput, WindowsPort } from "./guide-api";
@@ -106,7 +107,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     if (ref.kind !== "doc" && ref.kind !== "quiz" && ref.kind !== "block") return undefined;
     if (ref.kind === "block") return readBlock(ref.id, detail === "full");
     if (detail === "sources") return fail("bad_input", 'Docs and quizzes have no sources. Use detail "brief", "full", "markdown" or "results".');
-    return docs.read(`${ref.kind}:${ref.id}`, (detail ?? "brief") as "brief");
+    return docs.read(`${ref.kind}:${ref.id}`, (detail ?? "brief") as "brief", { maxChars: LIMITS.readChars });
   }
 
   /** One block with its doc: where it is and its markdown. */

@@ -507,3 +507,34 @@ test("L8: outline and read say who last wrote each block", async () => {
     ["agent", "user"],
   );
 });
+
+/* ---------- L3: bounded reads ---------- */
+
+test("L3: read(full) and read(markdown) stop at a size bound and say how to get the rest", async () => {
+  const { api, tools } = toolsSetup();
+  const markdown = Array.from({ length: 20 }, (_, index) => `Paragraph ${index + 1} ${"word ".repeat(600)}`).join("\n\n");
+  const { ref } = ok(await api.doc({ action: "create", title: "Long", markdown }));
+  const full = ok(await tools.read(ref, "full"));
+  assert.equal(full.truncated, true);
+  assert.equal(full.count, 20);
+  const shown = full.blocks.length;
+  assert(shown > 1 && shown < 20, String(shown));
+  assert(JSON.stringify(full).length < m.LIMITS.readChars + 4000, "About the bound, plus the head and hint.");
+  assert.equal(
+    full.hint,
+    `Showing blocks 1–${shown} of 20. List the rest with outline({ ref: "${ref}", cursor: "${shown}" }), then read each with read({ ref: "block:<id>", detail: "full" }).`,
+  );
+  const next = ok(await tools.outline(ref, { cursor: String(shown) }));
+  assert.equal(next.blocks[0].id, ok(await api.read(ref, "full")).blocks[shown].id);
+
+  const md = ok(await tools.read(ref, "markdown"));
+  assert.equal(md.truncated, true);
+  assert(md.markdown.length <= m.LIMITS.readChars);
+  assert.match(md.hint, /doc\(\{ action: "download", ref: "doc:/);
+  // The page's own reads (the quiz card, the editor) get everything.
+  assert.equal(ok(await api.read(ref, "full")).blocks.length, 20);
+  const small = ok(await api.doc({ action: "create", title: "Small", markdown: "Short." }));
+  const whole = ok(await tools.read(small.ref, "full"));
+  assert.equal(whole.truncated, undefined);
+  assert.equal(whole.hint, undefined);
+});

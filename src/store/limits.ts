@@ -12,6 +12,8 @@ export const LIMITS = {
   captionChars: 280,
   /** Not in the spec: keeps titles readable in lists and window headers. */
   titleChars: 200,
+  /** Not in the spec: an agent's read(full) or read(markdown) stops near this many characters and says how to read on. */
+  readChars: 24_000,
   /** List pages (spec §6 conventions). */
   listDefault: 20,
   listMax: 100,

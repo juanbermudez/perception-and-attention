@@ -143,10 +143,17 @@ export interface DocBrief extends ArtifactHead {
   updated: string;
   outline: { id: string; level: number; text: string }[];
 }
-export interface DocFull extends ArtifactHead {
+/** Set when a read stopped at its size bound: how many blocks (or characters) there are, and how to read on. */
+interface Truncated {
+  truncated?: true;
+  count?: number;
+  chars?: number;
+  hint?: string;
+}
+export interface DocFull extends ArtifactHead, Truncated {
   blocks: FullBlock[];
 }
-export interface DocMarkdown extends ArtifactHead {
+export interface DocMarkdown extends ArtifactHead, Truncated {
   markdown: string;
 }
 
@@ -621,7 +628,8 @@ export function createDocsApi(options: DocsApiOptions) {
   }
 
   // read (spec §6.3): brief, full, markdown, results
-  function read(ref: string, detail: ReadDetail = "brief"): Result<DocBrief | DocFull | DocMarkdown | QuizResults> {
+  /** `maxChars` bounds full and markdown reads for agents (L3); the page's own reads leave it out and get everything. */
+  function read(ref: string, detail: ReadDetail = "brief", bound: { maxChars?: number } = {}): Result<DocBrief | DocFull | DocMarkdown | QuizResults> {
     return withStore(async (db) => {
       const artifact = await findArtifact(db, ref);
       if (isApiError(artifact)) return artifact;
@@ -638,18 +646,30 @@ export function createDocsApi(options: DocsApiOptions) {
             outline: headings.map((block) => ({ id: block.id, level: Number(block.type[1]), text: snippet(block.text) })),
           };
         }
-        case "full":
-          return {
-            ...head,
-            blocks: artifact.blocks.map((block) => {
-              const full: FullBlock = { id: block.id, type: block.type, md: blockMd(block), rev: block.rev, by: block.updatedBy };
-              if (block.indent) full.indent = block.indent;
-              if (block.data && (block.type === "view" || block.type === "question")) full.data = block.data;
-              return full;
-            }),
-          };
-        case "markdown":
-          return { ...head, markdown: exportDocument(head.ref, artifact.title, artifact.blocks, now()) };
+        case "full": {
+          const blocks: FullBlock[] = [];
+          let size = 0;
+          for (const block of artifact.blocks) {
+            const full: FullBlock = { id: block.id, type: block.type, md: blockMd(block), rev: block.rev, by: block.updatedBy };
+            if (block.indent) full.indent = block.indent;
+            if (block.data && (block.type === "view" || block.type === "question")) full.data = block.data;
+            size += JSON.stringify(full).length;
+            if (bound.maxChars && size > bound.maxChars && blocks.length) break;
+            blocks.push(full);
+          }
+          const count = artifact.blocks.length;
+          if (blocks.length === count) return { ...head, blocks };
+          const hint = `Showing blocks 1–${blocks.length} of ${count}. List the rest with outline({ ref: "${head.ref}", cursor: "${blocks.length}" }), then read each with read({ ref: "block:<id>", detail: "full" }).`;
+          return { ...head, blocks, truncated: true, count, hint };
+        }
+        case "markdown": {
+          const markdown = exportDocument(head.ref, artifact.title, artifact.blocks, now());
+          if (!bound.maxChars || markdown.length <= bound.maxChars) return { ...head, markdown };
+          // Cut between blocks where one ends inside the bound.
+          const cut = markdown.lastIndexOf("\n\n", bound.maxChars - 1);
+          const hint = `This is the first part of a ${markdown.length.toLocaleString("en")}-character file. Read the rest with read({ ref: "${head.ref}", detail: "full" }) and outline, or give the user the whole file with doc({ action: "download", ref: "${head.ref}" }).`;
+          return { ...head, markdown: `${markdown.slice(0, cut > 0 ? cut : bound.maxChars - 1)}\n`, truncated: true, chars: markdown.length, hint };
+        }
         case "results":
           return results(db, artifact);
         default:
