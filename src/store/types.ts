@@ -70,7 +70,8 @@ export type BlockOp =
   /** Send `block` to replace type, indent, text and data, or `text` alone to keep the rest. */
   | { op: "update"; id: string; rev?: number; block?: BlockContent; text?: string }
   | { op: "replace"; id: string; rev?: number; find: string; with: string }
-  | { op: "delete"; id: string }
+  /** `rev`, when given, must match: an undo does not delete a block someone changed since. */
+  | { op: "delete"; id: string; rev?: number }
   | { op: "move"; id: string; after: Anchor }
   | { op: "set"; id: string; rev?: number; data: BlockData }
   /** Undo of a delete: brings a soft-deleted block back after `after`, or at its old position. */

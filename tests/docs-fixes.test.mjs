@@ -267,3 +267,88 @@ test("L13: a link whose URL has an unbalanced parenthesis survives a save", () =
   }
   assert.equal(m.runsToMarkdown(link("https://example.org/a_(b)")), "[wiki](https://example.org/a_(b))", "Balanced ones stay as they are.");
 });
+
+/* ---------- M6: agent undo with rev guards ---------- */
+
+function toolsSetup(options = {}) {
+  const notes = [];
+  const base = setup({ notify: (message) => notes.push(message), ...options });
+  const tools = createDocsTools({ docs: base.api, present: () => true });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
+  const texts = (ref) => base.engine.getArtifact(ref.slice(4)).blocks.map((block) => block.text);
+  return { ...base, tools, notes, settle, texts };
+}
+const { createDocsTools } = m;
+
+test("M6: Undo of an agent edit does not overwrite what the user changed since; it says why", async () => {
+  const { api, tools, notes, settle, texts } = toolsSetup();
+  const { ref, blocks } = ok(await tools.doc({ action: "create", title: "Notes", markdown: "One\n\nTwo\n\nThree" }));
+  const edit = ok(await tools.editBlocks({ ref, ops: [{ op: "update", id: blocks[0].id, md: "One, by the agent", rev: 1 }] }));
+  ok(await api.saveBlocks(ref, [{ op: "update", id: blocks[0].id, text: "One, by the agent, then the user" }]));
+  edit.undo.run();
+  await settle();
+  assert.deepEqual(texts(ref), ["One, by the agent, then the user", "Two", "Three"]);
+  assert.equal(notes.length, 1);
+  assert.match(notes[0], /^Could not undo: you changed that text after the assistant did\./);
+});
+
+test("M6: Undo keeps a block the agent added if the user wrote in it, and reports a block deleted since", async () => {
+  const { api, tools, notes, settle, texts } = toolsSetup();
+  const { ref, blocks } = ok(await tools.doc({ action: "create", title: "Notes", markdown: "One\n\nTwo" }));
+  const added = ok(await tools.editBlocks({ ref, ops: [{ op: "insert", after: "end", md: "Added" }] }));
+  ok(await api.saveBlocks(ref, [{ op: "update", id: added.inserted[0].id, text: "Added, and the user's words" }]));
+  added.undo.run();
+  await settle();
+  assert.deepEqual(texts(ref), ["One", "Two", "Added, and the user's words"]);
+
+  const edit = ok(await tools.editBlocks({ ref, ops: [{ op: "update", id: blocks[1].id, md: "Two, edited", rev: 1 }] }));
+  ok(await api.saveBlocks(ref, [{ op: "delete", id: blocks[1].id }]));
+  edit.undo.run();
+  await settle();
+  assert.deepEqual(texts(ref), ["One", "Added, and the user's words"]);
+  assert.equal(notes.length, 2);
+  assert.match(notes[1], /^Could not undo: a block the assistant changed has been deleted since\./);
+});
+
+test("M6: Undo of a rename leaves a title the user changed since", async () => {
+  const { api, tools, notes, settle } = toolsSetup();
+  const { ref } = ok(await tools.doc({ action: "create", title: "Draft" }));
+  const renamed = ok(await tools.doc({ action: "rename", ref, title: "Agent title" }));
+  ok(await api.doc({ action: "rename", ref, title: "My title" }, "user"));
+  renamed.undo.run();
+  await settle();
+  assert.equal(ok(await api.read(ref)).title, "My title");
+  assert.match(notes[0], /^Could not undo: the title changed/);
+});
+
+/* ---------- M7(b): the kill switch holds for writes already in flight ---------- */
+
+test("M7: an agent write waiting for the store does not land after control is switched off", async () => {
+  let allowed = true;
+  let release;
+  const engine = openEngine(new sqlite3.oo1.DB(":memory:"));
+  const store = createStore(directCall(engine), { mode: "local" });
+  const api = createDocsApi({
+    store: () =>
+      new Promise((resolve) => {
+        release = () => resolve(store);
+      }),
+    agentAllowed: () => allowed,
+  });
+  const pending = api.doc({ action: "create", title: "Late" });
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  allowed = false;
+  release();
+  err(await pending, "agent_control_off");
+  assert.equal(engine.listArtifacts().items.length, 0);
+  // The user's own writes are not the agent's.
+  const mine = ok(await api.doc({ action: "create", title: "Mine" }, "user"));
+  err(await api.editBlocks({ ref: mine.ref, ops: [{ op: "insert", md: "x" }] }), "agent_control_off");
+  err(await api.doc({ action: "rename", ref: mine.ref, title: "Theirs" }), "agent_control_off");
+  err(await api.doc({ action: "delete", ref: mine.ref }), "agent_control_off");
+  err(await api.createQuiz({ title: "Q", questions: [{ kind: "truefalse", prompt: "?", answer: true }] }), "agent_control_off");
+  ok(await api.editBlocks({ ref: mine.ref, ops: [{ op: "insert", md: "x" }] }, "user"));
+  ok(await api.read(mine.ref), "Reads keep working.");
+  allowed = true;
+  ok(await api.editBlocks({ ref: mine.ref, ops: [{ op: "insert", md: "y" }] }));
+});

@@ -465,6 +465,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
             }
             case "delete": {
               const record = blockRow(artifactId, op.id);
+              checkRev(record, op.rev);
               run("UPDATE blocks SET deleted_at = ?, updated_by = ?, updated_at = ? WHERE id = ?", [at, actor, at, op.id]);
               closeGap(artifactId, Number(record.ord));
               changed.delete(op.id);

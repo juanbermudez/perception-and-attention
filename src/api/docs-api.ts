@@ -31,12 +31,17 @@ import {
   type StoreMode,
   type WindowState,
 } from "../store/types";
+import type { ErrorCode, Failure } from "./result";
 
 // ── Inputs and outputs ────────────────────────────────────────────────────────────────────────
 
-export type ApiErrorCode = StoreErrorCode | "not_available" | "locked_by_user" | "agent_control_off";
-export interface ApiError {
-  error: { code: ApiErrorCode; message: string; options?: string[]; [detail: string]: unknown };
+export type ApiErrorCode = ErrorCode;
+/**
+ * A docs error: the tools' failure shape (`api/result.ts`) with optional details, such as `id`,
+ * `current` (a stale block's rev and markdown), `op` (which op failed), `max` or `deleted`.
+ */
+export interface ApiError extends Failure {
+  error: Failure["error"] & { [detail: string]: unknown };
 }
 export type Result<T> = Promise<T | ApiError>;
 
@@ -151,6 +156,13 @@ export interface DocsApiOptions {
   open?: (ref: string) => void;
   /** Saves a file. Returns false when the browser blocked it (the window then offers a button). */
   download?: (filename: string, text: string, ref: string) => boolean;
+  /**
+   * The kill switch (spec §12), checked again right before an agent's write commits: a call that was
+   * waiting for the store when the user switched control off returns `agent_control_off`.
+   */
+  agentAllowed?: () => boolean;
+  /** Tells the user something went wrong outside a tool call, such as an Undo that could not run (a toast in the page). */
+  notify?: (message: string) => void;
   now?: () => Date;
 }
 
@@ -159,6 +171,7 @@ export type StoreStatus = { store: "unopened" | "unavailable" } | { store: Store
 // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 const SNIPPET = 80;
+/** The one way docs errors are made: a code, a message, and details the agent can act on. */
 const fail = (code: ApiErrorCode, message: string, details: Record<string, unknown> = {}): ApiError => ({ error: { code, message, ...details } });
 export const isApiError = (value: unknown): value is ApiError => typeof value === "object" && value !== null && "error" in value;
 
@@ -237,15 +250,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * Ops that undo an agent's `edit_blocks` batch (spec §6.9: "block Undo works from the agent toast"):
- * delete what it inserted, restore what it deleted, put moved blocks back and revert changed text
- * and data to the revisions they had. `after` is the block order once the batch applied.
+ * delete what it inserted, restore what it deleted, put moved blocks back and bring changed blocks
+ * back to what they were. `after` is the block order once the batch applied. Deletes and updates
+ * carry the rev the agent left, so a block the user changed since makes the undo fail with
+ * `stale_rev` instead of losing the user's words.
  */
 export function undoOps(before: readonly Block[], after: readonly string[], result: BlockOpsResult): BlockOp[] {
   const ops: BlockOp[] = [];
   const order = [...after];
   const place = (id: string, anchor: string) => order.splice(anchor === "start" ? 0 : order.indexOf(anchor) + 1, 0, id);
   for (const block of result.inserted) {
-    ops.push({ op: "delete", id: block.id });
+    ops.push({ op: "delete", id: block.id, rev: block.rev });
     order.splice(order.indexOf(block.id), 1);
   }
   const beforeIds = before.map((block) => block.id);
@@ -269,7 +284,7 @@ export function undoOps(before: readonly Block[], after: readonly string[], resu
   for (const { id, rev } of result.changed) {
     const was = earlier.get(id);
     if (was && was.rev !== rev)
-      ops.push({ op: "update", id, block: { type: was.type, indent: was.indent, text: was.text, ...(was.data ? { data: was.data } : {}) } });
+      ops.push({ op: "update", id, rev, block: { type: was.type, indent: was.indent, text: was.text, ...(was.data ? { data: was.data } : {}) } });
   }
   return ops;
 }
@@ -302,6 +317,12 @@ export function createDocsApi(options: DocsApiOptions) {
       throw error;
     });
     return opening;
+  }
+
+  /** Null when `actor` may write now; call it with no await between it and the write. */
+  function writeBlocked(actor: Actor): ApiError | null {
+    if (actor !== "agent" || (options.agentAllowed?.() ?? true)) return null;
+    return fail("agent_control_off", "The user has switched off assistant control in About. Nothing was changed.");
   }
 
   /** Runs `work` with the store; any store failure becomes a returned error. */
@@ -340,6 +361,8 @@ export function createDocsApi(options: DocsApiOptions) {
       const found = await findArtifact(db, input.ref, input.action === "restore");
       if (isApiError(found)) return found;
       const ref = refOf(found);
+      const blocked = input.action === "download" ? null : writeBlocked(actor);
+      if (blocked) return blocked;
       switch (input.action) {
         case "rename": {
           const summary = await db.updateArtifact(found.id, { title: input.title }, actor);
@@ -377,7 +400,7 @@ export function createDocsApi(options: DocsApiOptions) {
       // Agents often start the markdown with the title as a heading; the window already shows it.
       const first = content[0];
       if (!blocks && first?.type === "h1" && "text" in first && first.text.trim().toLowerCase() === title.trim().toLowerCase()) content = content.slice(1);
-      const invalid = checkContent(content);
+      const invalid = checkContent(content) ?? writeBlocked(actor);
       if (invalid) return invalid;
       const artifact = await db.createArtifact({ kind, title, blocks: content }, actor);
       const ref = refOf(artifact);
@@ -409,6 +432,8 @@ export function createDocsApi(options: DocsApiOptions) {
         }
         ops.push(translated);
       }
+      const blocked = writeBlocked(actor);
+      if (blocked) return blocked;
       const result = await db.applyBlockOps(artifact.id, ops, actor);
       const parts = [
         result.inserted.length && `${result.inserted.length} added`,
@@ -656,6 +681,8 @@ export function createDocsApi(options: DocsApiOptions) {
         const invalid = op.op === "insert" ? checkContent(op.blocks) : op.op === "update" && op.block ? checkContent([op.block]) : null;
         if (invalid) return invalid;
       }
+      const blocked = writeBlocked(actor);
+      if (blocked) return blocked;
       let result: BlockOpsResult = { rev: 0, changed: [], inserted: [], deleted: [] };
       for (let start = 0; start < ops.length; start += LIMITS.opsPerCall) {
         const part = await db.applyBlockOps(id, ops.slice(start, start + LIMITS.opsPerCall), actor);
@@ -699,6 +726,12 @@ export function createDocsApi(options: DocsApiOptions) {
     return () => listeners.delete(listener);
   }
 
+  /** Shows a message to the user (a toast in the page, a warning elsewhere). */
+  function notify(message: string) {
+    if (options.notify) options.notify(message);
+    else console.warn(message);
+  }
+
   return {
     doc,
     editBlocks,
@@ -717,6 +750,7 @@ export function createDocsApi(options: DocsApiOptions) {
     loadWindows,
     status,
     onChange,
+    notify,
   };
 }
 
