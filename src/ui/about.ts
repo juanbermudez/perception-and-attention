@@ -109,6 +109,7 @@ function codeTab() {
   ].join("");
   return `<h3>How it is built</h3>${paragraphs(codeNotes.build)}
     <h3>How the animation works</h3><ul class="plain">${codeNotes.animation.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul>
+    <h3>This guide</h3>${credit("Perception & Attention", "https://github.com/juanbermudez/perception-and-attention", "© 2026 Juan Bermudez · source code on GitHub", externalLink("MIT license", "https://github.com/juanbermudez/perception-and-attention/blob/main/LICENSE"))}
     <h3>Libraries</h3>${libraries}
     <details class="credit-license"><summary>Software license notices</summary><pre>${escapeHtml(MIT_LICENSE)}</pre></details>`;
 }

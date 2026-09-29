@@ -1607,7 +1607,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.object.scale.setScalar(lerp(1, 1.15, selection));
       marker.halo.scale.setScalar(lerp(0.26, 0.44, selection) + Math.min(energy, 1.2) * 0.18);
       marker.pulse.scale.setScalar(lerp(0.65, 1 + (pulseAmount - 0.5) * 0.3, selection));
-      pulseMaterial.opacity = presence * spot * lerp(0.1, pulseAmount * 0.4, selection) * markersPresence;
+      // The white wireframe sphere stays faint, so the highlighted region itself is what reads first.
+      pulseMaterial.opacity = presence * spot * lerp(0.05, pulseAmount * 0.2, selection) * markersPresence;
       marker.object.getWorldPosition(projection);
       projection.project(camera);
       const x = (projection.x * 0.5 + 0.5) * width;

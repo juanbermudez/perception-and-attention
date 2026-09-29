@@ -167,4 +167,5 @@ node scripts/prepare-skull.mjs
 
 - **Anatomy:** [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy) by Gauthier Kervyn and contributors, based on BodyParts3D. The derived geometry keeps CC BY-SA 4.0; the inner-ear (cochlea) meshes keep CC BY-NC-SA 4.0 (non-commercial). See [`ATTRIBUTION.md`](ATTRIBUTION.md).
 - **Libraries:** [math](https://github.com/pmndrs/math) by Isaac Mason and [Three.js](https://threejs.org/), both MIT. [SQLite Wasm](https://sqlite.org/wasm) (SQLite is public domain; the npm wrapper is Apache-2.0; the Emscripten glue is MIT) and [marked](https://marked.js.org/) (MIT) for local docs.
-- **Code license:** not yet chosen.
+- **Code license:** [MIT](LICENSE). The anatomy data in `src/data/` keeps its own licenses above.
+- **Source:** [github.com/juanbermudez/perception-and-attention](https://github.com/juanbermudez/perception-and-attention).
