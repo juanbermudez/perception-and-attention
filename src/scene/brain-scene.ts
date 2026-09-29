@@ -83,6 +83,10 @@ const GLOW_TAU = 0.35;
 // (zoomNearness and LAYER_ZOOM_KEEP in model/view.ts). Fading starts as soon as you
 // zoom in past the default focus distance (0.94 of the overview) and is complete at half.
 const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
+// Keyboard control of the view: turn per arrow press (radians), pan per press (px), distance factor per + press.
+const KEY_TURN = Math.PI / 18;
+const KEY_PAN = 20;
+const KEY_ZOOM = 0.85;
 const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
 // Walkthrough spotlight: routes and markers outside the current step fade to these levels
 // (regions: SPOT_DIM_REGION in model/scene-rules.ts).
@@ -971,6 +975,54 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     orbitSurface.style.cursor = "grab";
   });
   orbitSurface.addEventListener("dragstart", (e) => e.preventDefault());
+  // Keyboard: Tab reaches the view itself. The arrow keys turn it, Shift and the arrow keys move it,
+  // and + and − zoom, each in the direction a drag would. A click focuses the view too, but then the
+  // arrow keys keep stepping through the walkthrough (keyboard.ts), so the keys act only when the
+  // view was reached from the keyboard.
+  orbitSurface.tabIndex = 0;
+  orbitSurface.setAttribute("role", "group");
+  orbitSurface.setAttribute("aria-label", "3D brain view. The arrow keys turn it, Shift and the arrow keys move it, and plus and minus zoom.");
+  let pressing = false,
+    keyboardFocus = false;
+  orbitSurface.addEventListener(
+    "pointerdown",
+    () => {
+      pressing = true;
+    },
+    { capture: true },
+  );
+  for (const type of ["pointerup", "pointercancel"])
+    orbitSurface.addEventListener(
+      type,
+      () => {
+        pressing = false;
+      },
+      { capture: true },
+    );
+  orbitSurface.addEventListener("focus", () => {
+    keyboardFocus = !pressing;
+  });
+  const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  orbitSurface.addEventListener("keydown", (e) => {
+    if (e.target !== orbitSurface || !keyboardFocus || e.altKey || e.ctrlKey || e.metaKey) return;
+    const arrow = ARROWS[e.key],
+      zoom = e.key === "+" || e.key === "=" ? 1 : e.key === "-" || e.key === "_" ? -1 : 0;
+    if (!arrow && !zoom) return;
+    // Handled here, so the step shortcuts (keyboard.ts) leave these keys alone.
+    e.preventDefault();
+    // Like a pointer gesture, a key stops any camera animation and the overview's slow turn.
+    focusStarted = -1;
+    userOrbited = true;
+    // With reduced motion the view jumps instead of easing.
+    controls.enableDamping = !reducedMotion.matches;
+    if (zoom > 0) controls.dollyIn(KEY_ZOOM);
+    else if (zoom < 0) controls.dollyOut(KEY_ZOOM);
+    else if (e.shiftKey) controls.pan(arrow[0] * KEY_PAN, arrow[1] * KEY_PAN);
+    else if (arrow[0]) controls.rotateLeft(arrow[0] * KEY_TURN);
+    else controls.rotateUp(arrow[1] * KEY_TURN);
+    controls.enableDamping = true;
+    contextDistance = camera.position.distanceTo(controls.target);
+  });
   let width = 1,
     height = 1;
   function resize() {

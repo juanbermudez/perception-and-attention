@@ -147,6 +147,11 @@ kbd {
   cursor: grab;
   touch-action: none;
 }
+/* Reached with Tab, the view turns with the arrow keys and zooms with + and −. */
+.orbit-surface:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 #canvas-container canvas {
   display: block;
   width: 100%;
