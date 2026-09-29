@@ -711,3 +711,9 @@ test("M8: a memory store whose database is freed says so, and its banner offers 
   assert.deepEqual(changes, [{ kind: "storage", reason: "freed" }]);
   assert.match(storageBanner("memory", "freed").detail, /Reload to open your saved docs/);
 });
+
+test("M9: a quiz with a bad question is rejected before the store opens", async () => {
+  const { api, opens } = setup();
+  err(await api.createQuiz({ title: "Q", questions: [{ kind: "truefalse", prompt: "?", answer: true, view: BAD_VIEW }] }), "bad_input");
+  assert.equal(opens(), 0);
+});

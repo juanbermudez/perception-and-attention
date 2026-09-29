@@ -710,6 +710,9 @@ export function createDocsApi(options: DocsApiOptions) {
       return fail("limit", `A quiz holds at most ${LIMITS.questionsPerQuiz} questions (got ${input.questions.length}).`, { max: LIMITS.questionsPerQuiz });
     const blocks: BlockContent[] = input.intro ? markdownToBlocks(input.intro).filter((block) => block.type !== "question") : [];
     for (const question of input.questions) blocks.push({ type: "question", text: "", data: question as BlockData });
+    // Checked before the store opens, so a bad question never starts it.
+    const invalid = checkContent(blocks);
+    if (invalid) return invalid;
     return createArtifact("quiz", input.title, "", input.open !== false, actor, blocks);
   }
 
