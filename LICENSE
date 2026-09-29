@@ -19,7 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-The anatomy geometry in src/data/ is not covered by this license. It is derived
-from Z-Anatomy and keeps its own licenses: CC BY-SA 4.0, and CC BY-NC-SA 4.0 for
-the inner-ear (cochlea) meshes. See ATTRIBUTION.md.
