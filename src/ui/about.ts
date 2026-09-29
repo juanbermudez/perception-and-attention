@@ -41,6 +41,7 @@ const CONTROLS: [action: string, input: string][] = [
   ["Rotate", "Drag"],
   ["Pan", "Shift + drag"],
   ["Zoom", "Scroll or pinch"],
+  ["Turn, move or zoom from the keyboard", "Tab to the 3D view, then arrows, <kbd>Shift</kbd> + arrows, <kbd>+</kbd><kbd>−</kbd>"],
   ["Open a region", "Click a label"],
   ["Preview a region", "Hover its name in the panel"],
   ["Previous / next step", "<kbd>←</kbd><kbd>→</kbd>"],

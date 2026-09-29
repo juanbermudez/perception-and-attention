@@ -52,3 +52,11 @@ Four independent passes at commit `9e0cd12`. Proof scripts referenced in the rep
 - Gate `docsDebug` and `explorerDebug` behind a flag.
 - Add a Chrome/Edge origin-trial token for the hosted build.
 - Add tests for the scene and the explorer.
+
+## Status (2026-09-29)
+
+Everything above is fixed on main except:
+- The Chrome and Edge origin-trial token. The build injects it from `WEBMCP_OT_TOKEN`, but a token has to be registered for the hosted origin.
+- The evaluation in ChatGPT. Run [`docs/agent-evals.md`](../../agent-evals.md) there, and also check that doc text marked `untrustedContentHint` still reaches the model.
+- `brain-scene.ts` is not split into modules.
+- `scripts/` is not type-checked, because that needs `@types/node`.
