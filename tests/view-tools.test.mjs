@@ -1,4 +1,4 @@
-// Stage 2 tools end to end in Node: set_view, walkthrough tour/stop, get_context.view/tour and the view
+// Stage 2 tools end to end in Node: set_view, start_tour, walkthrough stop, get_context.view/tour and the view
 // reset on navigation, through the real tool runner, GuideApi, view API and tour runner. The scene,
 // explorer, caption bar and clock are fakes.
 import assert from "node:assert/strict";
@@ -236,7 +236,7 @@ test("set_view without a 3D view is not_available", () => {
   assert.equal(api.setView({ labels: "all" }).error.code, "not_available");
   assert.equal(api.context().view, undefined);
   assert.equal(api.context().tour, undefined);
-  assert.equal(api.walkthrough({ action: "tour", stops: [{ say: "Hi" }] }).error.code, "not_available");
+  assert.equal(api.tour({ stops: [{ say: "Hi" }] }).error.code, "not_available");
 });
 
 /* ---------- get_context and go ---------- */
@@ -278,7 +278,7 @@ test("a tour goes to each stop in order, then applies its view, with the caption
     driving.push(tour.driving);
     goTo(...args);
   };
-  const started = await call("walkthrough", { action: "tour", stops: STOPS });
+  const started = await call("start_tour", { stops: STOPS });
   assert.equal(started.said, "Started a 3-stop tour, about 12 s.");
   assert.deepEqual(started.tour, { stop: 1, of: 3, paused: false });
   assert.equal(started.at, `step:vision/${topic("vision").steps[0].key}`);
@@ -305,7 +305,7 @@ test("a tour goes to each stop in order, then applies its view, with the caption
 
 test("user input pauses the tour; walkthrough controls act on it; stop clears the caption", async () => {
   const { clock, narration, tour, explorer, call } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   clock.tick(1000);
   tour.pause("user");
   assert.deepEqual((await call("get_context", {})).tour, { stop: 1, of: 3, paused: true });
@@ -331,12 +331,12 @@ test("user input pauses the tour; walkthrough controls act on it; stop clears th
 
 test("go and a new walkthrough end a tour", async () => {
   const { tour, narration, call } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   const went = await call("go", { ref: "region:mgn" });
   assert.match(went.said, / Ended the tour\.$/);
   assert.equal(tour.active, false);
   assert.equal(narration.shown, null);
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   const played = await call("walkthrough", { action: "play", ref: "topic:touch" });
   assert.match(played.said, /^Playing Touch step 1 .* Ended the tour\.$/);
   assert.equal(tour.active, false);
@@ -344,25 +344,24 @@ test("go and a new walkthrough end a tour", async () => {
 
 test("a bad stop rejects the whole tour before anything plays", async () => {
   const { explorer, narration, api, call } = setup();
-  const unknown = await call("walkthrough", { action: "tour", stops: [{ ref: "topic:vision" }, { ref: "region:visual cortex" }] });
+  const unknown = await call("start_tour", { stops: [{ ref: "topic:vision" }, { ref: "region:visual cortex" }] });
   assert.equal(unknown.error.code, "unknown_ref");
   assert.match(unknown.error.message, /^stops\.1\.ref: /);
   assert.equal(unknown.error.options[0], "region:v1");
-  const about = await call("walkthrough", { action: "tour", stops: [{ ref: "about/papers" }] });
+  const about = await call("start_tour", { stops: [{ ref: "about/papers" }] });
   assert.match(about.error.message, /^stops\.0\.ref: tour stops go to places in the guide/);
-  const view = api.walkthrough({ action: "tour", stops: [{ say: "Hi" }, { view: { camera: { focus: "v1", frame: ["v1"] } } }] });
+  const view = api.tour({ stops: [{ say: "Hi" }, { view: { camera: { focus: "v1", frame: ["v1"] } } }] });
   assert.match(view.error.message, /^stops\.1\.view: camera\.focus and camera\.frame/);
-  assert.match(api.walkthrough({ action: "tour", stops: [{}] }).error.message, /^stops\.0: give the stop a ref, a view or say text/);
-  assert.equal(api.walkthrough({ action: "tour", stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) }).error.code, "limit");
-  assert.equal(api.walkthrough({ action: "tour", stops: [{ say: "Hi" }], ref: "topic:vision" }).error.code, "bad_input");
-  assert.equal(api.walkthrough({ action: "next", stops: [{ say: "Hi" }] }).error.code, "bad_input");
+  assert.match(api.tour({ stops: [{}] }).error.message, /^stops\.0: give the stop a ref, a view or say text/);
+  assert.equal(api.tour({ stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) }).error.code, "limit");
+  assert.equal(api.tour({ stops: [] }).error.code, "bad_input");
   assert.deepEqual(explorer.calls, []);
   assert.equal(narration.shown, null);
 });
 
-test("walkthrough seconds is the default for tour stops without their own", async () => {
+test("start_tour seconds is the default for stops without their own", async () => {
   const { clock, explorer, call } = setup();
-  await call("walkthrough", { action: "tour", seconds: 3, stops: [{ ref: "topic:vision" }, { ref: "topic:touch", seconds: 10 }, { ref: "overview" }] });
+  await call("start_tour", { seconds: 3, stops: [{ ref: "topic:vision" }, { ref: "topic:touch", seconds: 10 }, { ref: "overview" }] });
   clock.tick(3000);
   assert.equal(explorer.calls.length, 2);
   clock.tick(9999);
@@ -411,7 +410,7 @@ test("going home or to another topic resets layers, isolate, labels and view foc
 
 test("typical Stage 2 results stay under 2 KB", async () => {
   const { call, clock } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   clock.tick(6000);
   for (let i = 0; i < 5; i++) await call("set_view", { camera: { orbit: [10, 0] }, layers: { skull: 0.2, cortex: 0.4 } });
   const results = [

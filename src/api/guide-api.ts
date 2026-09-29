@@ -113,7 +113,12 @@ export interface GuideApiDeps {
   now?: () => number;
 }
 
-export type WalkAction = "play" | "pause" | "next" | "prev" | "restart" | "tour" | "stop";
+export type WalkAction = "play" | "pause" | "next" | "prev" | "restart" | "stop";
+export interface WalkInput {
+  action: WalkAction;
+  ref?: string;
+  seconds?: number;
+}
 export interface TourStopInput {
   ref?: string;
   /** A ViewPatch, applied after going to `ref`. */
@@ -121,11 +126,10 @@ export interface TourStopInput {
   say?: string;
   seconds?: number;
 }
-export interface WalkInput {
-  action: WalkAction;
-  ref?: string;
+export interface TourInput {
+  stops: TourStopInput[];
+  /** The default for stops without their own. */
   seconds?: number;
-  stops?: TourStopInput[];
 }
 interface PlannedStop extends TourStop {
   place?: Place;
@@ -282,9 +286,7 @@ export function createGuideApi({
     }
   }
 
-  function walkthrough({ action, ref, seconds, stops }: WalkInput): Result<WriteResult> {
-    if (stops !== undefined && action !== "tour") return fail("bad_input", `stops applies to tour, not ${action}.`);
-    if (action === "tour") return startTour(stops, ref, seconds);
+  function walkthrough({ action, ref, seconds }: WalkInput): Result<WriteResult> {
     const startsWalk = action === "play" || action === "restart";
     if (ref !== undefined && !startsWalk) return fail("bad_input", `ref applies to play and restart, not ${action}.`);
     if (seconds !== undefined && !startsWalk) return fail("bad_input", `seconds applies to play and restart, not ${action}.`);
@@ -375,10 +377,9 @@ export function createGuideApi({
     explorer.snapshot();
   }
 
-  function startTour(stops: TourStopInput[] | undefined, ref: string | undefined, seconds: number | undefined): Result<WriteResult> {
+  function startTour({ stops, seconds }: TourInput): Result<WriteResult> {
     if (!tour) return fail("not_available", "Tours need the caption bar, which this page does not have.");
-    if (ref !== undefined) return fail("bad_input", "ref applies to play and restart. Give each tour stop its own ref.");
-    if (!stops?.length) return fail("bad_input", `tour needs stops: 1–${TOUR_LIMITS.stops} of { ref?, view?, say?, seconds? }.`);
+    if (!stops?.length) return fail("bad_input", `A tour needs stops: 1–${TOUR_LIMITS.stops} of { ref?, view?, say?, seconds? }.`);
     if (stops.length > TOUR_LIMITS.stops) return fail("limit", `A tour has at most ${TOUR_LIMITS.stops} stops.`);
     const planned = planTour(stops, seconds);
     if (isFailure(planned)) return planned;
@@ -392,7 +393,7 @@ export function createGuideApi({
     });
   }
 
-  function controlTour(action: Exclude<WalkAction, "tour" | "stop">): Result<WriteResult> {
+  function controlTour(action: Exclude<WalkAction, "stop">): Result<WriteResult> {
     const runner = tour as TourRunner;
     const where = () => {
       const status = runner.status();
@@ -471,6 +472,7 @@ export function createGuideApi({
     search,
     go,
     walkthrough,
+    tour: startTour,
     setView,
     quiz,
     doc: (input: DocInput) => docsTools?.doc(input) ?? noDocs(),

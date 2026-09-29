@@ -36,7 +36,7 @@ const {
   export { LAYER_IDS } from "./src/model/view.ts";
 `);
 
-const WRITE_TOOLS = ["go", "walkthrough", "set_view"];
+const WRITE_TOOLS = ["go", "walkthrough", "start_tour", "set_view"];
 const READ_TOOLS = ["get_context", "outline", "read", "search"];
 
 /** A GuideApi double that records calls and answers with fixed results. */
@@ -57,6 +57,7 @@ function fakeApi({ throws = false } = {}) {
     search: answer("search", { scope: "guide", hits: [] }),
     go: answer("go", { at: "step:vision/optic-chiasm", said: "Opened Vision step 2.", undo: { label: "Undo", run: () => calls.push(["undo"]) } }),
     walkthrough: answer("walkthrough", { at: "step:vision/optic-chiasm", walking: true, said: "Playing Vision." }),
+    tour: answer("tour", { at: "step:vision/optic-chiasm", said: "Started a 1-stop tour, about 6 s." }),
     setView: answer("setView", {
       view: { yaw: 90, pitch: 10, zoom: 1 },
       said: "Now viewing from the left.",
@@ -74,10 +75,10 @@ function setup({ on = true, throws = false } = {}) {
   return { api, control, presence, logged, runner };
 }
 
-test("eleven tools, each with a title, a description, and readOnly set only on the read tools", () => {
+test("twelve tools, each with a title, a description, and readOnly set only on the read tools", () => {
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["get_context", "outline", "read", "search", "go", "walkthrough", "set_view", "doc", "edit_blocks", "window", "quiz"],
+    ["get_context", "outline", "read", "search", "go", "walkthrough", "start_tour", "set_view", "doc", "edit_blocks", "window", "quiz"],
   );
   for (const tool of tools) {
     assert(tool.title && tool.description.length > 20, tool.name);
@@ -98,9 +99,12 @@ test("input schemas are inlined JSON Schema objects that reject unknown properti
   const ops = inputSchema(tools.find((tool) => tool.name === "edit_blocks").input).properties.ops.items;
   assert.equal(ops.anyOf.length, 6, "Discriminated unions become anyOf.");
   const walk = inputSchema(tools.find((tool) => tool.name === "walkthrough").input);
-  assert.deepEqual(walk.properties.action.enum, ["play", "pause", "next", "prev", "restart", "tour", "stop"]);
-  assert.deepEqual([walk.properties.seconds.minimum, walk.properties.seconds.maximum], [3, 20]);
+  assert.deepEqual(walk.properties.action.enum, ["play", "pause", "next", "prev", "restart", "stop"]);
+  assert.deepEqual([walk.properties.seconds.minimum, walk.properties.seconds.maximum], [3, 20], "Seconds per walkthrough step.");
   assert.deepEqual(walk.required, ["action"]);
+  const tour = inputSchema(tools.find((tool) => tool.name === "start_tour").input);
+  assert.deepEqual([tour.properties.seconds.minimum, tour.properties.seconds.maximum], [2, 30], "Seconds per stop, the stops' own range.");
+  assert.deepEqual(tour.required, ["stops"]);
 });
 
 const VALID = {
@@ -115,9 +119,10 @@ const VALID = {
     { action: "next" },
     { action: "restart", seconds: 3 },
     { action: "stop" },
-    { action: "tour", stops: [{ ref: "step:vision/3", say: "The LGN relays the eye's signal." }] },
+  ],
+  start_tour: [
+    { stops: [{ ref: "step:vision/3", say: "The LGN relays the eye's signal." }] },
     {
-      action: "tour",
       seconds: 8,
       stops: [
         { ref: "topic:vision" },
@@ -125,7 +130,8 @@ const VALID = {
         { view: { labels: "focus" }, seconds: 30 },
       ],
     },
-    { action: "tour", stops: Array.from({ length: 20 }, (_, i) => ({ say: `Stop ${i + 1}` })) },
+    { seconds: 25, stops: [{ say: "Stops take 2 to 30 seconds, so the default can too." }] },
+    { stops: Array.from({ length: 20 }, (_, i) => ({ say: `Stop ${i + 1}` })) },
   ],
   set_view: [
     {},
@@ -150,18 +156,24 @@ const INVALID = {
   go: [{}, { ref: "topic:vision", camera: "yes" }, { to: "topic:vision" }],
   walkthrough: [
     {},
-    { action: "tour" },
+    { action: "tour", stops: [{ say: "Hi" }] },
     { action: "play", seconds: 2 },
     { action: "play", seconds: 21 },
-    { action: "play", stops: [] },
+    { action: "next", seconds: 5 },
+    { action: "pause", ref: "topic:vision" },
     { action: "play", stops: [{ ref: "topic:vision" }] },
-    { action: "tour", stops: [] },
-    { action: "tour", stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) },
-    { action: "tour", stops: [{ say: "x".repeat(281) }] },
-    { action: "tour", stops: [{ ref: "topic:vision", seconds: 1 }] },
-    { action: "tour", stops: [{ ref: "topic:vision", seconds: 31 }] },
-    { action: "tour", stops: [{ ref: "topic:vision", view: { camera: { focus: "v1", frame: ["lgn"] } } }] },
-    { action: "tour", stops: [{ ref: "topic:vision", duration: 5 }] },
+  ],
+  start_tour: [
+    {},
+    { stops: [] },
+    { stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) },
+    { stops: [{ say: "x".repeat(281) }] },
+    { stops: [{ ref: "topic:vision", seconds: 1 }] },
+    { stops: [{ ref: "topic:vision", seconds: 31 }] },
+    { seconds: 31, stops: [{ ref: "topic:vision" }] },
+    { stops: [{ ref: "topic:vision", view: { camera: { focus: "v1", frame: ["lgn"] } } }] },
+    { stops: [{ ref: "topic:vision", duration: 5 }] },
+    { action: "tour", stops: [{ say: "Hi" }] },
   ],
   set_view: [
     { camera: { focus: "v1", frame: ["lgn"] } },
@@ -477,9 +489,9 @@ test("set_view's schema lists region, layer, side and label names from content",
   assert.deepEqual(Object.keys(schema.properties.layers.properties), LAYER_IDS);
   assert.deepEqual(schema.properties.labels.enum, ["auto", "focus", "all", "none"]);
   assert.equal(schema.properties.isolate.anyOf.length, 3);
-  const walk = inputSchema(tools.find((tool) => tool.name === "walkthrough").input);
-  const stop = walk.properties.stops.items;
-  assert.deepEqual([walk.properties.stops.minItems, walk.properties.stops.maxItems], [1, 20]);
+  const tour = inputSchema(tools.find((tool) => tool.name === "start_tour").input);
+  const stop = tour.properties.stops.items;
+  assert.deepEqual([tour.properties.stops.minItems, tour.properties.stops.maxItems], [1, 20]);
   assert.deepEqual(Object.keys(stop.properties), ["ref", "view", "say", "seconds"]);
   assert.deepEqual([stop.properties.seconds.minimum, stop.properties.seconds.maximum, stop.properties.say.maxLength], [2, 30, 280]);
   assert.deepEqual(Object.keys(stop.properties.view), ["description", "type", "additionalProperties"], "The ViewPatch is spelled out once, on set_view.");
@@ -488,7 +500,7 @@ test("set_view's schema lists region, layer, side and label names from content",
 
 test("embedded view patches are loose in the schema, checked in code with set_view's rules and forgiving ids", async () => {
   const { runner } = setup();
-  const tour = (view) => runner.call("walkthrough", { action: "tour", stops: [{ ref: "topic:vision", view }] });
+  const tour = (view) => runner.call("start_tour", { stops: [{ ref: "topic:vision", view }] });
   assert(!(await tour({ camera: { focus: "V1" }, isolate: { regions: ["region:lgn"] } })).error);
   const bad = await tour({ camera: { focus: "nowhere" } });
   assert.equal(bad.error.code, "bad_input");
@@ -507,11 +519,12 @@ test("set_view and tour errors say what to fix", async () => {
   assert.equal(await message("set_view", { isolate: "v1" }), "isolate: isolate takes a list of region ids, { regions, keep }, or null");
   assert.match(await message("set_view", { layers: { brain: 0 } }), /^layers: Unrecognized key: "brain"/);
   assert.equal(
-    await message("walkthrough", { action: "tour", stops: [{ view: { camera: { focus: "v1", frame: ["lgn"] } } }] }),
+    await message("start_tour", { stops: [{ view: { camera: { focus: "v1", frame: ["lgn"] } } }] }),
     "stops.0.view: camera.focus and camera.frame cannot be used together; use one.",
   );
-  assert.equal(await message("walkthrough", { action: "tour" }), "stops: tour needs stops");
-  assert.equal(await message("walkthrough", { action: "next", stops: [{ say: "Hi" }] }), "stops: stops applies to tour, not next");
+  assert.match(await message("start_tour", {}), /^stops: /);
+  assert.equal(await message("walkthrough", { action: "next", seconds: 5 }), "seconds: seconds applies to play and restart, not next");
+  assert.match(await message("walkthrough", { action: "tour", stops: [] }), /^action: /);
 });
 
 test("set_view's Undo goes to the toast as Back to previous view, never into the result", async () => {

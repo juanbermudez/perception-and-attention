@@ -40,7 +40,7 @@ export function helpCard() {
       searchLimit: SEARCH_LIMIT.max,
     },
     control:
-      "Write tools (go, walkthrough, set_view, doc, edit_blocks, window, quiz) return agent_control_off while the user has assistant control off in About. Read tools always work.",
+      "Write tools (go, walkthrough, start_tour, set_view, doc, edit_blocks, window, quiz) return agent_control_off while the user has assistant control off in About. Read tools always work.",
     errors: [
       "bad_input",
       "unknown_ref (with options)",
