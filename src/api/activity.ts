@@ -1,5 +1,6 @@
 // Activity log with a `seq` cursor (spec §6.1). The page cannot push events to an agent, so the agent
-// polls get_context with the last cursor it saw.
+// polls get_context with the last cursor it saw. `seq` restarts at 1 on every page load; `epoch` names
+// the load, so a cursor from before a reload can be recognised instead of silently skipping entries.
 //
 // The ring in memory is the source for get_context, so logging never starts the docs store. Once
 // the store is open (someone used docs), `connect` mirrors every entry into its `activity` table,
@@ -36,6 +37,8 @@ export const ACTIVITY_PAGE = 30;
 
 export function createActivityLog({ capacity = ACTIVITY_CAPACITY, now = Date.now }: { capacity?: number; now?: () => number } = {}) {
   const entries: ActivityEntry[] = [];
+  /** This page load, in base 36: short, and different after a reload. */
+  const epoch = now().toString(36);
   let seq = 0;
   let sink: ActivitySink | null = null;
   /** The last seq written to the sink; writes go one after another so the store keeps the order. */
@@ -88,6 +91,7 @@ export function createActivityLog({ capacity = ACTIVITY_CAPACITY, now = Date.now
     connect,
     /** Resolves once every mirrored entry has been written. */
     flushed: () => writing,
+    epoch,
     get latest() {
       return seq;
     },

@@ -111,7 +111,7 @@ test("input schemas are inlined JSON Schema objects that reject unknown properti
 });
 
 const VALID = {
-  get_context: [{}, { since: 0 }, { since: 41 }, null, undefined],
+  get_context: [{}, { since: "mfx3k2a.0" }, { since: " mfx3k2a.41 " }, null, undefined],
   outline: [{}, { ref: "topic:vision" }, { ref: "topic:vision", limit: 5, cursor: "5" }, { limit: 100 }],
   read: [{ ref: "help" }, { ref: "region:v1", detail: "full" }, { ref: "step:vision/2", detail: "sources" }],
   search: [{ query: "pulvinar" }, { query: "lgn", scope: "guide", limit: 5 }, { query: "a", limit: 50 }],
@@ -152,7 +152,7 @@ const VALID = {
   ],
 };
 const INVALID = {
-  get_context: [{ since: -1 }, { since: 1.5 }, { since: "3" }, { extra: true }, "string"],
+  get_context: [{ since: 3 }, { since: "x".repeat(41) }, { extra: true }, "string"],
   outline: [{ ref: "" }, { ref: "   " }, { limit: 0 }, { limit: 101 }, { ref: 5 }, { cursor: "x".repeat(21) }, { depth: 2 }],
   read: [{}, { ref: "help", detail: "everything" }, { ref: "x".repeat(201) }, { ref: "help", extra: 1 }],
   search: [{}, { query: "" }, { query: "a", limit: 51 }, { query: "a", scope: "web" }],

@@ -9,7 +9,7 @@ export const getContextTool = defineTool({
   readOnly: true,
   untrustedContent: true,
   input: z.strictObject({
-    since: z.number().int().min(0).optional().describe("The cursor from your previous get_context. Omit to get the latest 30 actions."),
+    since: z.string().trim().max(40).optional().describe("The cursor from your previous get_context. Omit to get the latest 30 actions."),
   }),
   run: (input, api) => api.context(input.since),
 });

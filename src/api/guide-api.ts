@@ -168,10 +168,21 @@ export function createGuideApi({
 
   /* ---------- Queries ---------- */
 
-  function getContext(since?: number) {
+  /**
+   * Cursors are "<epoch>.<seq>". A cursor from an earlier page load (or one that is not a cursor at all)
+   * gets the latest entries and `reset`, since `seq` restarted on reload.
+   */
+  function readCursor(since: string | undefined): { seq?: number; reset: boolean } {
+    if (since === undefined) return { reset: false };
+    const [epoch, seq] = since.trim().split(".");
+    return epoch === activity.epoch && /^\d+$/.test(seq ?? "") ? { seq: Number(seq), reset: false } : { reset: true };
+  }
+
+  function getContext(since?: string) {
     const { snapshot, path } = context();
     const at = placeRef(snapshot.place);
-    const log = activity.since(since);
+    const cursor = readCursor(since);
+    const log = activity.since(cursor.seq);
     const selection = explorer.selection();
     const aboutTab = about.tab();
     const inTopic = path !== null;
@@ -204,8 +215,9 @@ export function createGuideApi({
         ...(entry.ok === undefined ? {} : { ok: entry.ok }),
         ago_s: Math.max(0, Math.round((now() - entry.time) / 1000)),
       })),
-      cursor: log.cursor,
+      cursor: `${activity.epoch}.${log.cursor}`,
       more: log.more || undefined,
+      reset: cursor.reset ? "That cursor is from before the page reloaded, so earlier activity is gone; these are the latest entries." : undefined,
     };
   }
 

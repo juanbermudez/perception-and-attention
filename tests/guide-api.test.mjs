@@ -366,7 +366,7 @@ test("get_context reports the place, the step and new activity since a cursor", 
   assert.equal(start.at, "overview");
   assert.equal(start.panel, undefined);
   assert.equal(start.control, "off");
-  assert.equal(start.cursor, 0);
+  assert.equal(start.cursor, `${activity.epoch}.0`);
   assert.deepEqual(start.activity, []);
 
   activity.append({ by: "user", kind: "navigated", ref: "step:vision/optic-chiasm" });
@@ -375,8 +375,9 @@ test("get_context reports the place, the step and new activity since a cursor", 
   const first = api.context();
   assert.equal(first.activity.length, 2, "Repeated navigation to one place is logged once.");
   assert.deepEqual(first.activity[0], { seq: 1, by: "user", kind: "navigated", ref: "step:vision/optic-chiasm", said: undefined, on: undefined, ago_s: 2 });
-  assert.equal(first.cursor, 2);
+  assert.equal(first.cursor, `${activity.epoch}.2`);
   assert.deepEqual(api.context(first.cursor).activity, []);
+  assert.equal(api.context(first.cursor).reset, undefined);
 
   const { api: inTopic, explorer } = setup();
   inTopic.go("region:mgn");
@@ -387,6 +388,32 @@ test("get_context reports the place, the step and new activity since a cursor", 
   assert.equal(context.step, stepRef("hearing", explorer.state.step));
   assert.equal(context.selected, "mgn");
   assert(bytes(context) < 2048);
+});
+
+test("a cursor from before a reload is recognised: the agent gets the latest entries and reset", () => {
+  const before = setup().api.context().cursor;
+  const log = createActivityLog({ now: () => 99_000 });
+  const api = createGuideApi({
+    explorer: fakeExplorer(),
+    about: { tab: () => null },
+    activity: log,
+    playing: () => false,
+    agentControl: () => true,
+    now: () => 99_000,
+  });
+  log.append({ by: "user", kind: "navigated", ref: "topic:vision" });
+  log.append({ by: "user", kind: "navigated", ref: "topic:hearing" });
+  assert.notEqual(log.epoch, before.split(".")[0], "Each page load has its own epoch.");
+  const after = api.context(before);
+  assert.deepEqual(
+    after.activity.map((entry) => entry.ref),
+    ["topic:vision", "topic:hearing"],
+    "Nothing is skipped, even though the old seq was higher.",
+  );
+  assert.match(after.reset, /before the page reloaded/);
+  assert.equal(after.cursor, `${log.epoch}.2`);
+  assert.equal(api.context("not a cursor").reset !== undefined, true);
+  assert.equal(api.context(after.cursor).reset, undefined);
 });
 
 test("the activity log pages 30 entries at a time and keeps the latest 500", () => {
