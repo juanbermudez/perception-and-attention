@@ -8,6 +8,7 @@ const project = resolve(".");
 import { mulberry32 } from "math/random";
 import { Box3, Matrix4, Vector3 } from "three";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { CEREBELLUM_NAME, CORTEX_NAME } from "./atlas-groups.mjs";
 
 globalThis.window = { innerWidth: 1000, innerHeight: 800 };
 const scale = 0.29;
@@ -78,14 +79,9 @@ function add(name, group, mode = "triangles", count = 0) {
   landmarkMeshes[name] = { center: part.center, min: part.min, max: part.max };
 }
 for (const [name, e] of entries) {
-  if (/gyr|sulc|cuneus|Superior_parietal_lobul|Angular_|Supramarginal_|Insula_/i.test(name) && e.min[1] > -1.3 && e.max[1] < 3.1 && !/[ij]$/.test(name))
-    add(name, "cortex");
+  if (CORTEX_NAME.test(name) && e.min[1] > -1.3 && e.max[1] < 3.1 && !/[ij]$/.test(name)) add(name, "cortex");
 }
-const lowerNames = [...entries.keys()].filter((name) =>
-  /quadrangular_lobule|semilunar_lobule|Gracile_lobule|Biventral_lobule|Tonsil_of_cerebellum|Wing_of_central_lobule|^Central_lobule$|^Lingula_of_cerebellum$|of_vermis$/.test(
-    name,
-  ),
-);
+const lowerNames = [...entries.keys()].filter((name) => CEREBELLUM_NAME.test(name));
 for (const name of lowerNames) add(name, "lower", "points", 500);
 for (const name of ["Ponsl", "Ponsr", "Midbrainl", "Midbrainr", "Medulla_oblongatal", "Medulla_oblongatar"]) add(name, "stem", "points", 650);
 for (const name of [

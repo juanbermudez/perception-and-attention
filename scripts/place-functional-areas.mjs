@@ -8,7 +8,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const atlas = JSON.parse(await readFile("src/data/atlas-data.json", "utf8"));
-const provenance = JSON.parse(await readFile("provenance/anatomy.json", "utf8"));
 
 // Approximate MNI152 brain extent in millimetres (x right, y anterior, z superior).
 const MNI_MIN = [-70, -104, -45];
@@ -87,7 +86,13 @@ const areas = {
   },
 };
 
-const { min, max } = provenance.cerebrumBounds;
+// The atlas cerebrum box the checked-in positions were placed in. Its floor is 0.016 scene units
+// (0.6 mm) below provenance/anatomy.json's cerebrumBounds, which stopped counting two cerebellar
+// lobules once they were no longer grouped with the cortex. Pinned, so re-running reproduces them.
+const { min, max } = {
+  min: [-2.655452251434326, -1.2456998825073242, -1.9977160692214966],
+  max: [2.580211877822876, 2.019406318664551, 1.997717022895813],
+};
 // Scene axes: x posterior, y superior, z left. MNI: x right, y anterior, z superior.
 function toScene([mx, my, mz]) {
   const f = (value, axis) => (value - MNI_MIN[axis]) / (MNI_MAX[axis] - MNI_MIN[axis]);
