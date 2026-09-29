@@ -16,13 +16,13 @@ export const windowTool = defineTool({
     .strictObject({
       action: z.enum(ACTIONS),
       ref: refField("doc:<id>, quiz:<id> or block:<id>. Default: the focused window (required for open).").optional(),
-      at: z.enum(SLOTS).optional().describe("open and place: where on the stage"),
+      slot: z.enum(SLOTS).optional().describe("open and place: where on the stage"),
       size: z.enum(SIZES).optional().describe("open and place: s 320×380, m 440×540, l 600 wide and tall"),
       layout: z.enum(LAYOUTS).optional().describe("arrange only: tile (default) or stack"),
     })
     .superRefine((input, context) => {
       const placing = input.action === "open" || input.action === "place";
-      for (const field of ["at", "size"] as const)
+      for (const field of ["slot", "size"] as const)
         if (!placing && input[field] !== undefined)
           context.addIssue({ code: "custom", path: [field], message: `${field} applies to open and place, not ${input.action}` });
       if (input.action !== "arrange" && input.layout !== undefined)
@@ -30,8 +30,9 @@ export const windowTool = defineTool({
       if (input.action === "arrange" && input.ref !== undefined)
         context.addIssue({ code: "custom", path: ["ref"], message: "arrange acts on every open window" });
       if (input.action === "open" && input.ref === undefined) context.addIssue({ code: "custom", path: ["ref"], message: "open needs ref" });
-      if (input.action === "place" && input.at === undefined && input.size === undefined)
-        context.addIssue({ code: "custom", path: ["at"], message: "place needs at, size or both" });
+      if (input.action === "place" && input.slot === undefined && input.size === undefined)
+        context.addIssue({ code: "custom", path: ["slot"], message: "place needs slot, size or both" });
     }),
-  run: (input, api) => api.window(input),
+  // Results use `at` for the current place, so the input names the window's position `slot`.
+  run: ({ slot, ...input }, api) => api.window({ ...input, ...(slot === undefined ? {} : { at: slot }) }),
 });

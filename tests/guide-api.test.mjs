@@ -374,7 +374,7 @@ test("get_context reports the place, the step and new activity since a cursor", 
   activity.append({ by: "agent", kind: "go", ref: "region:lgn", said: "Showed the LGN." });
   const first = api.context();
   assert.equal(first.activity.length, 2, "Repeated navigation to one place is logged once.");
-  assert.deepEqual(first.activity[0], { seq: 1, by: "user", kind: "navigated", ref: "step:vision/optic-chiasm", said: undefined, on: undefined, ago: 2 });
+  assert.deepEqual(first.activity[0], { seq: 1, by: "user", kind: "navigated", ref: "step:vision/optic-chiasm", said: undefined, on: undefined, ago_s: 2 });
   assert.equal(first.cursor, 2);
   assert.deepEqual(api.context(first.cursor).activity, []);
 

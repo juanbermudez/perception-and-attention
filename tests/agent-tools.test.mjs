@@ -57,6 +57,9 @@ function fakeApi({ throws = false } = {}) {
     search: answer("search", { scope: "guide", hits: [] }),
     go: answer("go", { at: "step:vision/optic-chiasm", said: "Opened Vision step 2.", undo: { label: "Undo", run: () => calls.push(["undo"]) } }),
     walkthrough: answer("walkthrough", { at: "step:vision/optic-chiasm", walking: true, said: "Playing Vision." }),
+    quiz: answer("quiz", { ref: "quiz:k3f9", said: "Created quiz." }),
+    doc: answer("doc", { ref: "doc:k3f9", said: "Created doc." }),
+    window: answer("window", { ref: "doc:k3f9", said: "Opened doc." }),
     tour: answer("tour", { at: "step:vision/optic-chiasm", said: "Started a 1-stop tour, about 6 s." }),
     setView: answer("setView", {
       view: { yaw: 90, pitch: 10, zoom: 1 },
@@ -474,6 +477,44 @@ test("annotations: WebMCP hints on every tool, MCP hints set truthfully on write
   const idempotent = Object.keys(hints).filter((name) => hints[name].idempotentHint);
   assert.deepEqual(destructive, ["doc", "edit_blocks"]);
   assert.deepEqual(idempotent, ["go", "window"]);
+});
+
+test("inputs use unambiguous names, mapped to what the API and the store expect", async () => {
+  const { runner, api } = setup();
+  const question = { kind: "truefalse", prompt: "p", answer: true, show_me: { ref: "region:LGN", view: { camera: { focus: "V1" } } } };
+  assert(!(await runner.call("quiz", { action: "create", title: "T", questions: [question], show: false })).error);
+  assert.deepEqual(api.calls.at(-1), [
+    "quiz",
+    {
+      action: "create",
+      title: "T",
+      open: false,
+      questions: [{ kind: "truefalse", prompt: "p", answer: true, ref: "region:LGN", view: { camera: { focus: "v1" } } }],
+    },
+  ]);
+  assert.match(
+    (await runner.call("quiz", { action: "create", title: "T", questions: [{ ...question, ref: "quiz:k3f9" }] })).error.message,
+    /Unrecognized key: "ref"/,
+  );
+  assert(!(await runner.call("doc", { action: "create", title: "T", show: false })).error);
+  assert.deepEqual(api.calls.at(-1), ["doc", { action: "create", title: "T", open: false }]);
+  assert(!(await runner.call("window", { action: "place", ref: "doc:k3f9", slot: "left" })).error);
+  assert.deepEqual(api.calls.at(-1), ["window", { action: "place", ref: "doc:k3f9", at: "left" }]);
+  assert.equal((await runner.call("window", { action: "place", ref: "doc:k3f9", at: "left" })).error.code, "bad_input");
+});
+
+test("a quiz question that passes the schema always fits in one stored block", async () => {
+  const { runner, api } = setup();
+  const create = (question) => runner.call("quiz", { action: "create", title: "T", questions: [question] });
+  const explain = await create({ kind: "recall", prompt: "p", answer: "a", explain: "x".repeat(2001) });
+  assert.match(explain.error.message, /^questions\.0\.explain: /);
+  const quote = (n) => '"'.repeat(n);
+  const big = { kind: "order", prompt: quote(300), items: Array.from({ length: 8 }, () => quote(300)), explain: quote(2000) };
+  const tooBig = await create(big);
+  assert.equal(tooBig.error.code, "bad_input");
+  assert.match(tooBig.error.message, /^questions\.0: this question is \d+ characters as stored; a block holds 8000/);
+  assert(!(await create({ ...big, explain: "x".repeat(2000) })).error, "Every field at its maximum still fits.");
+  assert.equal(api.calls.length, 1);
 });
 
 /* ---------- Stage 2: set_view and tours ---------- */

@@ -21,7 +21,7 @@ export const docTool = defineTool({
       ref: refField("doc:<id> or quiz:<id>; for every action except create").optional(),
       title: z.string().trim().min(1).max(LIMITS.titleChars).optional().describe("create and rename"),
       markdown: z.string().max(MARKDOWN_CHARS).optional().describe("create only: the doc's content"),
-      open: z.boolean().optional().describe("create only: open it in a window (default true)"),
+      show: z.boolean().optional().describe("create only: show it in a window (default true)"),
     })
     .superRefine((input, context) => {
       const needs = (field: "ref" | "title", when: boolean) => {
@@ -31,9 +31,9 @@ export const docTool = defineTool({
       };
       needs("ref", input.action !== "create");
       needs("title", input.action === "create" || input.action === "rename");
-      for (const field of ["markdown", "open"] as const)
+      for (const field of ["markdown", "show"] as const)
         if (input.action !== "create" && input[field] !== undefined)
           context.addIssue({ code: "custom", path: [field], message: `${field} applies to create, not ${input.action}` });
     }),
-  run: (input, api) => api.doc(input as Parameters<typeof api.doc>[0]),
+  run: ({ show, ...input }, api) => api.doc({ ...input, ...(show === undefined ? {} : { open: show }) } as Parameters<typeof api.doc>[0]),
 });

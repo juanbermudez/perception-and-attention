@@ -120,11 +120,17 @@ const VISION_QUIZ = {
   action: "create",
   title: "Vision basics",
   questions: [
-    { kind: "choice", prompt: "Which structure relays retinal signals to V1?", choices: ["Pulvinar", "LGN", "MGN"], answer: [1], ref: "region:lgn" },
-    { kind: "truefalse", prompt: "Nasal retinal fibres cross at the optic chiasm.", answer: true, ref: "step:vision/2" },
+    {
+      kind: "choice",
+      prompt: "Which structure relays retinal signals to V1?",
+      choices: ["Pulvinar", "LGN", "MGN"],
+      answer: [1],
+      show_me: { ref: "region:lgn" },
+    },
+    { kind: "truefalse", prompt: "Nasal retinal fibres cross at the optic chiasm.", answer: true, show_me: { ref: "step:vision/2" } },
     { kind: "region", prompt: "Click the area that responds most to faces.", answer: ["ffa"], explain: "The fusiform face area." },
     { kind: "order", prompt: "Put the route in order.", items: ["Retina", "Optic chiasm", "LGN", "V1"] },
-    { kind: "recall", prompt: "What does area MT specialise in?", answer: "Visual motion", view: { camera: { focus: "mt" } } },
+    { kind: "recall", prompt: "What does area MT specialise in?", answer: "Visual motion", show_me: { view: { camera: { focus: "mt" } } } },
   ],
 };
 
@@ -167,8 +173,14 @@ test("quiz inputs are checked before they reach the page, with messages that say
     "questions.0.answer: index 2 is past the last choice (1)",
   );
   assert.match(await message(one({ kind: "region", prompt: "p", answer: ["lgn"], choices: ["v1", "mt"] })), /^questions\.0\.choices: .*missing lgn/);
-  assert.match(await message(one({ kind: "truefalse", prompt: "p", answer: true, ref: "region:visual cortex" })), /^questions\.0\.ref: .*closest: region:v1/);
-  assert.match(await message(one({ kind: "truefalse", prompt: "p", answer: true, view: { camera: { focus: "nope" } } })), /^questions\.0\.view: camera\.focus/);
+  assert.match(
+    await message(one({ kind: "truefalse", prompt: "p", answer: true, show_me: { ref: "region:visual cortex" } })),
+    /^questions\.0\.show_me\.ref: .*closest: region:v1/,
+  );
+  assert.match(
+    await message(one({ kind: "truefalse", prompt: "p", answer: true, show_me: { view: { camera: { focus: "nope" } } } })),
+    /^questions\.0\.show_me\.view: camera\.focus/,
+  );
   assert.match(await message(one({ kind: "order", prompt: "p", items: ["a", "b"] })), /^questions\.0\.items/);
   assert.match(await message(one({ kind: "essay", prompt: "p" })), /^questions\.0/);
   assert.match(await message(one({ kind: "truefalse", prompt: "p", answer: true, hint: "x" })), /Unrecognized key/);
@@ -256,8 +268,8 @@ test("acceptance prompt 4: a 5-question vision quiz with a click-the-region ques
 
 test("open, reset and close", async () => {
   const { runner, card } = setup();
-  const { ref } = ok(await runner.call("quiz", { ...VISION_QUIZ, open: false }));
-  assert.deepEqual(card.calls, [], "open: false leaves the card closed.");
+  const { ref } = ok(await runner.call("quiz", { ...VISION_QUIZ, show: false }));
+  assert.deepEqual(card.calls, [], "show: false leaves the card closed.");
   assert.equal(ok(await runner.call("get_context", {})).quiz, undefined);
 
   assert.equal(ok(await runner.call("quiz", { action: "open", ref })).said, "Opened quiz “Vision basics”: 5 questions.");
@@ -271,7 +283,7 @@ test("open, reset and close", async () => {
   assert.equal(reset.said, "Restarted quiz “Vision basics” from question 1 of 5.");
   assert.equal(card.session.position, 0);
 
-  const other = ok(await runner.call("quiz", { action: "create", title: "Other", questions: [{ kind: "truefalse", prompt: "p", answer: true }], open: false }));
+  const other = ok(await runner.call("quiz", { action: "create", title: "Other", questions: [{ kind: "truefalse", prompt: "p", answer: true }], show: false }));
   const wrong = await runner.call("quiz", { action: "close", ref: other.ref });
   assert(isError(wrong, "not_available"));
   assert.deepEqual(wrong.error.options, [ref]);
@@ -288,7 +300,7 @@ test("open, reset and close", async () => {
 
 test("the kill switch blocks quiz writes; quiz reads keep working; without docs the tool is not available", async () => {
   const { runner, control } = setup();
-  const { ref } = ok(await runner.call("quiz", { ...VISION_QUIZ, open: false }));
+  const { ref } = ok(await runner.call("quiz", { ...VISION_QUIZ, show: false }));
   control.on = false;
   assert(isError(await runner.call("quiz", { action: "open", ref }), "agent_control_off"));
   assert(isError(await runner.call("quiz", VISION_QUIZ), "agent_control_off"));
@@ -305,7 +317,7 @@ test("get_context reports quiz answers with ok; other activity has no ok field",
   activity.append({ by: "user", kind: "answered", ref: "block:q2abc", ok: false });
   const [navigated, answered] = api.context().activity;
   assert.equal("ok" in navigated, false);
-  assert.deepEqual(answered, { seq: 2, by: "user", kind: "answered", ref: "block:q2abc", said: undefined, on: undefined, ok: false, ago: 0 });
+  assert.deepEqual(answered, { seq: 2, by: "user", kind: "answered", ref: "block:q2abc", said: undefined, on: undefined, ok: false, ago_s: 0 });
 });
 
 /* ---------- Pick mode ---------- */
