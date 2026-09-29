@@ -21,6 +21,16 @@ import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, st
 import { isolateKeepsRoute, regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
 import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
 import {
+  type FrameView,
+  highlightWeight,
+  homeHighlightWeight,
+  LAYER_MARKERS,
+  labelTarget,
+  markerActive,
+  markerVisible,
+  regionSpot,
+} from "../model/scene-rules";
+import {
   anglesFromDirection,
   anglesFromOrbit,
   clampPitch,
@@ -72,18 +82,24 @@ const GLOW_TAU = 0.35;
 // Zooming in fades the skull and outer brain so the region of interest stands out
 // (zoomNearness and LAYER_ZOOM_KEEP in model/view.ts). Fading starts as soon as you
 // zoom in past the default focus distance (0.94 of the overview) and is complete at half.
-const LAYER_MARKERS = new Set<RegionId>(["l5", "l6"]);
 const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
 const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
-// Walkthrough spotlight: routes and regions outside the current step fade to these levels.
+// Walkthrough spotlight: routes and markers outside the current step fade to these levels
+// (regions: SPOT_DIM_REGION in model/scene-rules.ts).
 const SPOT_DIM_ROUTE = 0.24;
-const CONTEXT_HIGHLIGHT = 0.28; // highlight weight for the other regions of the current topic
-// Overview map: every topic's regions at a low glow; the previewed topic brighter, the rest dimmer.
-const HOME_GLOW = 0.24;
-const HOME_FOCUS = 0.6;
-const HOME_DIM = 0.06;
-const SPOT_DIM_REGION = 0.25;
 const SPOT_DIM_MARKER = 0.3;
+// Anatomy opacity as [x-ray on, x-ray off], before layer presence, zoom fading and topic gating.
+// Atlas surfaces and point clouds are listed by group; groups not listed use `other`.
+const SURFACE_OPACITY: Record<string, readonly [number, number]> = { cortex: [0.065, 0.26], bone: [0.075, 0.075], ear: [0.95, 0.95], other: [0.02, 0.045] };
+const POINT_OPACITY: Record<string, readonly [number, number]> = {
+  bone: [0.28, 0.28],
+  "auditory-nerve": [0.8, 0.8],
+  deep: [0.42, 0.6],
+  other: [0.5, 0.72],
+};
+const CORTEX_POINT_OPACITY = [0.3, 0.62] as const;
+const SKULL_OPACITY = 0.7;
+const groupOpacity = (table: Record<string, readonly [number, number]>, group: string, xray: boolean) => (table[group] ?? table.other)[xray ? 0 : 1];
 const _curve_point = vec3.create();
 const _particle_a = vec3.create();
 const _particle_b = vec3.create();
@@ -344,7 +360,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const material = new THREE.MeshPhongMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: group === "cortex" ? 0.11 : group === "deep" ? 0.02 : 0.55,
+        opacity: groupOpacity(SURFACE_OPACITY, group, state.xray),
         shininess: 18,
         side: THREE.DoubleSide,
         depthWrite: false,
@@ -379,7 +395,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         const particles = new THREE.BufferGeometry();
         particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         particles.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-        const cloudMaterial = pointMaterial(1.25, 0.42, false, sensoryGroups.has(group) ? undefined : viewGap);
+        const cloudMaterial = pointMaterial(1.25, groupOpacity(POINT_OPACITY, group, state.xray), false, sensoryGroups.has(group) ? undefined : viewGap);
         const cloud = new THREE.Points(particles, cloudMaterial);
         world.add(cloud);
         pointLayers.push({
@@ -395,7 +411,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(values, 3));
       geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-      const material = pointMaterial(group === "bone" ? 1.4 : 1.65, group === "bone" ? 0.28 : 0.7, false, sensoryGroups.has(group) ? undefined : viewGap);
+      const material = pointMaterial(
+        group === "bone" ? 1.4 : 1.65,
+        groupOpacity(POINT_OPACITY, group, state.xray),
+        false,
+        sensoryGroups.has(group) ? undefined : viewGap,
+      );
       const object = new THREE.Points(geo, material);
       world.add(object);
       pointLayers.push({
@@ -418,7 +439,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const cortexGeometry = new THREE.BufferGeometry();
   cortexGeometry.setAttribute("position", new THREE.BufferAttribute(cortexPositions, 3));
   cortexGeometry.setAttribute("color", new THREE.BufferAttribute(cortexColors, 3));
-  const cortexMaterial = pointMaterial(1.3, 0.5, true, viewGap);
+  const cortexMaterial = pointMaterial(1.3, CORTEX_POINT_OPACITY[state.xray ? 0 : 1], true, viewGap);
   const cortex = new THREE.Points(cortexGeometry, cortexMaterial);
   world.add(cortex);
   const cortexOpacity = createWeight(cortexMaterial.uniforms.opacity.value);
@@ -429,6 +450,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const atlasParts = new Map(atlas.meshes.map((part) => [part.name, part]));
   const highlightCache = new Map<string, HighlightLayer>();
   const highlightLayers: HighlightLayer[] = [];
+  const pathwayOf = new Map(pathways.map((path) => [path.id, path]));
   const pathwayColors = new Map(pathways.map((path) => [path.id, new THREE.Color(path.color)]));
   const streamColors = Object.fromEntries(sensoryStreams.map((stream) => [stream.id, stream.color])) as Record<string, string>;
   const highlightTargetColor = new THREE.Color();
@@ -440,7 +462,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const key = regionAnatomy[id].parts.join("|");
     let layer = highlightCache.get(key);
     const sense = senseForRegion(id),
-      color = state.path === "attention" && sense ? streamColors[sense] : pathways.find((path) => path.id === state.path)!.color;
+      color = state.path === "attention" && sense ? streamColors[sense] : pathwayOf.get(state.path)!.color;
     highlightTargetColor.set(color);
     if (!layer) {
       const clouds = regionAnatomy[id].parts.map((name) => {
@@ -487,9 +509,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     if (contextPath === state.path) return;
     contextPath = state.path;
     contextHighlights.clear();
-    const path = pathways.find((p) => p.id === state.path)!;
-    const ids = new Set<RegionId>([...path.steps.map((step) => step.region), ...path.edges.flatMap((edge) => [edge.from, edge.to])]);
-    for (const id of ids) contextHighlights.add(highlightLayerFor(id));
+    for (const id of topicRegionIds.get(state.path)!) contextHighlights.add(highlightLayerFor(id));
   }
   // Overview map: each topic's regions glow in its colour. A region used by several topics
   // takes the colour of the first one in guide order; previewing a topic recolours its own.
@@ -949,7 +969,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let lastTime = 0;
   let frameCount = 0;
   const activeRegionIds = new Set<RegionId>();
-  const attentionLabels = new Set<RegionId>(["pfc", "fef", "parietal", "tpj", "sc", "lc", "pulvinar", "extrastriate", "v1", "a1", "s1"]);
   const visibleMarkers: Marker[] = new Array(markers.length);
   // A few hundred surface points stand in for the head outline when placing callouts.
   function outlineSample(values: ArrayLike<number>, count: number) {
@@ -1000,6 +1019,22 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   // Routes and regions the current step is about; everything else is dimmed.
   const spotRoutes = new Set<Route>();
   const spotRegions = new Set<RegionId>();
+  // The view state the marker, label and spotlight rules read (model/scene-rules.ts), refreshed each frame.
+  const frameView: FrameView = {
+    pick: null,
+    home: false,
+    homeTopic: null,
+    homeRegions: null,
+    isolate: null,
+    shown: state.selected,
+    focusActive: false,
+    activeRegions: activeRegionIds,
+    path: state.path,
+    labelMode: state.labelMode,
+    labelsOn: true,
+    spotOn: false,
+    spotRegions,
+  };
   function withStage(own: Route[], route: Route, into: Set<Route>) {
     into.add(route);
     // Staged routes carry both sides together (both eyes, both ears).
@@ -1058,7 +1093,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const simDt = state.playing ? dt * FLOW_TIME_SCALE : 0;
     state.simTime += simDt;
     const time = state.simTime;
-    const current = pathways.find((p) => p.id === state.path)!;
     const reduced = reducedMotion.matches,
       pulseAmount = regionPulse((ms - selectionStart) / 1000, reduced);
     const shown = shownRegion();
@@ -1084,22 +1118,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         const inTopic = homeTopic !== null && topicLayers.get(homeTopic)!.has(layer);
         const colour = inTopic ? topicColours.get(homeTopic!)! : homeColour.get(layer);
         if (colour) vec3.copy(layer.target, colour);
-        const weight = stepWeight(layer.weight, !colour ? 0 : homeTopic === null ? HOME_GLOW : inTopic ? HOME_FOCUS : HOME_DIM, dt, reduced);
+        const weight = stepWeight(layer.weight, homeHighlightWeight(colour !== undefined, homeTopic, inTopic), dt, reduced);
         layer.object.visible = weight > ACTIVITY_CUTOFF;
         layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
         layer.object.material.uniforms.pulse.value = weight * 0.725;
         continue;
       }
-      const target =
-        selected && focusActive
-          ? 1
-          : isolateHighlights.has(layer)
-            ? 1
-            : !state.overview && contextHighlights.has(layer)
-              ? isolate
-                ? Math.min(CONTEXT_HIGHLIGHT, isolate.keep)
-                : CONTEXT_HIGHLIGHT
-              : 0;
+      const target = highlightWeight(selected, isolateHighlights.has(layer), contextHighlights.has(layer), { focusActive, overview: state.overview, isolate });
       const weight = stepWeight(layer.weight, target, dt, reduced);
       layer.object.visible = weight > ACTIVITY_CUTOFF;
       layer.object.material.uniforms.color.value.fromArray(stepColor(layer.color, layer.target, dt, reduced));
@@ -1140,19 +1165,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     }
     viewGap.gapFocus.value.fromArray(stepPoint(gapFocus, regions[gapRegion ?? shown].position, dt, reduced));
     // Presence multiplies the topic, x-ray and zoom rules below, so gating (ears only in hearing) still applies.
-    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, (state.xray ? 0.3 : 0.62) * layerZoomFade("cortex", near), dt, reduced);
+    cortexMaterial.uniforms.opacity.value = stepWeight(cortexOpacity, CORTEX_POINT_OPACITY[state.xray ? 0 : 1] * layerZoomFade("cortex", near), dt, reduced);
     cortex.visible = showPresence(cortexPresence, layerPresence.cortex.value, dissolve) && cortexOpacity.value > ACTIVITY_CUTOFF;
-    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, 0.7 * layerZoomFade("skull", near), dt, reduced);
+    skullMaterial.uniforms.opacity.value = stepWeight(skullOpacity, SKULL_OPACITY * layerZoomFade("skull", near), dt, reduced);
     skull.visible = showPresence(skullPresence, layerPresence.skull.value, dissolve) && skullOpacity.value > ACTIVITY_CUTOFF;
     for (const layer of surfaceLayers) {
-      const target =
-        layer.group === "cortex" ? (state.xray ? 0.065 : 0.26) : layer.group === "bone" ? 0.075 : layer.group === "ear" ? 0.95 : state.xray ? 0.02 : 0.045;
+      const target = groupOpacity(SURFACE_OPACITY, layer.group, state.xray);
       layer.material.opacity = stepWeight(layer.opacity, surfaceVisible(layer.group) ? target * layerZoomFade(layer.layer, near) : 0, dt, reduced);
       layer.object.visible = showPresence(layer.presence, layerPresence[layer.layer].value, dissolve) && layer.opacity.value > ACTIVITY_CUTOFF;
     }
     for (const layer of pointLayers) {
-      const target =
-        layer.group === "bone" ? 0.28 : layer.group === "auditory-nerve" ? 0.8 : layer.group === "deep" ? (state.xray ? 0.42 : 0.6) : state.xray ? 0.5 : 0.72;
+      const target = groupOpacity(POINT_OPACITY, layer.group, state.xray);
       layer.material.uniforms.opacity.value = stepWeight(
         layer.opacity,
         pointsVisible(layer.group) ? target * layerZoomFade(layer.layer, near) : 0,
@@ -1199,9 +1222,17 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     }
 
     const spotOn = !state.overview && state.spotlight && spotRoutes.size + spotRegions.size > 0;
-    // Isolate overrides the step spotlight: isolated regions (and the one shown) stay, the rest drop to `keep`.
-    const regionSpot = (id: RegionId) =>
-      isolate ? (isolate.regions.includes(id) || id === shown ? 1 : isolate.keep) : !spotOn || spotRegions.has(id) || id === shown ? 1 : SPOT_DIM_REGION;
+    frameView.pick = state.pick;
+    frameView.home = home;
+    frameView.homeTopic = homeTopic;
+    frameView.homeRegions = homeTopic === null ? null : topicRegionIds.get(homeTopic)!;
+    frameView.isolate = isolate;
+    frameView.shown = shown;
+    frameView.focusActive = focusActive;
+    frameView.path = state.path;
+    frameView.labelMode = state.labelMode;
+    frameView.labelsOn = state.labels && state.layers.labels > 0;
+    frameView.spotOn = spotOn;
     let offset = 0;
     regionEnergy.clear();
     regionColors.clear();
@@ -1279,7 +1310,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     colorAttribute.needsUpdate = true;
     const pathColor = pathwayColors.get(state.path)!;
     clusters.forEach((cluster, index) => {
-      let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id);
+      let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id, frameView);
       if ((LAYER_MARKERS.has(cluster.id) && shown !== cluster.id) || (cluster.id === "v1" && LAYER_MARKERS.has(shown))) energy = 0;
       const activityColor = regionColors.get(cluster.id) ?? pathColor,
         level = Math.min(energy, 1.2);
@@ -1301,38 +1332,22 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     });
     clusterColorAttribute.needsUpdate = true;
     let visibleCount = 0;
-    const labelMode = state.labelMode,
-      labelsOn = state.labels && state.layers.labels > 0,
-      pick = state.pick;
+    const pick = state.pick;
     for (const marker of markers) {
-      // In pick mode (a quiz's region question) nothing is marked as selected, so no marker stands out.
-      const active = !pick && focusActive && marker.id === shown;
-      const isolated = isolate?.regions.includes(marker.id) ?? false;
+      const active = markerActive(marker.id, frameView);
       marker.label.classList.toggle("selected", active);
       marker.label.setAttribute("aria-pressed", String(active));
-      // While isolating, only isolated regions (and the one shown) keep markers, whatever the topic.
-      // Layer 5 and 6 share V1's position, so only the one being shown (or isolated) gets a marker.
-      // On the overview map, markers appear only for the topic being previewed.
-      // In pick mode, markers show for exactly the regions offered, whatever the topic or isolate.
-      const targetVisible = pick
-        ? pick.includes(marker.id)
-        : (home
-            ? homeTopic !== null && topicRegionIds.get(homeTopic)!.has(marker.id)
-            : isolate
-              ? isolated || active
-              : active || activeRegionIds.has(marker.id)) &&
-          !(LAYER_MARKERS.has(marker.id) && !active && !isolated) &&
-          !(marker.id === "v1" && LAYER_MARKERS.has(shown));
+      const targetVisible = markerVisible(marker.id, frameView);
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
-      const spot = stepWeight(marker.spot, pick || regionSpot(marker.id) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
+      const spot = stepWeight(marker.spot, pick || regionSpot(marker.id, frameView) === 1 ? 1 : SPOT_DIM_MARKER, dt, reduced);
       const visible = presence > ACTIVITY_CUTOFF && markersPresence > ACTIVITY_CUTOFF;
       marker.object.visible = visible;
       marker.halo.visible = visible;
       marker.pulse.visible = visible;
       const markerPath = homeTopic ?? state.path;
       const sense = senseForRegion(marker.id),
-        col = markerPath === "attention" && sense && !pick ? streamColors[sense] : (pathways.find((p) => p.id === markerPath) ?? current).color;
+        col = markerPath === "attention" && sense && !pick ? streamColors[sense] : pathwayOf.get(markerPath)!.color;
       if (targetVisible) {
         highlightTargetColor.set(col);
         highlightTargetColor.toArray(marker.colorTarget);
@@ -1362,25 +1377,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.anchorY = y;
       marker.anchorZ = projection.z;
       const inView = projection.z <= 1 && projection.z >= -1 && x >= 8 && x <= width - 8 && y >= 8 && y <= height - 8;
-      // Label modes: all visible markers; focus = the shown and isolated regions; auto = the
-      // per-topic sets (every marker while isolating, since only isolated ones remain).
-      const labelTarget =
-        targetVisible &&
-        labelsOn &&
-        inView &&
-        (labelMode === "all" ||
-          pick !== null ||
-          (labelMode === "auto" && isolate !== null) ||
-          active ||
-          (labelMode === "focus"
-            ? isolated
-            : (homeTopic ?? state.path) === "attention"
-              ? attentionLabels.has(marker.id)
-              : !["brainstemR", "socR", "icR", "mgnR"].includes(marker.id)));
-      const labelOpacity = stepWeight(marker.labelWeight, labelTarget ? 1 : 0, dt, reduced);
+      const labelOn = labelTarget(marker.id, frameView, targetVisible, inView);
+      const labelOpacity = stepWeight(marker.labelWeight, labelOn ? 1 : 0, dt, reduced);
       marker.label.style.opacity = labelOpacity.toFixed(3);
-      marker.label.style.pointerEvents = labelTarget ? "auto" : "none";
-      marker.label.disabled = !labelTarget;
+      marker.label.style.pointerEvents = labelOn ? "auto" : "none";
+      marker.label.disabled = !labelOn;
       marker.leader.style.opacity = labelOpacity.toFixed(3);
       marker.leader.classList.toggle("selected", active);
       marker.label.hidden = !inView || labelOpacity <= ACTIVITY_CUTOFF;
