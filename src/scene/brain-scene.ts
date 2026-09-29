@@ -69,6 +69,7 @@ import {
   createViewGap,
   highlightMaterial,
   type LayerPresence,
+  pixelRatio,
   pointMaterial,
   pointPresence,
   skullPointMaterial,
@@ -227,7 +228,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const camera = new THREE.PerspectiveCamera(37, 1, 0.1, 80);
   camera.position.set(-4.8, 2.6, 8.5);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+  renderer.setPixelRatio(pixelRatio());
   renderer.setClearColor(getComputedStyle(stage).getPropertyValue("--canvas").trim(), 1);
   container.append(renderer.domElement);
   const controls = new OrbitControls(camera, orbitSurface);
@@ -1085,12 +1086,29 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     camera.fov = stageFov(camera.aspect);
     camera.updateProjectionMatrix();
   }
+  // Resizing clears the canvas, so draw straight away rather than show a blank frame until the next tick.
   const observer = new ResizeObserver(() => {
     resize();
+    if (!contextLost) renderer.render(scene, camera);
     wake();
   });
   observer.observe(container);
   resize();
+  // A new device pixel ratio (browser zoom, or a window moved to another screen) needs a new drawing
+  // buffer size and new point sizes. animate() compares the ratio on every tick, which is cheaper and
+  // surer than a resolution media query (it has to be renewed for each ratio).
+  let ratio = pixelRatio();
+  function updatePixelRatio() {
+    ratio = pixelRatio();
+    renderer.setPixelRatio(ratio);
+    resize();
+    highlightTemplate.uniforms.pixelRatio.value = ratio;
+    scene.traverse((object) => {
+      const material = (object as THREE.Points).material;
+      if (material instanceof THREE.ShaderMaterial && material.uniforms.pixelRatio) material.uniforms.pixelRatio.value = ratio;
+    });
+    wake();
+  }
   let lastTime = 0;
   let frameCount = 0;
   const activeRegionIds = new Set<RegionId>();
@@ -1678,6 +1696,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const dt = lastTime ? Math.min((ms - lastTime) / 1000, 0.05) : 0;
     lastTime = ms;
     if (document.hidden || contextLost) return;
+    if (pixelRatio() !== ratio) updatePixelRatio();
     const key = sceneStateKey(state);
     if (key !== stateKey) {
       stateKey = key;

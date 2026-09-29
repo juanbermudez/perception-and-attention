@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-const pixelRatio = () => Math.min(devicePixelRatio, 1.8);
+/** Device pixels per CSS pixel for the canvas, capped to keep the fill cost down on dense screens. */
+export const pixelRatio = () => Math.min(devicePixelRatio, 1.8);
 
 /**
  * A see-through channel from the camera to the selected region. Anatomy between
