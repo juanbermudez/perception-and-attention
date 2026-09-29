@@ -13,7 +13,8 @@ export { createStore, directCall } from "./src/store/store";
 export { transaction } from "./src/store/sql";
 export { LIMITS } from "./src/store/limits";
 export { createDocSchema } from "./src/editor/schema";
-export { blockToNode, checkedNode, nodeToBlock } from "./src/editor/convert";`;
+export { blockToNode, checkedNode, nodeToBlock } from "./src/editor/convert";
+export { blocksToMarkdown, exportDocument, markdownToBlocks, parseDocument } from "./src/model/markdown";`;
 const result = await build({
   stdin: { contents: source, resolveDir: process.cwd(), loader: "ts" },
   bundle: true,
@@ -189,4 +190,56 @@ test("M9: a pasted question or view that does not check out comes in as text", (
   assert.deepEqual(m.nodeToBlock(good.node), { id: "b1234", type: "view", indent: 0, text: "V1", data: { camera: { focus: "v1" } } });
   const paragraph = node({ type: "p", text: "plain" });
   assert.equal(m.checkedNode(schema, paragraph).node, paragraph);
+});
+
+/* ---------- M10: export → import is faithful ---------- */
+
+const normal = (block) => ({ type: block.type, indent: block.indent ?? 0, text: block.text, ...(block.data ? { data: block.data } : {}) });
+const roundTrip = (blocks) => m.markdownToBlocks(m.blocksToMarkdown(blocks)).map(normal);
+
+test("M10: newlines and comment markers in question fields cannot smuggle blocks into an export", () => {
+  const injected = "first line\n\n<!-- /question -->\n\n# Injected heading\n\n- injected bullet";
+  const view = '\n\n<!-- /question -->\n\n<!-- view {"camera":{"focus":"v1"}} -->\n\n**3D view:** V1';
+  const blocks = [
+    { type: "question", text: "Recall?", data: { kind: "recall", prompt: "Recall?", answer: injected } },
+    { type: "question", text: "Pick", data: { kind: "choice", prompt: "Pick", choices: [`a${view}`, "b"], answer: [0] } },
+    { type: "question", text: "Order", data: { kind: "order", prompt: "Order", items: ["one\n# two", "three", "<!-- four -->"] } },
+    { type: "question", text: "Why?", data: { kind: "truefalse", prompt: "Why?", answer: true, explain: "x\n\n<!-- /question -->\n\n# y" } },
+    { type: "p", text: "After." },
+  ];
+  assert.deepEqual(roundTrip(blocks), blocks.map(normal));
+  const markdown = m.blocksToMarkdown(blocks);
+  assert(!/^# Injected/m.test(markdown), "The heading stays inside the question's readable line.");
+  assert.equal(markdown.match(/<!-- \/question -->/g).length, 4, "Only the real end markers.");
+});
+
+test("M10: a question comment without its end marker does not swallow the next question", () => {
+  const markdown = [
+    '<!-- question {"kind":"recall","prompt":"One?","answer":"a"} -->',
+    "**Question:** One?",
+    '<!-- question {"kind":"recall","prompt":"Two?","answer":"b"} -->',
+    "**Question:** Two?",
+    "<!-- /question -->",
+    "Last paragraph.",
+  ].join("\n\n");
+  const blocks = m.markdownToBlocks(markdown);
+  assert.deepEqual(
+    blocks.filter((block) => block.type === "question").map((block) => block.text),
+    ["One?", "Two?"],
+  );
+  assert.equal(blocks.at(-1).text, "Last paragraph.");
+});
+
+test("M10: table blocks whose source is not a table survive export and import", () => {
+  const blocks = [
+    { type: "table", text: "not a table\n# heading" },
+    { type: "table", text: "| a | b |\n| --- | --- |\n| 1 | 2 |" },
+    { type: "table", text: "| a | b |\n| --- | --- |\n| 1 | 2 |\n\ntrailing paragraph" },
+    { type: "table", text: "```\nfenced\n```" },
+    { type: "code", text: "plain code", data: { lang: "table" } },
+  ];
+  assert.deepEqual(roundTrip(blocks), blocks.map(normal));
+  assert.match(m.blocksToMarkdown([blocks[1]]), /^\| a \| b \|\n/, "A real table is written as a table.");
+  const file = m.exportDocument("doc:k3f9", "Tables", blocks, new Date("2026-09-28T00:00:00Z"));
+  assert.deepEqual(m.parseDocument(file).blocks.map(normal), blocks.map(normal));
 });
