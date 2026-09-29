@@ -65,8 +65,13 @@ try {
     '<div class="error-message">This browser could not start the 3D brain. Try a browser with WebGL enabled. The written topics are still available.</div>';
 }
 // Reload restores the place from the hash (#/vision/parallel-channels); the snapshot settles it before logging starts.
-explorer.restore(location.hash);
-explorer.snapshot();
+// A link that fails to open must not stop the rest of startup (notes, quizzes, the agent surface).
+try {
+  explorer.restore(location.hash);
+  explorer.snapshot();
+} catch (error) {
+  console.error("Could not open the place named in the link", error);
+}
 
 // Agent surface (spec §4): tools over GuideApi, an activity log the agent polls, presence and a kill switch.
 const activity = createActivityLog();

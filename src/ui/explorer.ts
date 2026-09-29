@@ -344,16 +344,30 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     const hash = placeHash(place());
     if (hash === shownHash) return;
     shownHash = hash;
+    writeHash(hash);
+    emit("navigated", auto);
+  }
+  function writeHash(hash: string) {
     try {
       history.replaceState(history.state, "", `${location.pathname}${location.search}${hash}`);
     } catch {
       // Some browsers refuse history changes for file:// pages; the guide works without the hash.
     }
-    emit("navigated", auto);
+  }
+  /** The place a hash names; null for one that names nothing or cannot be decoded (a cut-off `%` escape). */
+  function hashPlace(hash: string): Place | null {
+    try {
+      return parseHash(hash);
+    } catch (error) {
+      console.warn(`Ignoring the link ${JSON.stringify(hash)}: it cannot be read.`, error);
+      return null;
+    }
   }
   window.addEventListener("hashchange", () => {
-    const target = parseHash(location.hash);
-    if (target && placeHash(target) !== shownHash) goTo(target);
+    const target = hashPlace(location.hash);
+    // A link that names no place leaves the view as it is, and the hash goes back to what is shown.
+    if (!target) writeHash(shownHash ?? "");
+    else if (placeHash(target) !== shownHash) goTo(target);
   });
 
   /** Text the user selected in the panel, and the place it belongs to. */
@@ -562,9 +576,9 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
         place: place(),
       };
     },
-    /** Open the place a URL hash names, or the overview. */
+    /** Open the place a URL hash names, or the overview when it names none or cannot be read. */
     restore(hash: string) {
-      goTo(parseHash(hash) ?? { kind: "overview" });
+      goTo(hashPlace(hash) ?? { kind: "overview" });
     },
     onEvent(listener: (event: ExplorerEvent) => void) {
       onEvent = listener;
