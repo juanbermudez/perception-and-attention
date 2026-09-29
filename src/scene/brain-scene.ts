@@ -104,6 +104,7 @@ const GROUP_LAYERS: Record<string, LayerId> = {
   "auditory-nerve": "auditory_nerve",
   bone: "temporal_bone",
 };
+const isRegion = (id: string): id is RegionId => Object.hasOwn(regions, id);
 function showPresence(uniforms: LayerPresence, presence: number, dissolve: number) {
   uniforms.presence.value = presence;
   uniforms.dissolve.value = dissolve;
@@ -578,9 +579,13 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   // to the saved view when the pointer leaves.
   let preview: { id: RegionId; target: Vec3; direction: THREE.Vector3; distance: number } | null = null;
   function previewRegion(id: RegionId) {
+    // A link to an unknown region (pasted into a note, say) does nothing.
+    if (!isRegion(id)) return;
     if (!preview) {
-      const direction = camera.position.clone().sub(controls.target);
-      preview = { id, target: controls.target.toArray() as Vec3, direction, distance: direction.length() };
+      // Return to where the camera is heading if it is still moving, not where it happens to be.
+      const saved = pose();
+      directionFromAngles(_pose_direction, saved.yaw, saved.pitch);
+      preview = { id, target: saved.target, direction: new THREE.Vector3().fromArray(_pose_direction), distance: saved.distance };
     }
     preview.id = id;
     focusRegion(id, true);
@@ -1000,6 +1005,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     // Staged routes carry both sides together (both eyes, both ears).
     if (route.edge.stage !== undefined) for (const other of own) if (other.edge.stage === route.edge.stage) into.add(other);
   }
+  /** The overview has no step: drop the last step's spotlight and volley so it looks the same however you got there. */
+  function clearStep() {
+    spotRoutes.clear();
+    spotRegions.clear();
+    volley = null;
+  }
   function sendVolley(hops: Signal, fallback: RegionId) {
     const own = routes.filter((route) => route.path === state.path);
     const built: Hop[] = [];
@@ -1159,6 +1170,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       markersPresence = layerPresence.markers.value,
       labelsPresence = layerPresence.labels.value;
 
+    if (state.overview && (volley || spotRoutes.size || spotRegions.size)) clearStep();
     // The walkthrough volley runs on wall-clock time, so stepping still animates while the flow is paused.
     volleyClock += dt;
     let hop: Hop | undefined,
@@ -1513,6 +1525,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     },
     /** Select a region in 3D (navigation: clears an agent's view focus). Hover previews keep it. */
     focusRegion(id: RegionId, focusCamera = false) {
+      if (!isRegion(id)) return;
       state.viewFocus = null;
       focusRegion(id, focusCamera);
     },
