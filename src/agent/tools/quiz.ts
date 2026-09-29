@@ -1,8 +1,7 @@
 import * as z from "zod";
 import { resolveRef } from "../../model/refs";
-import { normalizeViewPatch } from "../../model/view";
 import { LIMITS } from "../../store/limits";
-import { refField, regionIdSchema } from "../schemas";
+import { refField, regionIdSchema, viewPatchField } from "../schemas";
 import { defineTool } from "../webmcp";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -16,14 +15,7 @@ const showMeRef = refField("Show me goes here after the answer (region questions
   context.addIssue({ code: "custom", message: `${resolved.error.message.replace(/\.$/, "")}${options}` });
 });
 
-/** A set_view patch, checked by the view API's own rules; kept loose here so the schema stays small. */
-const showMeView = z
-  .record(z.string(), z.unknown())
-  .superRefine((view, context) => {
-    const checked = normalizeViewPatch(view);
-    if ("error" in checked) context.addIssue({ code: "custom", message: checked.error.message });
-  })
-  .describe("A set_view patch Show me applies after ref");
+const showMeView = viewPatchField("A set_view patch Show me applies after ref");
 
 const base = {
   prompt: itemText.describe("Inline markdown; region links as [text](region:id)"),

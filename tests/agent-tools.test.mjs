@@ -91,8 +91,12 @@ test("input schemas are inlined JSON Schema objects that reject unknown properti
     assert.equal(schema.type, "object", tool.name);
     assert.equal(schema.additionalProperties, false, tool.name);
     assert(!("$schema" in schema));
-    assert(!JSON.stringify(schema).includes("$ref"), `${tool.name} uses $ref`);
+    const text = JSON.stringify(schema);
+    assert(!text.includes("$ref"), `${tool.name} uses $ref`);
+    for (const noise of ["9007199254740991", "propertyNames", '"oneOf"']) assert(!text.includes(noise), `${tool.name} has ${noise}`);
   }
+  const ops = inputSchema(tools.find((tool) => tool.name === "edit_blocks").input).properties.ops.items;
+  assert.equal(ops.anyOf.length, 6, "Discriminated unions become anyOf.");
   const walk = inputSchema(tools.find((tool) => tool.name === "walkthrough").input);
   assert.deepEqual(walk.properties.action.enum, ["play", "pause", "next", "prev", "restart", "tour", "stop"]);
   assert.deepEqual([walk.properties.seconds.minimum, walk.properties.seconds.maximum], [3, 20]);
@@ -478,7 +482,18 @@ test("set_view's schema lists region, layer, side and label names from content",
   assert.deepEqual([walk.properties.stops.minItems, walk.properties.stops.maxItems], [1, 20]);
   assert.deepEqual(Object.keys(stop.properties), ["ref", "view", "say", "seconds"]);
   assert.deepEqual([stop.properties.seconds.minimum, stop.properties.seconds.maximum, stop.properties.say.maxLength], [2, 30, 280]);
-  assert.deepEqual(stop.properties.view, { ...schema, description: stop.properties.view.description }, "Tour stops take the same ViewPatch.");
+  assert.deepEqual(Object.keys(stop.properties.view), ["description", "type", "additionalProperties"], "The ViewPatch is spelled out once, on set_view.");
+  assert.match(stop.properties.view.description, /set_view patch/);
+});
+
+test("embedded view patches are loose in the schema, checked in code with set_view's rules and forgiving ids", async () => {
+  const { runner } = setup();
+  const tour = (view) => runner.call("walkthrough", { action: "tour", stops: [{ ref: "topic:vision", view }] });
+  assert(!(await tour({ camera: { focus: "V1" }, isolate: { regions: ["region:lgn"] } })).error);
+  const bad = await tour({ camera: { focus: "nowhere" } });
+  assert.equal(bad.error.code, "bad_input");
+  assert.match(bad.error.message, /^stops\.0\.view: camera\.focus: unknown region id "nowhere"/);
+  assert.match((await tour({ camera: { spin: 1 } })).error.message, /Unknown field camera\.spin\. Options: reset, focus/);
 });
 
 test("set_view and tour errors say what to fix", async () => {
@@ -493,7 +508,7 @@ test("set_view and tour errors say what to fix", async () => {
   assert.match(await message("set_view", { layers: { brain: 0 } }), /^layers: Unrecognized key: "brain"/);
   assert.equal(
     await message("walkthrough", { action: "tour", stops: [{ view: { camera: { focus: "v1", frame: ["lgn"] } } }] }),
-    "stops.0.view.camera: focus and frame cannot be used together; use one",
+    "stops.0.view: camera.focus and camera.frame cannot be used together; use one.",
   );
   assert.equal(await message("walkthrough", { action: "tour" }), "stops: tour needs stops");
   assert.equal(await message("walkthrough", { action: "next", stops: [{ say: "Hi" }] }), "stops: stops applies to tour, not next");

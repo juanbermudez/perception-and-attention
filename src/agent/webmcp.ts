@@ -182,9 +182,24 @@ export function findModelContext(): ModelContextLike | null {
   return null;
 }
 
+/**
+ * Drops what zod adds that says nothing to an agent (the safe-integer bounds of every int(), and
+ * `propertyNames: { type: "string" }` from records), and writes a discriminated union as `anyOf`: its
+ * branches are disjoint by their `op` or `kind` const, and OpenAI's strict mode takes `anyOf` but not `oneOf`.
+ */
+function tidySchema({ jsonSchema }: { jsonSchema: Record<string, unknown> }) {
+  if (jsonSchema.maximum === Number.MAX_SAFE_INTEGER) delete jsonSchema.maximum;
+  if (jsonSchema.minimum === Number.MIN_SAFE_INTEGER) delete jsonSchema.minimum;
+  delete jsonSchema.propertyNames;
+  if (jsonSchema.oneOf) {
+    jsonSchema.anyOf = jsonSchema.oneOf;
+    delete jsonSchema.oneOf;
+  }
+}
+
 /** JSON Schema for a tool input, fully inlined (no `$ref` until the spike confirms support). */
 export function inputSchema(input: z.ZodType): object {
-  const { $schema: _, ...schema } = z.toJSONSchema(input, { io: "input", reused: "inline" });
+  const { $schema: _, ...schema } = z.toJSONSchema(input, { io: "input", reused: "inline", override: tidySchema });
   return schema;
 }
 

@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { QUESTION_KINDS } from "../../model/quiz";
 import { LIMITS } from "../../store/limits";
-import { refField, viewPatchSchema } from "../schemas";
+import { refField, viewPatchField } from "../schemas";
 import { defineTool } from "../webmcp";
 
 const blockId = z.string().trim().min(1).max(40).describe("A block id from outline or read (b7x2k or block:b7x2k)");
@@ -24,9 +24,9 @@ const opSchema = z.discriminatedUnion("op", [
       after: anchor.optional().describe('Where: a block id, "start" or "end" (default)'),
       md: md.optional().describe("Markdown; several blocks are inserted in order"),
       view: z
-        .union([z.literal("current"), viewPatchSchema])
+        .union([z.literal("current"), viewPatchField("A set_view patch (same fields as set_view)")])
         .optional()
-        .describe('"current" saves the live 3D view as a view block, or give a view patch'),
+        .describe('"current" saves the live 3D view as a view block, or give a set_view patch'),
       question: question.optional(),
     })
     .refine((op) => [op.md, op.view, op.question].filter((value) => value !== undefined).length === 1, {
