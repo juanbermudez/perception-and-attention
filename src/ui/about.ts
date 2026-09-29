@@ -189,6 +189,8 @@ export function setupAbout(control?: AgentControl) {
     control.set(!control.on);
     toggle.setAttribute("aria-checked", String(control.on));
   });
+  // Another tab can change the switch while this dialog is open.
+  control?.onChange((on) => panel.querySelector("#agent-control")?.setAttribute("aria-checked", String(on)));
   dialog.addEventListener("close", () => returnFocus?.focus());
   // Clicking the backdrop closes the dialog.
   dialog.addEventListener("click", (event) => {
