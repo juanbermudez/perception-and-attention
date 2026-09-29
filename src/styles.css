@@ -1185,6 +1185,16 @@ kbd {
     transform: rotate(360deg);
   }
 }
+/* Shown over the stage while the WebGL context is lost. */
+.scene-lost {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+}
 .error-message {
   max-width: 380px;
   margin: auto;

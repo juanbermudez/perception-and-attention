@@ -1677,7 +1677,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     requestAnimationFrame(animate);
     const dt = lastTime ? Math.min((ms - lastTime) / 1000, 0.05) : 0;
     lastTime = ms;
-    if (document.hidden) return;
+    if (document.hidden || contextLost) return;
     const key = sceneStateKey(state);
     if (key !== stateKey) {
       stateKey = key;
@@ -1686,13 +1686,28 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     if (!settled) frame(ms, dt);
   }
   requestAnimationFrame(animate);
+  // Losing the WebGL context (a GPU reset, or a phone reclaiming memory) freezes the canvas. Say so over
+  // the stage and pause; preventDefault lets the browser restore the context, and then the view resumes.
+  let contextLost = false,
+    playingBeforeLoss = false;
+  const lostMessage = document.createElement("div");
+  lostMessage.className = "scene-lost";
+  lostMessage.setAttribute("role", "status");
+  lostMessage.innerHTML =
+    '<div class="error-message">The 3D view was interrupted. It comes back on its own if the browser allows; if it does not, reload the page. The explanations are still available.</div>';
   renderer.domElement.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
+    if (contextLost) return;
+    contextLost = true;
+    playingBeforeLoss = state.playing;
     state.playing = false;
-    container.insertAdjacentHTML(
-      "beforeend",
-      '<div class="error-message">The 3D view was interrupted. Reload to restore it. The pathway explanations are still available.</div>',
-    );
+    container.append(lostMessage);
+  });
+  renderer.domElement.addEventListener("webglcontextrestored", () => {
+    contextLost = false;
+    lostMessage.remove();
+    state.playing ||= playingBeforeLoss;
+    wake();
   });
 
   /* ---------- Pose: the camera in agent terms (yaw, pitch, distance; model/view.ts) ---------- */
