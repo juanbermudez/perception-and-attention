@@ -183,7 +183,7 @@ Second paragraph has a tpyo in it.
 const VALID = {
   doc: [
     { action: "create", title: "Notes" },
-    { action: "create", title: "Notes", markdown: "# Hi\n\n- a", open: false },
+    { action: "create", title: "Notes", markdown: "# Hi\n\n- a", show: false },
     { action: "rename", ref: "doc:k3f9", title: "New" },
     { action: "delete", ref: "doc:k3f9" },
     { action: "restore", ref: "doc:k3f9" },
@@ -208,12 +208,12 @@ const VALID = {
   ],
   window: [
     { action: "open", ref: "doc:k3f9" },
-    { action: "open", ref: "block:b7x2k", at: "top-left", size: "l" },
+    { action: "open", ref: "block:b7x2k", slot: "top-left", size: "l" },
     { action: "close" },
     { action: "minimize", ref: "quiz:k3f9" },
     { action: "restore", ref: "doc:k3f9" },
     { action: "focus", ref: "doc:k3f9" },
-    { action: "place", ref: "doc:k3f9", at: "bottom-right" },
+    { action: "place", ref: "doc:k3f9", slot: "bottom-right" },
     { action: "place", size: "s" },
     { action: "arrange" },
     { action: "arrange", layout: "stack" },
@@ -253,10 +253,10 @@ const INVALID = {
   window: [
     {},
     { action: "open" },
-    { action: "open", ref: "doc:k3f9", at: "middle" },
+    { action: "open", ref: "doc:k3f9", slot: "middle" },
     { action: "open", ref: "doc:k3f9", size: "xl" },
     { action: "open", ref: "doc:k3f9", layout: "tile" },
-    { action: "close", at: "left" },
+    { action: "close", slot: "left" },
     { action: "place", ref: "doc:k3f9" },
     { action: "arrange", ref: "doc:k3f9" },
     { action: "arrange", layout: "grid" },
@@ -427,9 +427,9 @@ test("acceptance prompt 5: notes on attention with a 3D view of the priority map
 
 test("window: open a block's doc, place, minimize, restore, arrange; commands default to the focused window", async () => {
   const { call, windows } = setup();
-  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, open: false }));
+  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, show: false }));
   assert.equal(windows.shown.size, 0);
-  const opened = ok(await call("window", { action: "open", ref: `block:${blocks[2].id}`, at: "left", size: "l" }));
+  const opened = ok(await call("window", { action: "open", ref: `block:${blocks[2].id}`, slot: "left", size: "l" }));
   assert.equal(opened.said, "Opened “Notes” at the left.");
   assert.deepEqual(windows.shown.get(ref), { title: "Notes", state: "open", at: "left", size: "l", block: blocks[2].id });
   assert.equal(ok(await call("window", { action: "place", size: "s" })).said, "Moved “Notes” size s.");
@@ -451,7 +451,7 @@ test("window: open a block's doc, place, minimize, restore, arrange; commands de
 
 test("go opens a doc or scrolls to a block in its window", async () => {
   const { call, windows } = setup();
-  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, open: false }));
+  const { ref, blocks } = ok(await call("doc", { action: "create", title: "Notes", markdown: NOTES, show: false }));
   const went = ok(await call("go", { ref: `block:${blocks[3].id}` }));
   assert.equal(went.at, `block:${blocks[3].id}`);
   assert.equal(went.in, ref);

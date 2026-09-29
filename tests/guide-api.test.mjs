@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { build } from "esbuild";
+import { inertScene, installInertDom } from "./support/explorer-dom.mjs";
+
+installInertDom();
+// The explorer's walkthrough timer never fires on its own.
+mock.timers.enable({ apis: ["setTimeout"] });
 
 async function bundle(source) {
   const result = await build({
@@ -15,12 +20,30 @@ async function bundle(source) {
 }
 const m = await bundle(`
   export * from "./src/api/guide-content.ts";
+  export { helpCard } from "./src/agent/help.ts";
   export { createGuideApi } from "./src/api/guide-api.ts";
   export { createActivityLog } from "./src/api/activity.ts";
   export { stepRef, formatRef, placeRef } from "./src/model/refs.ts";
-  export { pathways, regions, regionGuides } from "./src/content/index.ts";
+  export { pathways, regions, regionGuides, guideSources, sources } from "./src/content/index.ts";
+  export { createState } from "./src/state.ts";
+  export { createExplorer } from "./src/ui/explorer.ts";
 `);
-const { outline, read, createGuideApi, createActivityLog, pathways, regions, regionGuides, stepRef } = m;
+const { guideSources, sources } = m;
+const {
+  outline,
+  read,
+  createGuideApi,
+  createActivityLog,
+  createState,
+  createExplorer,
+  pathways,
+  regions,
+  regionGuides,
+  stepRef,
+  searchGuide,
+  noMatchesHint,
+  helpCard,
+} = m;
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 /** Keys with a value: the runner drops undefined fields before results leave the page. */
 const keys = (value) => Object.keys(value).filter((key) => value[key] !== undefined);
@@ -57,6 +80,7 @@ test("outline(topic) lists steps with stable refs, then walkthrough regions and 
   const paged = outline("topic:vision", { limit: 4 });
   assert.equal(paged.steps.length, 4);
   assert.equal(paged.cursor, "4");
+  assert.equal(paged.more, true, "A cursor comes with more: true.");
   const next = outline("topic:vision", { limit: 4, cursor: paged.cursor });
   assert.equal(next.steps[0].n, 5);
   assert(isError(outline("topic:vision", { cursor: "x" }), "bad_input"));
@@ -197,6 +221,13 @@ test("guide text reaches agents with markdown region links, never [[id|text]]", 
   for (const id of links) assert(id in regions, `link to unknown region ${id}`);
 });
 
+test("About › Papers counts each region-only paper once, by URL, as the Papers tab lists them", () => {
+  // The Papers tab lists topic sources first, then region-guide papers whose URL is not listed yet, each URL once.
+  const topicUrls = new Set(pathways.flatMap((path) => path.sourceIds.map((id) => sources.find((source) => source.id === id)?.url)));
+  const regionUrls = new Set(guideSources.map((source) => source.url).filter((url) => !topicUrls.has(url)));
+  for (const detail of ["brief", "full"]) assert.equal(read("about/papers", detail).regionOnly, regionUrls.size, detail);
+});
+
 test("typical results stay under 2 KB", () => {
   const typical = [
     ["outline", outline()],
@@ -208,55 +239,40 @@ test("typical results stay under 2 KB", () => {
   }
   for (const id of REGION_IDS) typical.push([`read region:${id}`, read(`region:${id}`)], [`outline region:${id}`, outline(`region:${id}`)]);
   for (const [label, result] of typical) {
-    // The reference card lists every tool, so it grows with the tool set (11 tools today).
-    const limit = label.includes("reference card") ? 3584 : 2048;
+    // The reference card maps tasks to the 12 tools and explains every error code, so it gets a little more room.
+    const limit = label.includes("reference card") ? 2560 : 2048;
     assert(bytes(result) < limit, `${label}: ${bytes(result)} bytes`);
   }
 });
 
 /* ---------- GuideApi commands, against a fake explorer ---------- */
 
-function fakeExplorer() {
-  const s = { overview: true, path: "attention", step: 0, selected: "pfc", panel: "guide", region: null, walking: false, seconds: 5.5 };
+/** The real explorer (ui/explorer.ts) on an inert DOM, recording what GuideApi asks of it. */
+function realExplorer() {
+  const state = createState(false);
+  const explorer = createExplorer(state, { matches: true }, () => {});
+  explorer.attachScene(inertScene(state));
   const calls = [];
-  const place = () => {
-    if (s.overview) return { kind: "overview" };
-    if (s.panel === "streams") return { kind: "streams" };
-    if (s.panel === "region") return s.region ? { kind: "region", path: s.path, id: s.region } : { kind: "regions", path: s.path };
-    return { kind: "step", path: s.path, index: s.step };
-  };
-  const enter = (path, step = 0) =>
-    Object.assign(s, { overview: false, path, step, selected: pathways.find((p) => p.id === path).steps[step].region, walking: false });
-  return {
+  return Object.assign(Object.create(explorer), {
     calls,
-    state: s,
-    snapshot: () => ({ ...s, place: place() }),
+    state,
     goTo(target, options) {
       calls.push(["goTo", target, options]);
-      if (target.kind === "overview") Object.assign(s, { overview: true, walking: false });
-      if (target.kind === "step") Object.assign(enter(target.path, target.index), { panel: "guide", region: null });
-      if (target.kind === "streams") Object.assign(enter("attention"), { panel: "streams", region: null });
-      if (target.kind === "regions") Object.assign(enter(target.path), { panel: "region", region: null });
-      if (target.kind === "region") {
-        const host = target.path ?? pathways.find((path) => path.steps.some((step) => step.region === target.id)).id;
-        const index = pathways.find((path) => path.id === host).steps.findIndex((step) => step.region === target.id);
-        Object.assign(enter(host, Math.max(0, index)), { panel: "region", region: target.id, selected: target.id });
-      }
+      explorer.goTo(target, options);
     },
     startWalk(seconds) {
       calls.push(["startWalk", seconds]);
-      Object.assign(s, { walking: true, seconds });
+      explorer.startWalk(seconds);
     },
     stopWalk() {
       calls.push(["stopWalk"]);
-      s.walking = false;
+      explorer.stopWalk();
     },
-    selection: () => null,
-  };
+  });
 }
 
 function setup({ control = true } = {}) {
-  const explorer = fakeExplorer();
+  const explorer = realExplorer();
   const opened = [];
   let aboutTab = null;
   const about = {
@@ -366,7 +382,7 @@ test("get_context reports the place, the step and new activity since a cursor", 
   assert.equal(start.at, "overview");
   assert.equal(start.panel, undefined);
   assert.equal(start.control, "off");
-  assert.equal(start.cursor, 0);
+  assert.equal(start.cursor, `${activity.epoch}.0`);
   assert.deepEqual(start.activity, []);
 
   activity.append({ by: "user", kind: "navigated", ref: "step:vision/optic-chiasm" });
@@ -374,9 +390,10 @@ test("get_context reports the place, the step and new activity since a cursor", 
   activity.append({ by: "agent", kind: "go", ref: "region:lgn", said: "Showed the LGN." });
   const first = api.context();
   assert.equal(first.activity.length, 2, "Repeated navigation to one place is logged once.");
-  assert.deepEqual(first.activity[0], { seq: 1, by: "user", kind: "navigated", ref: "step:vision/optic-chiasm", said: undefined, on: undefined, ago: 2 });
-  assert.equal(first.cursor, 2);
+  assert.deepEqual(first.activity[0], { seq: 1, by: "user", kind: "navigated", ref: "step:vision/optic-chiasm", said: undefined, on: undefined, ago_s: 2 });
+  assert.equal(first.cursor, `${activity.epoch}.2`);
   assert.deepEqual(api.context(first.cursor).activity, []);
+  assert.equal(api.context(first.cursor).reset, undefined);
 
   const { api: inTopic, explorer } = setup();
   inTopic.go("region:mgn");
@@ -387,6 +404,64 @@ test("get_context reports the place, the step and new activity since a cursor", 
   assert.equal(context.step, stepRef("hearing", explorer.state.step));
   assert.equal(context.selected, "mgn");
   assert(bytes(context) < 2048);
+});
+
+test("a cursor from before a reload is recognised: the agent gets the latest entries and reset", () => {
+  const before = setup().api.context().cursor;
+  const log = createActivityLog({ now: () => 99_000 });
+  const api = createGuideApi({
+    explorer: realExplorer(),
+    about: { tab: () => null },
+    activity: log,
+    playing: () => false,
+    agentControl: () => true,
+    now: () => 99_000,
+  });
+  log.append({ by: "user", kind: "navigated", ref: "topic:vision" });
+  log.append({ by: "user", kind: "navigated", ref: "topic:hearing" });
+  assert.notEqual(log.epoch, before.split(".")[0], "Each page load has its own epoch.");
+  const after = api.context(before);
+  assert.deepEqual(
+    after.activity.map((entry) => entry.ref),
+    ["topic:vision", "topic:hearing"],
+    "Nothing is skipped, even though the old seq was higher.",
+  );
+  assert.match(after.reset, /before the page reloaded/);
+  assert.equal(after.cursor, `${log.epoch}.2`);
+  assert.equal(api.context("not a cursor").reset !== undefined, true);
+  assert.equal(api.context(after.cursor).reset, undefined);
+});
+
+test("a search with no hits says what to try next, naming close refs when there are some", () => {
+  const { api } = setup();
+  const typo = api.search("pulvinr", "guide");
+  assert.deepEqual(typo.hits, []);
+  assert.match(
+    typo.hint,
+    /^No matches for "pulvinr"\. Closest refs: region:pulvinar(, [a-z:/-]+)*\. Try fewer or different keywords, or browse with outline\(\)\.$/,
+  );
+  assert.equal(noMatchesHint("qqqxxz"), 'No matches for "qqqxxz". Try fewer or different keywords, or browse with outline().');
+  assert.equal(api.search("lgn", "guide").hint, undefined);
+  for (const hit of searchGuide("lgn relay", 50)) assert.notEqual(hit.snip, "", `${hit.ref}: an empty snip is left out`);
+});
+
+test("the help card maps tasks to tools and says what each error code asks for", () => {
+  const card = helpCard();
+  assert.equal(card.details.results, "a quiz's answers and score");
+  assert.equal(card.tasks["narrate your own sequence"], "start_tour");
+  assert.equal(card.tasks["list the user's docs"], "outline docs");
+  for (const code of [
+    "bad_input",
+    "unknown_ref",
+    "not_available",
+    "stale_rev",
+    "locked_by_user",
+    "limit",
+    "agent_control_off",
+    "store_unavailable",
+    "internal",
+  ])
+    assert(card.errors[code], code);
 });
 
 test("the activity log pages 30 entries at a time and keeps the latest 500", () => {

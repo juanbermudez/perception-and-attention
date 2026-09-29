@@ -1,7 +1,22 @@
 // Result shapes shared by the API and every tool. Errors are returned, never thrown (spec §6).
 
-export type ErrorCode = "bad_input" | "unknown_ref" | "not_available" | "stale_rev" | "locked_by_user" | "limit" | "agent_control_off" | "store_unavailable";
+/** What each code asks of the agent is listed in the help card (`agent/help.ts`). */
+export type ErrorCode =
+  | "bad_input"
+  | "unknown_ref"
+  | "not_available"
+  | "stale_rev"
+  | "locked_by_user"
+  | "limit"
+  | "agent_control_off"
+  | "store_unavailable"
+  /** A bug in the page, not in the call. */
+  | "internal";
 
+/**
+ * Docs errors (`docs-api.ts`) can add where they happened: the block `id`, the 1-based `op` that failed,
+ * the block's `current` rev and markdown on `stale_rev`, or the `max` a limit allows.
+ */
 export interface ApiError {
   code: ErrorCode;
   message: string;

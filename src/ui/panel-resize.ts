@@ -2,9 +2,10 @@
 // panel sits below the stage, so the same handle resizes its height instead.
 import { byId } from "./dom";
 
-const NARROW = matchMedia("(max-width: 740px)");
-
 export function setupPanelResize() {
+  const NARROW = matchMedia("(max-width: 740px)");
+  // The stylesheet's narrower default panel width starts here (styles.css, @media (max-width: 1000px)).
+  const COMPACT = matchMedia("(max-width: 1000px)");
   const workspace = document.querySelector<HTMLElement>(".workspace");
   if (!workspace) throw new Error("Missing .workspace");
   const panel = byId("inspector");
@@ -72,12 +73,18 @@ export function setupPanelResize() {
   });
   window.addEventListener("resize", () => {
     finish();
-    updateHandle();
+    // A size the user set stays inside the new bounds; without one, the stylesheet's default applies.
+    if (workspace.style.getPropertyValue(NARROW.matches ? "--drawer-height" : "--inspector-width")) setSize(currentSize());
+    else updateHandle();
   });
-  NARROW.addEventListener("change", () => {
+  // Crossing a breakpoint drops the size the user set, so the inline value never overrides that
+  // breakpoint's default (it would, being more specific than the stylesheet's :root value).
+  const resetSize = () => {
     workspace.style.removeProperty("--inspector-width");
     workspace.style.removeProperty("--drawer-height");
     updateHandle();
-  });
+  };
+  NARROW.addEventListener("change", resetSize);
+  COMPACT.addEventListener("change", resetSize);
   updateHandle();
 }

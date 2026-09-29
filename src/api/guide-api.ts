@@ -21,7 +21,7 @@ import { normalizeViewPatch } from "../model/view";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
 import type { ActivityLog } from "./activity";
 import { createDocsTools, type DocInput, type DocsApi, type EditBlocksInput } from "./docs-tools";
-import { type Detail, DOCS_LATER, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
+import { type Detail, DOCS_LATER, noMatchesHint, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
 import type { QuizApi, QuizInput } from "./quiz-api";
 import { fail, isFailure, type Result, type WriteResult } from "./result";
 import { TOUR_LIMITS, type TourRunner, type TourStop } from "./tour";
@@ -113,7 +113,12 @@ export interface GuideApiDeps {
   now?: () => number;
 }
 
-export type WalkAction = "play" | "pause" | "next" | "prev" | "restart" | "tour" | "stop";
+export type WalkAction = "play" | "pause" | "next" | "prev" | "restart" | "stop";
+export interface WalkInput {
+  action: WalkAction;
+  ref?: string;
+  seconds?: number;
+}
 export interface TourStopInput {
   ref?: string;
   /** A ViewPatch, applied after going to `ref`. */
@@ -121,11 +126,10 @@ export interface TourStopInput {
   say?: string;
   seconds?: number;
 }
-export interface WalkInput {
-  action: WalkAction;
-  ref?: string;
+export interface TourInput {
+  stops: TourStopInput[];
+  /** The default for stops without their own. */
   seconds?: number;
-  stops?: TourStopInput[];
 }
 interface PlannedStop extends TourStop {
   place?: Place;
@@ -164,10 +168,21 @@ export function createGuideApi({
 
   /* ---------- Queries ---------- */
 
-  function getContext(since?: number) {
+  /**
+   * Cursors are "<epoch>.<seq>". A cursor from an earlier page load (or one that is not a cursor at all)
+   * gets the latest entries and `reset`, since `seq` restarted on reload.
+   */
+  function readCursor(since: string | undefined): { seq?: number; reset: boolean } {
+    if (since === undefined) return { reset: false };
+    const [epoch, seq] = since.trim().split(".");
+    return epoch === activity.epoch && /^\d+$/.test(seq ?? "") ? { seq: Number(seq), reset: false } : { reset: true };
+  }
+
+  function getContext(since?: string) {
     const { snapshot, path } = context();
     const at = placeRef(snapshot.place);
-    const log = activity.since(since);
+    const cursor = readCursor(since);
+    const log = activity.since(cursor.seq);
     const selection = explorer.selection();
     const aboutTab = about.tab();
     const inTopic = path !== null;
@@ -180,7 +195,7 @@ export function createGuideApi({
       n: inTopic ? snapshot.step + 1 : undefined,
       of: inTopic ? stepCount(path) : undefined,
       selected: inTopic ? snapshot.selected : undefined,
-      playing: playing(),
+      animating: playing(),
       walking: snapshot.walking,
       seconds: snapshot.walking ? snapshot.seconds : undefined,
       view: view?.current(),
@@ -198,17 +213,19 @@ export function createGuideApi({
         said: entry.said,
         on: entry.on,
         ...(entry.ok === undefined ? {} : { ok: entry.ok }),
-        ago: Math.max(0, Math.round((now() - entry.time) / 1000)),
+        ago_s: Math.max(0, Math.round((now() - entry.time) / 1000)),
       })),
-      cursor: log.cursor,
+      cursor: `${activity.epoch}.${log.cursor}`,
       more: log.more || undefined,
+      reset: cursor.reset ? "That cursor is from before the page reloaded, so earlier activity is gone; these are the latest entries." : undefined,
     };
   }
 
   function search(query: string, scope: "guide" | "docs" | "all" = "all", limit = SEARCH_LIMIT.default): Result<object> | Promise<Result<object>> {
     if (docsTools && scope !== "guide") return docsTools.search(query, scope, limit);
     if (scope === "docs") return fail("not_available", DOCS_LATER);
-    return { scope: "guide", hits: searchGuide(query, limit) };
+    const hits = searchGuide(query, limit);
+    return { scope: "guide", hits, hint: hits.length ? undefined : noMatchesHint(query) };
   }
 
   /* ---------- Commands ---------- */
@@ -245,7 +262,7 @@ export function createGuideApi({
       about.open(ref.tab);
       return { at: formatRef(ref), title: refTitle(ref), said: `Opened About: ${refTitle(ref)}.` };
     }
-    if (ref.kind === "help") return fail("not_available", "help is reference data with no page. Read it with read({ ref: 'help' }).");
+    if (ref.kind === "help") return fail("not_available", 'help is reference data with no page. Read it with read({ ref: "help" }).');
     if (ref.kind === "source") {
       const cited = outline(formatRef(ref)) as { cited?: string[] };
       return fail("not_available", "Sources have no page of their own. Read the source, or go to a topic or region that cites it.", cited.cited ?? []);
@@ -282,9 +299,7 @@ export function createGuideApi({
     }
   }
 
-  function walkthrough({ action, ref, seconds, stops }: WalkInput): Result<WriteResult> {
-    if (stops !== undefined && action !== "tour") return fail("bad_input", `stops applies to tour, not ${action}.`);
-    if (action === "tour") return startTour(stops, ref, seconds);
+  function walkthrough({ action, ref, seconds }: WalkInput): Result<WriteResult> {
     const startsWalk = action === "play" || action === "restart";
     if (ref !== undefined && !startsWalk) return fail("bad_input", `ref applies to play and restart, not ${action}.`);
     if (seconds !== undefined && !startsWalk) return fail("bad_input", `seconds applies to play and restart, not ${action}.`);
@@ -375,10 +390,9 @@ export function createGuideApi({
     explorer.snapshot();
   }
 
-  function startTour(stops: TourStopInput[] | undefined, ref: string | undefined, seconds: number | undefined): Result<WriteResult> {
+  function startTour({ stops, seconds }: TourInput): Result<WriteResult> {
     if (!tour) return fail("not_available", "Tours need the caption bar, which this page does not have.");
-    if (ref !== undefined) return fail("bad_input", "ref applies to play and restart. Give each tour stop its own ref.");
-    if (!stops?.length) return fail("bad_input", `tour needs stops: 1–${TOUR_LIMITS.stops} of { ref?, view?, say?, seconds? }.`);
+    if (!stops?.length) return fail("bad_input", `A tour needs stops: 1–${TOUR_LIMITS.stops} of { ref?, view?, say?, seconds? }.`);
     if (stops.length > TOUR_LIMITS.stops) return fail("limit", `A tour has at most ${TOUR_LIMITS.stops} stops.`);
     const planned = planTour(stops, seconds);
     if (isFailure(planned)) return planned;
@@ -392,7 +406,7 @@ export function createGuideApi({
     });
   }
 
-  function controlTour(action: Exclude<WalkAction, "tour" | "stop">): Result<WriteResult> {
+  function controlTour(action: Exclude<WalkAction, "stop">): Result<WriteResult> {
     const runner = tour as TourRunner;
     const where = () => {
       const status = runner.status();
@@ -471,6 +485,7 @@ export function createGuideApi({
     search,
     go,
     walkthrough,
+    tour: startTour,
     setView,
     quiz,
     doc: (input: DocInput) => docsTools?.doc(input) ?? noDocs(),

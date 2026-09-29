@@ -17,7 +17,7 @@ async function bundle(source) {
 const refs = await bundle(`
   export * from "./src/model/refs.ts";
   export { pathways, regions } from "./src/content/index.ts";
-  export { regionIdSchema } from "./src/agent/schemas.ts";
+  export { regionIdEnum, regionIdSchema } from "./src/agent/schemas.ts";
   export { helpCard } from "./src/agent/help.ts";
 `);
 const { resolveRef, formatRef, stepRef, markdownLinks, plainText, parseHash, placeHash, placeRef, refPlace, pathways, regions } = refs;
@@ -96,11 +96,32 @@ test("unknown refs return unknown_ref with at most 5 suggestions", () => {
 
   assert.deepEqual(failure("region:lgm").options, ["region:lgn"]);
   assert.equal(failure("topic:heairng").options[0], "topic:hearing");
-  assert.equal(failure("pulvinar").options[0], "region:pulvinar", "A bare name suggests its ref.");
-  assert.equal(failure("vision").options[0], "topic:vision");
+  assert.equal(failure("visual cortex").options[0], "region:v1", "A bare name that is not an id suggests refs.");
   assert.equal(failure("step:vision/parallel-chanels").options[0], "step:vision/parallel-channels");
   assert.equal(failure("source:hubel-wiesle").options[0], "source:hubel-wiesel");
-  for (const text of ["region:visual cortex", "pulvinar", "topic:heairng", "x:y", "about/credits"]) assert(failure(text).options.length <= 5, text);
+  for (const text of ["region:visual cortex", "pulvin", "topic:heairng", "x:y", "about/credits"]) assert(failure(text).options.length <= 5, text);
+});
+
+test("a bare topic or region id resolves to its ref; region fields accept V1 and region:v1", () => {
+  assert.deepEqual(ok("pulvinar"), { kind: "region", id: "pulvinar" });
+  assert.deepEqual(ok("V1"), { kind: "region", id: "v1" });
+  assert.deepEqual(ok("retinar#Mechanism"), { kind: "region", id: "retinaR", section: "mechanism" });
+  assert.deepEqual(ok("Vision"), { kind: "topic", path: "vision" });
+  assert.equal(failure("vision#role").code, "unknown_ref", "Only regions have sections.");
+  for (const [input, id] of [
+    ["v1", "v1"],
+    ["V1", "v1"],
+    ["region:V1", "v1"],
+    [" Region: retinar ", "retinaR"],
+  ])
+    assert.equal(refs.canonicalRegion(input), id, input);
+  assert.equal(refs.canonicalRegion("topic:vision"), undefined);
+  assert.equal(refs.canonicalRegion("visual"), undefined);
+  assert.equal(refs.regionIdSchema.parse("region:LGN"), "lgn");
+  const prefixed = refs.regionIdSchema.safeParse("topic:vision").error.issues[0].message;
+  assert.match(prefixed, /^region fields take region ids such as "v1", not topic: refs/);
+  assert.match(refs.regionIdSchema.safeParse("region:visual cortex").error.issues[0].message, /^unknown region id "visual cortex"; closest: v1/);
+  assert.match(failure("region:nope").message, /read\(\{ ref: "help" \}\) lists every region id/, "One pointer syntax for help.");
 });
 
 test("step numbers out of range and bad sections say what exists", () => {
@@ -115,6 +136,17 @@ test("step numbers out of range and bad sections say what exists", () => {
   assert(section.options.every((option) => option.startsWith("region:v1#")));
   assert.equal(failure("doc:not an id!").code, "bad_input");
   assert.equal(failure("region:").code, "unknown_ref");
+});
+
+test("refs with extra segments are rejected, naming the ref without them", () => {
+  const step = failure("step:vision/2/anything");
+  assert.equal(step.code, "unknown_ref");
+  assert.match(step.message, /extra/i);
+  assert.deepEqual(step.options, [stepRef("vision", 1)]);
+  const section = failure("region:v1#mechanism#x");
+  assert.equal(section.code, "unknown_ref");
+  assert.deepEqual(section.options, ["region:v1#mechanism"]);
+  assert.equal(failure("step:vision/parallel-channels/").code, "unknown_ref", "An empty trailing segment is still extra.");
 });
 
 test("[[id|text]] is rewritten to [text](region:id); unknown ids keep only their text", () => {
@@ -141,6 +173,11 @@ test("the URL hash round-trips every place and accepts step numbers", () => {
     assert.equal(parseHash(bad), null, bad);
 });
 
+test("a hash with a malformed % escape names nothing instead of throwing", () => {
+  for (const bad of ["#/%", "#/vision/50%", "#/%E0%A4%A", "#/region/%zz"]) assert.equal(parseHash(bad), null, bad);
+  assert.deepEqual(parseHash("#/region/v%31"), { kind: "region", path: null, id: "v1" }, "Valid escapes still decode.");
+});
+
 test("places map to refs, and refs with a place map back", () => {
   assert.equal(formatRef(placeRef({ kind: "regions", path: "touch" })), "topic:touch");
   assert.equal(formatRef(placeRef({ kind: "region", path: "hearing", id: "soc" })), "region:soc");
@@ -152,10 +189,10 @@ test("places map to refs, and refs with a place map back", () => {
 
 test("the region enum and the help card are generated from content", () => {
   const ids = Object.keys(regions);
-  assert.deepEqual(refs.regionIdSchema.options, ids);
+  assert.deepEqual(refs.regionIdEnum.options, ids);
   assert.deepEqual(refs.REGION_IDS, ids);
   const card = refs.helpCard();
-  assert.deepEqual(Object.keys(card.regions), ids);
+  assert.deepEqual(card.regions.split(" "), ids);
   assert.deepEqual(
     Object.keys(card.topics),
     pathways.map((path) => path.id),

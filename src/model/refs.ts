@@ -106,7 +106,7 @@ export function resolveRef(input: string): RefResult {
     );
   }
   const colon = lower.indexOf(":");
-  if (colon < 0) return unknown(`"${text}" is not a ref. Refs look like topic:vision, step:vision/2 or region:v1.`, suggest(text));
+  if (colon < 0) return resolveBare(text);
   const kind = lower.slice(0, colon);
   const rest = text.slice(colon + 1).trim();
   switch (kind) {
@@ -128,6 +128,27 @@ export function resolveRef(input: string): RefResult {
   }
 }
 
+/** A bare topic or region id ("vision", "V1", "v1#role") resolves when it names exactly one of them. */
+function resolveBare(text: string): RefResult {
+  const head = text.split("#")[0].trim().toLowerCase();
+  const path = topicByLower.get(head);
+  const region = regionByLower.get(head);
+  if (region && !path) return resolveRegion(text);
+  if (path && !region && !text.includes("#")) return { ref: { kind: "topic", path } };
+  return unknown(`"${text}" is not a ref. Refs look like topic:vision, step:vision/2 or region:v1.`, suggest(text));
+}
+
+/** The region id a region field means: case-insensitive, with or without "region:". Undefined when it names none. */
+export function canonicalRegion(text: string): RegionId | undefined {
+  return regionByLower.get(
+    text
+      .trim()
+      .replace(/^region:/i, "")
+      .trim()
+      .toLowerCase(),
+  );
+}
+
 function resolveTopic(rest: string): RefResult {
   const lower = rest.toLowerCase();
   if (lower === "attention/streams") return { ref: { kind: "streams" } };
@@ -137,7 +158,8 @@ function resolveTopic(rest: string): RefResult {
 }
 
 function resolveStep(rest: string): RefResult {
-  const [pathPart, stepPart = ""] = rest.split("/", 2).map((part) => part.trim());
+  const [pathPart, stepPart = "", ...extra] = rest.split("/").map((part) => part.trim());
+  if (extra.length) return extraSegments(`step:${rest}`, `step:${pathPart}/${stepPart}`, "Step refs look like step:vision/2.");
   const path = topicByLower.get(pathPart.toLowerCase());
   if (!path) return unknown(`No topic "${pathPart}". Step refs look like step:vision/2 or step:vision/parallel-channels.`, suggest(pathPart, ["topic"]));
   const steps = topic(path).steps;
@@ -162,9 +184,10 @@ function resolveStep(rest: string): RefResult {
 }
 
 function resolveRegion(rest: string): RefResult {
-  const [idPart, sectionPart] = rest.split("#", 2).map((part) => part.trim());
+  const [idPart, sectionPart, ...extra] = rest.split("#").map((part) => part.trim());
+  if (extra.length) return extraSegments(`region:${rest}`, `region:${idPart}#${sectionPart}`, "Region refs look like region:v1#mechanism.");
   const id = regionByLower.get(idPart.toLowerCase());
-  if (!id) return unknown(`No region "${idPart}". read help lists every region id.`, suggest(idPart, ["region"]));
+  if (!id) return unknown(`No region "${idPart}". read({ ref: "help" }) lists every region id.`, suggest(idPart, ["region"]));
   if (sectionPart === undefined) return { ref: { kind: "region", id } };
   const section = sectionPart.toLowerCase() as RegionSection;
   if (REGION_SECTIONS.includes(section)) return { ref: { kind: "region", id, section } };
@@ -172,6 +195,12 @@ function resolveRegion(rest: string): RefResult {
     `No section "${sectionPart}". Sections: ${REGION_SECTIONS.join(", ")}.`,
     REGION_SECTIONS.map((s) => `${regionRef(id)}#${s}`),
   );
+}
+
+/** A typo such as step:vision/2/x must not quietly resolve to a different ref; name the ref without the extra part when it works. */
+function extraSegments(text: string, head: string, example: string): RefFailure {
+  const resolved = resolveRef(head);
+  return unknown(`Extra segment in "${text}". ${example}`, "ref" in resolved ? [formatRef(resolved.ref)] : []);
 }
 
 const sourceIds = unique([...sources.map((source) => source.id), ...guideSources.map((source) => source.id)]);
@@ -298,7 +327,14 @@ export function placeHash(place: Place): string {
 
 /** The place a hash names. Also accepts step numbers (`#/vision/3`). Null when it names nothing. */
 export function parseHash(hash: string): Place | null {
-  const parts = decodeURIComponent(hash.replace(/^#\/?/, ""))
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(hash.replace(/^#\/?/, ""));
+  } catch {
+    // A malformed escape such as "#/vision/50%" names nothing; it must never stop the page from starting.
+    return null;
+  }
+  const parts = decoded
     .split("/")
     .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
