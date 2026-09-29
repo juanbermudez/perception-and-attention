@@ -29,7 +29,16 @@ import {
   type WeightMotion,
 } from "../model/activity";
 import { isolateKeepsRoute, regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
-import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, readingOrder, type Silhouette } from "../model/callouts";
+import {
+  type CalloutBounds,
+  type LabelLayout,
+  labelProximity,
+  layoutCallouts,
+  leaderPath,
+  readingOrder,
+  repelOffset,
+  type Silhouette,
+} from "../model/callouts";
 import {
   type FrameView,
   highlightWeight,
@@ -98,6 +107,8 @@ const GLOW_TAU = 0.35;
 // zoom in past the default focus distance (0.94 of the overview) and is complete at half.
 const LABEL_PROXIMITY = 90; // px from a label where it starts to scale up
 const LABEL_PRESS = 0.85; // share of the lift kept while the mouse button is down (about 1.24× instead of 1.28×)
+const LABEL_REPEL = 12; // px a fully lifted label pushes its nearest column neighbour, before easing with distance
+const LABEL_REPEL_REACH = 90; // px along the column where that push has faded to nothing
 // Keyboard control of the view: turn per arrow press (radians), pan per press (px), distance factor per + press.
 const KEY_TURN = Math.PI / 18;
 const KEY_PAN = 20;
@@ -1111,6 +1122,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let frameCount = 0;
   const activeRegionIds = new Set<RegionId>();
   const visibleMarkers: Marker[] = new Array(markers.length);
+  const liftOf = (marker: Marker) => marker.lift.value;
   let measuredInPick = false;
   /** Pick mode hides the label roles, since they would hint at the answer: every label changes size, and loses its full name. */
   function pickChanged(picking: boolean) {
@@ -1664,18 +1676,25 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       pressScale = pointers.size ? LABEL_PRESS : 1;
     for (let i = 0; i < visibleCount; i++) {
       const marker = visibleMarkers[i];
-      const lift = stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) * pressScale : 0, dt, reduced, 0.12);
+      stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) * pressScale : 0, dt, reduced, 0.12);
+    }
+    for (let i = 0; i < visibleCount; i++) {
+      const marker = visibleMarkers[i];
+      const lift = marker.lift.value;
+      // Lifted labels push their column neighbours apart. The push follows the lifts, so it eases in and out
+      // with them, and it is zero whenever the lift is off (dragging, reduced motion, no pointer).
+      const offset = repelOffset(visibleMarkers, visibleCount, i, liftOf, LABEL_REPEL_REACH, LABEL_REPEL);
       setLabelStyle(marker, "--lift", lift.toFixed(3));
       setLabelStyle(marker, "z-index", lift > 0.01 ? String(3 + Math.round(lift * 6)) : "");
       setLabelStyle(marker, "left", `${marker.labelX.toFixed(1)}px`);
-      setLabelStyle(marker, "top", `${marker.labelY.toFixed(1)}px`);
+      setLabelStyle(marker, "top", `${(marker.labelY + offset).toFixed(1)}px`);
       // Outside the step spotlight a label recedes through its colours (--dim), so its text keeps
       // its contrast; its leader line fades instead.
       const inSpot = marker.id === shown ? 1 : marker.spot.value;
       const opacity = marker.labelWeight.value * marker.fade * labelsPresence;
       setLabelStyle(marker, "opacity", opacity.toFixed(3));
       setLabelStyle(marker, "--dim", ((1 - inSpot) / (1 - SPOT_DIM_MARKER)).toFixed(2));
-      setLeader(marker, leaderPath(marker), (opacity * lerp(0.45, 1, inSpot)).toFixed(3));
+      setLeader(marker, leaderPath(marker, offset), (opacity * lerp(0.45, 1, inSpot)).toFixed(3));
       if (marker.fade < 1 || Math.abs(marker.labelX - marker.targetX) > 0.05 || Math.abs(marker.labelY - marker.targetY) > 0.05) moving = true;
     }
     updateTabStop(focused);

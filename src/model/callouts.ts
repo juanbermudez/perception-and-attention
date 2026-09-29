@@ -207,18 +207,48 @@ export function labelProximity(label: Pick<LabelLayout, "labelX" | "labelY" | "l
 }
 
 /**
+ * How far a label moves along its column, away from lifted labels (the ones near the pointer), in px;
+ * positive is down. Each lifted label pushes the others in its column in proportion to its lift, the
+ * nearest most, easing to nothing at `reach`, so the label being pointed at gets room to grow. Labels in
+ * the other column do not overlap it horizontally and are left alone. Summing over every lifted label
+ * keeps the motion continuous as the pointer moves from one label to the next.
+ */
+export function repelOffset<T extends Pick<LabelLayout, "labelX" | "labelY" | "labelWidth">>(
+  labels: ArrayLike<T>,
+  count: number,
+  index: number,
+  liftOf: (label: T) => number,
+  reach: number,
+  push: number,
+) {
+  const self = labels[index];
+  let offset = 0;
+  for (let i = 0; i < count; i++) {
+    const other = labels[i];
+    const lift = i === index ? 0 : liftOf(other);
+    if (lift <= 0 || Math.abs(self.labelX - other.labelX) > (self.labelWidth + other.labelWidth) / 2) continue;
+    const dy = self.labelY - other.labelY;
+    const t = clamp(Math.abs(dy) / reach, 0, 1);
+    offset += (dy < 0 ? -1 : 1) * push * lift * (1 - t * t * (3 - 2 * t));
+  }
+  return offset;
+}
+
+/**
  * Anchor → 45° segment → horizontal run into the label's near edge.
  * The bend sits next to the region, so leaders stay apart at their labels'
  * heights until they reach it. When the label is far above or below, the
  * angled segment steepens to leave a short horizontal run.
  */
-export function leaderPath(label: LabelLayout): string {
+export function leaderPath(label: Pick<LabelLayout, "anchorX" | "anchorY" | "labelX" | "labelY" | "labelWidth">, offsetY = 0): string {
+  // offsetY: a label pushed along its column (repelOffset) takes its leader with it.
+  const labelY = label.labelY + offsetY;
   const toward = label.labelX < label.anchorX ? -1 : 1;
   const edgeX = label.labelX - (toward * label.labelWidth) / 2;
   const reach = (edgeX - label.anchorX) * toward;
   const start = `M${label.anchorX.toFixed(1)},${label.anchorY.toFixed(1)}`;
-  const end = `L${edgeX.toFixed(1)},${label.labelY.toFixed(1)}`;
+  const end = `L${edgeX.toFixed(1)},${labelY.toFixed(1)}`;
   if (reach <= MIN_RUN) return start + end;
-  const elbowX = label.anchorX + toward * Math.min(Math.abs(label.labelY - label.anchorY), reach - MIN_RUN);
-  return `${start}L${elbowX.toFixed(1)},${label.labelY.toFixed(1)}${end}`;
+  const elbowX = label.anchorX + toward * Math.min(Math.abs(labelY - label.anchorY), reach - MIN_RUN);
+  return `${start}L${elbowX.toFixed(1)},${labelY.toFixed(1)}${end}`;
 }

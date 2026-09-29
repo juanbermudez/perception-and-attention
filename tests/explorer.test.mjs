@@ -7,7 +7,7 @@ async function bundle(entry) {
 }
 const [
   { attentionWeight, regionPulse, routeWeight, streamResponses },
-  { labelProximity, layoutCallouts, leaderPath, stackColumn },
+  { labelProximity, layoutCallouts, leaderPath, repelOffset, stackColumn },
   { regionGuides, guideSources },
   { pathways, regions, sources },
 ] = await Promise.all([
@@ -156,6 +156,32 @@ assert.deepEqual(
     neighbour = labelProximity(label, 420, 306 + 40, 90);
   assert(under > 0.95 && neighbour < 0.7 && neighbour > 0.2, `Hovered ${under.toFixed(2)} vs neighbour ${neighbour.toFixed(2)}.`);
   console.log("PASS label proximity peaks on the hovered label and falls to about half for its neighbours.");
+}
+
+// Repel: a lifted label pushes the others in its column away along the column, the nearest most, fading
+// to nothing at the reach; the other column and unlifted labels stay put, and the push scales with the lift.
+{
+  const column = [0, 1, 2, 3].map((i) => ({ labelX: 200, labelY: 100 + i * 40, labelWidth: 110, lift: 0 }));
+  const other = { labelX: 700, labelY: 140, labelWidth: 110, lift: 0 };
+  const labels = [...column, other];
+  const liftOf = (label) => label.lift;
+  const offsets = () => labels.map((_, i) => repelOffset(labels, labels.length, i, liftOf, 90, 12));
+  assert.deepEqual(offsets(), [0, 0, 0, 0, 0], "Nothing lifted, nothing moves.");
+  column[1].lift = 1;
+  const [above, hovered, below, far, across] = offsets();
+  assert(above < -5, `The label above moves up (${above.toFixed(1)} px).`);
+  assert(below > 5, `The label below moves down (${below.toFixed(1)} px).`);
+  assert(Math.abs(above + below) < 1e-9, "Neighbours at the same distance move the same amount.");
+  assert.equal(hovered, 0, "The lifted label itself stays put.");
+  assert(Math.abs(far) < Math.abs(below) && Math.abs(far) < 2, `Two labels away moves less (${far.toFixed(1)} px).`);
+  assert.equal(across, 0, "The other column does not move.");
+  column[1].lift = 0.5;
+  assert(Math.abs(offsets()[2] - below / 2) < 1e-9, "Half the lift, half the push.");
+  // The leader follows the moved label: its end is at the label's new height.
+  const moved = { anchorX: 400, anchorY: 300, labelX: 200, labelY: 260, labelWidth: 110 };
+  const [, , end] = [...leaderPath(moved, 8).matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  assert.equal(end[1], 268);
+  console.log("PASS a lifted label pushes its column neighbours apart, in proportion to its lift.");
 }
 
 // Callouts: columns outside the head, stacked without overlap, in anchor order.
