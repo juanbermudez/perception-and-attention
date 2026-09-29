@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { build } from "esbuild";
+import { inertScene, installInertDom } from "./support/explorer-dom.mjs";
+
+installInertDom();
+// The explorer's walkthrough timer never fires on its own.
+mock.timers.enable({ apis: ["setTimeout"] });
 
 async function bundle(source) {
   const result = await build({
@@ -20,8 +25,24 @@ const m = await bundle(`
   export { createActivityLog } from "./src/api/activity.ts";
   export { stepRef, formatRef, placeRef } from "./src/model/refs.ts";
   export { pathways, regions, regionGuides } from "./src/content/index.ts";
+  export { createState } from "./src/state.ts";
+  export { createExplorer } from "./src/ui/explorer.ts";
 `);
-const { outline, read, createGuideApi, createActivityLog, pathways, regions, regionGuides, stepRef, searchGuide, noMatchesHint, helpCard } = m;
+const {
+  outline,
+  read,
+  createGuideApi,
+  createActivityLog,
+  createState,
+  createExplorer,
+  pathways,
+  regions,
+  regionGuides,
+  stepRef,
+  searchGuide,
+  noMatchesHint,
+  helpCard,
+} = m;
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 /** Keys with a value: the runner drops undefined fields before results leave the page. */
 const keys = (value) => Object.keys(value).filter((key) => value[key] !== undefined);
@@ -218,47 +239,32 @@ test("typical results stay under 2 KB", () => {
 
 /* ---------- GuideApi commands, against a fake explorer ---------- */
 
-function fakeExplorer() {
-  const s = { overview: true, path: "attention", step: 0, selected: "pfc", panel: "guide", region: null, walking: false, seconds: 5.5 };
+/** The real explorer (ui/explorer.ts) on an inert DOM, recording what GuideApi asks of it. */
+function realExplorer() {
+  const state = createState(false);
+  const explorer = createExplorer(state, { matches: true }, () => {});
+  explorer.attachScene(inertScene(state));
   const calls = [];
-  const place = () => {
-    if (s.overview) return { kind: "overview" };
-    if (s.panel === "streams") return { kind: "streams" };
-    if (s.panel === "region") return s.region ? { kind: "region", path: s.path, id: s.region } : { kind: "regions", path: s.path };
-    return { kind: "step", path: s.path, index: s.step };
-  };
-  const enter = (path, step = 0) =>
-    Object.assign(s, { overview: false, path, step, selected: pathways.find((p) => p.id === path).steps[step].region, walking: false });
-  return {
+  return Object.assign(Object.create(explorer), {
     calls,
-    state: s,
-    snapshot: () => ({ ...s, place: place() }),
+    state,
     goTo(target, options) {
       calls.push(["goTo", target, options]);
-      if (target.kind === "overview") Object.assign(s, { overview: true, walking: false });
-      if (target.kind === "step") Object.assign(enter(target.path, target.index), { panel: "guide", region: null });
-      if (target.kind === "streams") Object.assign(enter("attention"), { panel: "streams", region: null });
-      if (target.kind === "regions") Object.assign(enter(target.path), { panel: "region", region: null });
-      if (target.kind === "region") {
-        const host = target.path ?? pathways.find((path) => path.steps.some((step) => step.region === target.id)).id;
-        const index = pathways.find((path) => path.id === host).steps.findIndex((step) => step.region === target.id);
-        Object.assign(enter(host, Math.max(0, index)), { panel: "region", region: target.id, selected: target.id });
-      }
+      explorer.goTo(target, options);
     },
     startWalk(seconds) {
       calls.push(["startWalk", seconds]);
-      Object.assign(s, { walking: true, seconds });
+      explorer.startWalk(seconds);
     },
     stopWalk() {
       calls.push(["stopWalk"]);
-      s.walking = false;
+      explorer.stopWalk();
     },
-    selection: () => null,
-  };
+  });
 }
 
 function setup({ control = true } = {}) {
-  const explorer = fakeExplorer();
+  const explorer = realExplorer();
   const opened = [];
   let aboutTab = null;
   const about = {
@@ -396,7 +402,7 @@ test("a cursor from before a reload is recognised: the agent gets the latest ent
   const before = setup().api.context().cursor;
   const log = createActivityLog({ now: () => 99_000 });
   const api = createGuideApi({
-    explorer: fakeExplorer(),
+    explorer: realExplorer(),
     about: { tab: () => null },
     activity: log,
     playing: () => false,

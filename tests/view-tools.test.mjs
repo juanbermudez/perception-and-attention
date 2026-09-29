@@ -1,9 +1,14 @@
 // Stage 2 tools end to end in Node: set_view, start_tour, walkthrough stop, get_context.view/tour and the view
-// reset on navigation, through the real tool runner, GuideApi, view API and tour runner. The scene,
-// explorer, caption bar and clock are fakes.
+// reset on navigation, through the real tool runner, GuideApi, view API, tour runner and explorer. The scene,
+// the DOM under the explorer, the caption bar and the clock are fakes.
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { build } from "esbuild";
+import { inertScene, installInertDom, recordGoTo } from "./support/explorer-dom.mjs";
+
+installInertDom();
+// The explorer's walkthrough timer never fires on its own; tours use their own fake clock.
+mock.timers.enable({ apis: ["setTimeout"] });
 
 async function bundle(source) {
   const result = await build({
@@ -24,11 +29,13 @@ const m = await bundle(`
   export { createTourRunner } from "./src/api/tour.ts";
   export { createViewApi } from "./src/api/view-api.ts";
   export { createState } from "./src/state.ts";
+  export { createExplorer } from "./src/ui/explorer.ts";
+  export { hostTopic, topicHasRegion } from "./src/model/topics.ts";
   export { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov } from "./src/model/view.ts";
   export { pathways, regions } from "./src/content/index.ts";
 `);
-const { tools, createToolRunner, createGuideApi, createActivityLog, createTourRunner, createViewApi, createState, pathways, regions } = m;
-const { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov } = m;
+const { tools, createToolRunner, createGuideApi, createActivityLog, createTourRunner, createViewApi, createState, createExplorer, pathways, regions } = m;
+const { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov, hostTopic, topicHasRegion } = m;
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 const topic = (id) => pathways.find((path) => path.id === id);
 
@@ -63,60 +70,11 @@ function fakeScene() {
   };
 }
 
-/** The explorer's navigation, reduced to what GuideApi sees; it resets the view as ui/explorer.ts does. */
-function fakeExplorer(state) {
-  const s = { panel: "guide", region: null, walking: false, seconds: 5.5 };
-  const calls = [];
-  const place = () => {
-    if (state.overview) return { kind: "overview" };
-    if (s.panel === "streams") return { kind: "streams" };
-    if (s.panel === "region") return s.region ? { kind: "region", path: state.path, id: s.region } : { kind: "regions", path: state.path };
-    return { kind: "step", path: state.path, index: state.step };
-  };
-  // Selecting a region in 3D clears an agent's view focus (scene.focusRegion).
-  const select = (id) => Object.assign(state, { selected: id, viewFocus: null });
-  function selectPath(path, step = 0) {
-    clearViewOnNavigate(state, { overview: false, path });
-    Object.assign(state, { overview: false, path, step });
-    select(topic(path).steps[step].region);
-  }
-  return {
-    calls,
-    state: s,
-    snapshot: () => ({ overview: state.overview, path: state.path, step: state.step, selected: state.selected, ...s, place: place() }),
-    goTo(target, options) {
-      calls.push([target.kind === "overview" ? "overview" : `${target.kind}:${target.path ?? ""}/${target.index ?? target.id ?? ""}`, options]);
-      s.walking = false;
-      s.region = null;
-      s.panel = "guide";
-      if (target.kind === "overview") {
-        clearViewOnNavigate(state, { overview: true });
-        Object.assign(state, { overview: true, path: "attention" });
-        select("pfc");
-      } else if (target.kind === "step") {
-        if (state.overview || state.path !== target.path) selectPath(target.path, target.index);
-        else {
-          state.step = target.index;
-          select(topic(target.path).steps[target.index].region);
-        }
-      } else if (target.kind === "streams") {
-        if (state.overview || state.path !== "attention") selectPath("attention");
-        s.panel = "streams";
-      } else if (target.kind === "region") {
-        const host = target.path ?? pathways.find((path) => path.steps.some((step) => step.region === target.id)).id;
-        if (state.overview || state.path !== host) selectPath(host);
-        Object.assign(s, { panel: "region", region: target.id });
-        select(target.id);
-      }
-    },
-    startWalk(seconds) {
-      Object.assign(s, { walking: true, seconds });
-    },
-    stopWalk() {
-      s.walking = false;
-    },
-    selection: () => null,
-  };
+/** The real explorer (ui/explorer.ts) on an inert DOM, recording its goTo calls; the scene only clears view focus. */
+function realExplorer(state) {
+  const explorer = createExplorer(state, { matches: true }, () => {});
+  explorer.attachScene(inertScene(state));
+  return recordGoTo(explorer);
 }
 
 function fakeClock() {
@@ -148,7 +106,7 @@ function setup() {
   const state = createState(false);
   const scene = fakeScene();
   const view = createViewApi(state, scene);
-  const explorer = fakeExplorer(state);
+  const explorer = realExplorer(state);
   const clock = fakeClock();
   const narration = {
     shown: null,
@@ -231,7 +189,7 @@ test("mid-gesture the camera part returns locked_by_user and the rest applies", 
 });
 
 test("set_view without a 3D view is not_available", () => {
-  const explorer = fakeExplorer(createState(false));
+  const explorer = realExplorer(createState(false));
   const api = createGuideApi({ explorer, about: { tab: () => null }, activity: createActivityLog(), playing: () => true, agentControl: () => true });
   assert.equal(api.setView({ labels: "all" }).error.code, "not_available");
   assert.equal(api.context().view, undefined);
@@ -259,6 +217,17 @@ test("get_context.view and go's view report the settled view: focus, angles, zoo
   assert.equal(view.layers.routes, undefined, "Routes are filtered per region, not dimmed as a layer.");
   assert.deepEqual(view.isolate, { regions: ["lgn", "v1"], keep: 0.08 });
   assert.deepEqual(view.gated, ["ears", "auditory_nerve", "temporal_bone"]);
+});
+
+test("go to a region follows the explorer's own rule: stay in the open topic if it covers the region, else its host topic", async () => {
+  const { state, call } = setup();
+  const routeOnly = await call("go", { ref: "region:retinaR" });
+  assert.equal(routeOnly.at, "region:retinaR", "A region drawn only on a route still opens.");
+  assert.equal(state.path, hostTopic("retinaR").id);
+  const covering = pathways.find((path) => path.id !== hostTopic("v1").id && topicHasRegion(path, "v1"));
+  await call("go", { ref: `topic:${covering.id}` });
+  await call("go", { ref: "region:v1" });
+  assert.equal(state.path, covering.id, "The open topic covers V1, so the guide stays in it.");
 });
 
 /* ---------- Tours ---------- */
