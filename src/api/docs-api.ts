@@ -277,23 +277,29 @@ export function undoOps(before: readonly Block[], after: readonly string[], resu
 export function createDocsApi(options: DocsApiOptions) {
   const now = options.now ?? (() => new Date());
   let opened: Store | null = null;
+  let opening: Promise<Store> | null = null;
   let unavailable = false;
   const listeners = new Set<(change: StoreChange) => void>();
   const openListeners = new Set<(store: Store) => void>();
 
-  async function store(): Promise<Store> {
-    if (opened) return opened;
-    try {
-      opened = await options.store();
-    } catch (error) {
-      unavailable = true;
-      throw error;
-    }
-    opened.onChange((change) => {
+  function attach(db: Store): Store {
+    opened = db;
+    unavailable = false;
+    db.onChange((change) => {
       for (const listener of listeners) listener(change);
     });
-    for (const listener of openListeners) listener(opened);
-    return opened;
+    for (const listener of openListeners) listener(db);
+    return db;
+  }
+
+  /** Opens the store once; overlapping first calls share the same promise. A failed open is tried again later. */
+  function store(): Promise<Store> {
+    opening ??= options.store().then(attach, (error: unknown) => {
+      unavailable = true;
+      opening = null;
+      throw error;
+    });
+    return opening;
   }
 
   /** Runs `work` with the store; any store failure becomes a returned error. */

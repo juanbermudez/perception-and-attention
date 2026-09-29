@@ -464,7 +464,10 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     banner.hidden = !bannerText;
     banner.innerHTML = bannerText;
     if (isApiError(listed)) {
-      notesList.innerHTML = `<li class="notes-empty">${listed.error.message}</li>`;
+      const item = document.createElement("li");
+      item.className = "notes-empty";
+      item.textContent = listed.error.message;
+      notesList.replaceChildren(item);
       return;
     }
     if (!listed.docs.length) {
