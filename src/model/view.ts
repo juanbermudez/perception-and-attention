@@ -205,12 +205,14 @@ export function focusPreset(id: RegionId, centerY: number, outTarget: Vec3, outD
 
 /* ---------- Layers ---------- */
 
-type TopicView = { path: PathId; enabledSenses: Record<SenseId, boolean> };
+type TopicView = { overview: boolean; path: PathId; enabledSenses: Record<SenseId, boolean> };
+// The overview runs every sense's routes, so it shows every sense organ; only the Attention
+// topic's Streams toggles turn them off.
 export function visionShown(view: TopicView) {
-  return view.path === "vision" || (view.path === "attention" && view.enabledSenses.vision);
+  return view.overview || view.path === "vision" || (view.path === "attention" && view.enabledSenses.vision);
 }
 export function hearingShown(view: TopicView) {
-  return view.path === "hearing" || (view.path === "attention" && view.enabledSenses.hearing);
+  return view.overview || view.path === "hearing" || (view.path === "attention" && view.enabledSenses.hearing);
 }
 /** Layers the current topic or toggles hide, whatever their presence (eyes appear only with vision, ears only with hearing). */
 export function gatedLayers(view: TopicView): LayerId[] {

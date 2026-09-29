@@ -376,11 +376,13 @@ const at = (id) => regions[id].position;
   const now = api.current();
   assert.equal(now.layers.skull, 0);
   assert(now.layers.cerebellum <= 0.08 && now.layers.routes === undefined);
-  assert.equal(now.gated, undefined, "The overview (Attention, all senses on) hides no layer.");
+  assert.equal(now.gated, undefined, "The overview hides no layer.");
+  state.overview = false;
   state.path = "vision";
   assert.deepEqual(api.current().gated, ["ears", "auditory_nerve", "temporal_bone"]);
   assert.deepEqual(gatedLayers({ ...state, path: "hearing" }), ["eyes", "optic"]);
   state.path = "attention";
+  state.overview = true;
 
   // focus + frame is rejected as a whole: nothing changes and nothing is pushed.
   const before = JSON.stringify(state);
