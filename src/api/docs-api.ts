@@ -5,8 +5,9 @@
 //
 // The store boots on the first call, so the guide is untouched until someone makes a doc.
 
+import { checkBlockContent, checkBlocks } from "../model/block-content";
 import { blockToMarkdown, describeView, exportDocument, markdownToBlocks, parseDocument } from "../model/markdown";
-import { summarizeResults, validateQuestion } from "../model/quiz";
+import { summarizeResults } from "../model/quiz";
 import { resolveRef } from "../model/refs";
 import { stayingIds } from "../model/sequence";
 import { LIMITS } from "../store/limits";
@@ -218,16 +219,16 @@ function slug(title: string): string {
   return base || "doc";
 }
 
-/** Question blocks from markdown or agents are checked and cleaned before they are stored. */
-function checkQuestions(blocks: BlockContent[]): ApiError | null {
-  for (const [index, block] of blocks.entries()) {
-    if (block.type !== "question") continue;
-    const checked = validateQuestion(block.data);
-    if (!checked.ok) return fail("bad_input", `Question ${index + 1}: ${checked.message}`);
-    block.data = checked.value as unknown as BlockData;
-    block.text = checked.value.prompt;
-  }
-  return null;
+/** Question and view blocks from markdown, agents or the editor are checked and cleaned before they are stored. */
+function checkContent(blocks: BlockContent[]): ApiError | null {
+  const checked = checkBlocks(blocks);
+  return checked.ok ? null : fail(checked.code, checked.message, checked.code === "limit" ? { max: LIMITS.charsPerBlock } : {});
+}
+
+/** One question or view block's new content, as a returned error or the clean text and data. */
+function checkOne(type: BlockType, data: unknown, text: string): ApiError | { text: string; data?: BlockData } {
+  const checked = checkBlockContent(type, data, text);
+  return checked.ok ? checked.value : fail(checked.code, checked.message, checked.code === "limit" ? { max: LIMITS.charsPerBlock } : {});
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -376,7 +377,7 @@ export function createDocsApi(options: DocsApiOptions) {
       // Agents often start the markdown with the title as a heading; the window already shows it.
       const first = content[0];
       if (!blocks && first?.type === "h1" && "text" in first && first.text.trim().toLowerCase() === title.trim().toLowerCase()) content = content.slice(1);
-      const invalid = checkQuestions(content);
+      const invalid = checkContent(content);
       if (invalid) return invalid;
       const artifact = await db.createArtifact({ kind, title, blocks: content }, actor);
       const ref = refOf(artifact);
@@ -442,30 +443,36 @@ export function createDocsApi(options: DocsApiOptions) {
         const next = parsed[0];
         if (!next || next.type === "p") {
           const text = next?.text ?? "";
-          if (block.type === "question" && (!text.trim() || text.length > LIMITS.promptChars))
-            return fail("bad_input", `A question prompt is 1–${LIMITS.promptChars} characters.`);
-          return { op: "update", id, rev: op.rev, text };
+          if (block.type !== "question") return { op: "update", id, rev: op.rev, text };
+          // A question's text is its prompt.
+          const checked = checkOne("question", { ...block.data, prompt: text }, text);
+          return isApiError(checked) ? checked : { op: "update", id, rev: op.rev, text: checked.text };
         }
-        const invalid = checkQuestions([next]);
+        const invalid = checkContent([next]);
         if (invalid) return invalid;
         // A single block's markdown carries no nesting, so a list block that stays a list keeps its indent.
         const indent = LIST_TYPES.includes(next.type) && LIST_TYPES.includes(block.type) ? block.indent : 0;
         return { op: "update", id, rev: op.rev, block: { ...next, indent } };
       }
-      case "replace":
+      case "replace": {
+        // The store rewrites a question's prompt; check the prompt it would make (M3).
+        const at = typeof op.find === "string" && op.find ? block.text.indexOf(op.find) : -1;
+        if (block.type === "question" && at >= 0 && typeof op.with === "string") {
+          const prompt = block.text.slice(0, at) + op.with + block.text.slice(at + op.find.length);
+          const checked = checkOne("question", { ...block.data, prompt }, prompt);
+          if (isApiError(checked)) return checked;
+        }
         return { op: "replace", id, rev: op.rev, find: op.find, with: op.with };
+      }
       case "delete":
         return { op: "delete", id };
       case "move":
         return { op: "move", id, after: blockId(op.after) };
       case "set": {
         if (!isObject(op.data)) return fail("bad_input", "set needs a data object.");
-        if (block.type === "question") {
-          const checked = validateQuestion(op.data);
-          if (!checked.ok) return fail("bad_input", checked.message);
-          return { op: "set", id, rev: op.rev, data: checked.value as unknown as BlockData };
-        }
-        return { op: "set", id, rev: op.rev, data: op.data };
+        if (block.type !== "question" && block.type !== "view") return { op: "set", id, rev: op.rev, data: op.data };
+        const checked = checkOne(block.type, op.data, block.text);
+        return isApiError(checked) ? checked : { op: "set", id, rev: op.rev, data: checked.data as BlockData };
       }
       default:
         return fail("bad_input", `Unknown op "${String((op as { op?: unknown }).op)}".`, { options: ["insert", "update", "replace", "delete", "move", "set"] });
@@ -480,18 +487,18 @@ export function createDocsApi(options: DocsApiOptions) {
       if (typeof op.md !== "string") return fail("bad_input", "md must be a string.");
       const blocks = markdownToBlocks(op.md);
       if (!blocks.length) return fail("bad_input", "md has no blocks to insert.");
-      const invalid = checkQuestions(blocks);
+      const invalid = checkContent(blocks);
       return invalid ?? { op: "insert", after, blocks };
     }
     if (op.view !== undefined) {
       const view = op.view === "current" ? options.currentView?.() : op.view;
       if (op.view === "current" && !view) return fail("not_available", "The current 3D view is not available here.");
       if (!isObject(view)) return fail("bad_input", 'view must be "current" or a view object.');
-      return { op: "insert", after, blocks: [{ type: "view", text: describeView(view), data: view }] };
+      const checked = checkOne("view", view, describeView(view));
+      return isApiError(checked) ? checked : { op: "insert", after, blocks: [{ type: "view", ...checked }] };
     }
-    const checked = validateQuestion(op.question);
-    if (!checked.ok) return fail("bad_input", checked.message);
-    return { op: "insert", after, blocks: [{ type: "question", text: checked.value.prompt, data: checked.value as unknown as BlockData }] };
+    const checked = checkOne("question", op.question, "");
+    return isApiError(checked) ? checked : { op: "insert", after, blocks: [{ type: "question", ...checked }] };
   }
 
   // outline (spec §6.2): `docs`, and `doc:*` / `quiz:*`
@@ -596,11 +603,7 @@ export function createDocsApi(options: DocsApiOptions) {
     if (input.questions.length > LIMITS.questionsPerQuiz)
       return fail("limit", `A quiz holds at most ${LIMITS.questionsPerQuiz} questions (got ${input.questions.length}).`, { max: LIMITS.questionsPerQuiz });
     const blocks: BlockContent[] = input.intro ? markdownToBlocks(input.intro).filter((block) => block.type !== "question") : [];
-    for (const [index, question] of input.questions.entries()) {
-      const checked = validateQuestion(question);
-      if (!checked.ok) return fail("bad_input", `Question ${index + 1}: ${checked.message}`);
-      blocks.push({ type: "question", text: checked.value.prompt, data: checked.value as unknown as BlockData });
-    }
+    for (const question of input.questions) blocks.push({ type: "question", text: "", data: question as BlockData });
     return createArtifact("quiz", input.title, "", input.open !== false, actor, blocks);
   }
 
@@ -649,6 +652,10 @@ export function createDocsApi(options: DocsApiOptions) {
       const id = artifactId(ref);
       if (!id) return fail("unknown_ref", `Expected doc:<id> or quiz:<id>, got "${ref}".`);
       if (!ops.length) return fail("bad_input", "Nothing to save.");
+      for (const op of ops) {
+        const invalid = op.op === "insert" ? checkContent(op.blocks) : op.op === "update" && op.block ? checkContent([op.block]) : null;
+        if (invalid) return invalid;
+      }
       let result: BlockOpsResult = { rev: 0, changed: [], inserted: [], deleted: [] };
       for (let start = 0; start < ops.length; start += LIMITS.opsPerCall) {
         const part = await db.applyBlockOps(id, ops.slice(start, start + LIMITS.opsPerCall), actor);

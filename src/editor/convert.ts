@@ -3,6 +3,7 @@
 // Pure (no DOM): tested in Node with the headless schema.
 
 import type { Mark as PMMark, Node as PMNode, Schema } from "@tiptap/pm/model";
+import { checkBlockContent } from "../model/block-content";
 import { type InlineRun, inlineRuns, type RunMark, runsToMarkdown } from "../model/inline";
 import { type BlockContent, type BlockData, type BlockType, LIST_TYPES } from "../store/types";
 import { BLOCK_OF_NODE, NODE_NAMES } from "./schema";
@@ -123,4 +124,19 @@ export function blocksToDoc(schema: Schema, blocks: readonly (BlockContent & { i
   const nodes = blocks.map((block) => blockToNode(schema, block));
   if (!nodes.length) nodes.push(schema.nodes.paragraph.create({ id: freshId() }));
   return schema.nodes.doc.create(null, nodes);
+}
+
+/**
+ * A pasted or dropped block as the store would take it: a question or view whose data does not
+ * check out becomes a paragraph with its prompt or caption, so one bad block cannot stop a save.
+ * `changed` tells the editor to say so.
+ */
+export function checkedNode(schema: Schema, node: PMNode): { node: PMNode; changed: boolean } {
+  const type = BLOCK_OF_NODE[node.type.name];
+  if (type !== "question" && type !== "view") return { node, changed: false };
+  const data = (node.attrs.data as BlockData | null) ?? undefined;
+  const text = type === "question" ? String(data?.prompt ?? node.attrs.text ?? "") : String(node.attrs.text ?? "");
+  const checked = checkBlockContent(type, data, text);
+  if (checked.ok) return { node: node.type.create({ ...node.attrs, data: checked.value.data ?? null, text: checked.value.text }), changed: false };
+  return { node: schema.nodes.paragraph.create({ id: node.attrs.id }, inlineNodes(schema, text)), changed: true };
 }

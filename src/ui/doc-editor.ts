@@ -15,7 +15,7 @@ import { Fragment, type Node as PMNode, Slice } from "@tiptap/pm/model";
 import { type EditorState, NodeSelection, Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { Lexer, type Tokens } from "marked";
-import { blocksToDoc, blockToNode, docBlocks, type EditorBlock, newBlockId, nodeToBlock } from "../editor/convert";
+import { blocksToDoc, blockToNode, checkedNode, docBlocks, type EditorBlock, newBlockId, nodeToBlock } from "../editor/convert";
 import { BLOCK_OF_NODE, createDocSchema, NODE_NAMES, SAFE_HREF, schemaExtensions } from "../editor/schema";
 import { applyTarget, baseFrom, changedIds, planReconcile, planSave, type SyncBase, savedBase } from "../editor/sync";
 import { escapeHtml, regionById, renderInline } from "../model/inline";
@@ -962,6 +962,28 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
     return new Slice(Fragment.from(nodes), nodes[0].isTextblock ? 1 : 0, nodes.at(-1)?.isTextblock ? 1 : 0);
   }
 
+  /** Pasted and dropped questions and views are checked like any other write; bad ones come in as text. */
+  function checkNodes(nodes: readonly PMNode[]): PMNode[] {
+    let changed = 0;
+    const checked = nodes.map((node) => {
+      const result = checkedNode(editor.schema, node);
+      if (result.changed) changed++;
+      return result.node;
+    });
+    if (changed)
+      host.notify?.(`${changed === 1 ? "A question or 3D view" : `${changed} questions or 3D views`} could not be read, so the text was added instead.`);
+    return checked;
+  }
+
+  function checkSlice(slice: Slice): Slice {
+    const nodes: PMNode[] = [];
+    slice.content.forEach((node) => {
+      nodes.push(node);
+    });
+    if (!nodes.some((node) => node.type.name === NODE_NAMES.question || node.type.name === NODE_NAMES.view)) return slice;
+    return new Slice(Fragment.from(checkNodes(nodes)), slice.openStart, slice.openEnd);
+  }
+
   function markdownFromSlice(slice: Slice): string {
     const blocks: EditorBlock[] = [];
     slice.content.forEach((node) => {
@@ -990,6 +1012,7 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
         spellcheck: "true",
       },
       clipboardTextParser: (text, $context) => sliceFromMarkdown(text, $context.parent),
+      transformPasted: (slice) => checkSlice(slice),
       clipboardTextSerializer: (slice) => markdownFromSlice(slice),
       handleDrop(view: EditorView, event: DragEvent) {
         const files = [...(event.dataTransfer?.files ?? [])].filter(markdownFile);
@@ -999,7 +1022,7 @@ export function createDocEditor(blocks: readonly Block[], host: DocEditorHost, o
         void files[0].text().then((text) => {
           const { blocks: imported } = parseDocument(text);
           if (!imported.length) return;
-          const nodes = imported.map((block) => blockToNode(editor.schema, { ...block, id: newBlockId() }));
+          const nodes = checkNodes(imported.map((block) => blockToNode(editor.schema, { ...block, id: newBlockId() })));
           const $pos = editor.state.doc.resolve(Math.min(at?.pos ?? editor.state.doc.content.size, editor.state.doc.content.size));
           const insertAt = $pos.depth >= 1 ? $pos.after(1) : $pos.pos;
           dispatch(editor.state.tr.insert(insertAt, nodes).scrollIntoView());

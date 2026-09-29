@@ -166,10 +166,15 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       case "view":
         if (!data) throw new StoreError("bad_input", "A view block needs view data.");
         return data;
-      case "question":
+      case "question": {
         if (!data || typeof data.kind !== "string" || typeof data.prompt !== "string")
           throw new StoreError("bad_input", "A question block needs question data with a kind and a prompt.");
+        // The docs API checks the whole question; this keeps a text edit (replace, update) from breaking its prompt.
+        const prompt = data.prompt.trim();
+        if (!prompt || prompt.length > LIMITS.promptChars)
+          throw new StoreError("bad_input", `A question prompt is 1–${LIMITS.promptChars} characters (this would make ${prompt.length}).`);
         return data;
+      }
       default:
         if (data !== undefined && Object.keys(data).length > 0) throw new StoreError("bad_input", `${type} blocks have no data.`);
         return undefined;

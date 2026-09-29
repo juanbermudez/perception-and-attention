@@ -93,18 +93,24 @@ export function createQuizCard(deps: QuizCardDeps) {
 
   /* ---------- Loading ---------- */
 
-  async function load(ref: string): Promise<Result<{ ref: string; id: string; title: string; items: QuizItem[] }>> {
+  /** The quiz's questions. A question saved before its "Show me" view was checked keeps working without the view; one that cannot be read is counted in `skipped`. */
+  async function load(ref: string): Promise<Result<{ ref: string; id: string; title: string; items: QuizItem[]; skipped: number }>> {
     const full = await docs.read(ref, "full");
     if (isFailure(full)) return full;
     if (!("blocks" in full) || !Array.isArray(full.blocks)) return fail("not_available", `Could not read ${ref}.`);
     const items: QuizItem[] = [];
+    let skipped = 0;
     for (const block of full.blocks) {
       if (block.type !== "question") continue;
-      const checked = validateQuestion(block.data);
+      let checked = validateQuestion(block.data);
+      if (!checked.ok && block.data?.view !== undefined) checked = validateQuestion({ ...block.data, view: undefined });
       if (checked.ok) items.push({ id: block.id, question: checked.value });
+      else skipped++;
     }
-    return { ref: full.ref, id: full.ref.slice(full.ref.indexOf(":") + 1), title: full.title, items };
+    return { ref: full.ref, id: full.ref.slice(full.ref.indexOf(":") + 1), title: full.title, items, skipped };
   }
+
+  const unreadable = (count: number) => `${count === 1 ? "1 question" : `${count} questions`} could not be read`;
 
   function sessionFor(ref: string, items: QuizItem[]): QuizSession {
     return createQuizSession(items, {
@@ -215,13 +221,21 @@ export function createQuizCard(deps: QuizCardDeps) {
     const loaded = await load(ref);
     if (token !== opening) return fail("not_available", `Another quiz was opened while ${ref} was loading.`);
     if (isFailure(loaded)) return loaded;
-    if (!loaded.items.length) return fail("not_available", `${loaded.ref} has no questions yet. Add question blocks with edit_blocks.`);
+    if (!loaded.items.length)
+      return fail(
+        "not_available",
+        loaded.skipped
+          ? `${loaded.ref} has no questions that can be shown: ${unreadable(loaded.skipped)}. Fix them with edit_blocks.`
+          : `${loaded.ref} has no questions yet. Add question blocks with edit_blocks.`,
+      );
+    if (loaded.skipped) toast(`${unreadable(loaded.skipped)} and ${loaded.skipped === 1 ? "is" : "are"} left out of this quiz.`);
+    const skipped = loaded.skipped ? { skipped: loaded.skipped } : {};
     if (open && open.ref === loaded.ref && !reset) {
       open.title = loaded.title;
       open.session.update(loaded.items);
       show();
       renderFrame();
-      return { ref: loaded.ref, title: loaded.title, questions: loaded.items.length, at: open.session.position + 1, resumed: true };
+      return { ref: loaded.ref, title: loaded.title, questions: loaded.items.length, at: open.session.position + 1, resumed: true, ...skipped };
     }
     teardown();
     const session = sessionFor(loaded.ref, loaded.items);
@@ -229,7 +243,7 @@ export function createQuizCard(deps: QuizCardDeps) {
     show();
     renderFrame();
     if (focus) open.view?.focus();
-    return { ref: loaded.ref, title: loaded.title, questions: loaded.items.length, at: 1 };
+    return { ref: loaded.ref, title: loaded.title, questions: loaded.items.length, at: 1, ...skipped };
   }
 
   /** An agent (or the user in a doc) changed the open quiz: take the new questions, keep the place. */
