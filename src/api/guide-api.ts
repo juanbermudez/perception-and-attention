@@ -262,7 +262,7 @@ export function createGuideApi({
       about.open(ref.tab);
       return { at: formatRef(ref), title: refTitle(ref), said: `Opened About: ${refTitle(ref)}.` };
     }
-    if (ref.kind === "help") return fail("not_available", "help is reference data with no page. Read it with read({ ref: 'help' }).");
+    if (ref.kind === "help") return fail("not_available", 'help is reference data with no page. Read it with read({ ref: "help" }).');
     if (ref.kind === "source") {
       const cited = outline(formatRef(ref)) as { cited?: string[] };
       return fail("not_available", "Sources have no page of their own. Read the source, or go to a topic or region that cites it.", cited.cited ?? []);
