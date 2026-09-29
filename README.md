@@ -63,6 +63,8 @@ Notes are saved in the browser's storage for one origin, so the server sends req
 
 To try the assistant tools in any browser, open the page with `?agent=shim`, then call them from the console: `await agentDebug.call("outline", { ref: "topic:vision" })`. `agentDebug.tools()` lists them with their input schemas.
 
+The inspection hooks `explorerDebug` (state, frames, label placement, the view API) and `docsDebug` (the docs API) are installed only when the URL has `?debug` or `?agent=shim`. They act directly, without the assistant switch, presence or the activity log, so ordinary visits do not get them.
+
 **WebMCP in Chrome and Edge.** During the WebMCP origin trial, Chrome and Edge give a page `document.modelContext` only on an origin registered for the trial (or with the browser's WebMCP flag on); the ChatGPT desktop app does not need this. Register the hosted origin for [Chrome's WebMCP origin trial](https://developer.chrome.com/blog/ai-webmcp-origin-trial) and for Edge's, then build with both tokens:
 
 ```sh

@@ -178,7 +178,7 @@ These landed in parallel content and visual work. Build on them rather than on t
 | **Overview systems map.** On the plain overview every topic's regions glow faintly in its colour (a region shared by topics takes the first topic's colour); markers and labels are hidden. Pointing at a topic in the intro list or dock sets `state.homeFocus`, which brightens that system, runs its routes and shows its labels. The map yields to a hover preview, `viewFocus` or isolate. | `brain-scene.ts` (`homeColour`, `topicLayers`, `HOME_GLOW`), `state.homeFocus`, `ui/explorer.ts` | `go(overview)` shows the map; an agent can preview a topic there by setting `homeFocus` in a later view patch field if wanted. |
 | **Content accuracy audit in progress.** Independent reviewers are checking the new text; fixes will change wording in `content/*`, not ids or structure. | `content/*` | Tests and fixtures should not assert on prose. |
 | **Motion helpers.** `stepWeight(motion, target, dt, reduced, smoothTime?)` and `stepPoint()` for unclamped vec3 springs. | `model/activity.ts` | Use these for presence springs and camera-free position easing. |
-| **Debug hooks.** `explorerDebug.viewGap` exposes the live gap uniforms. `labels()` includes `weight` and `fade`. `diagnostics().viewGap` reports amount, focus and radius. | `main.ts`, `brain-scene.ts` | The shim (§16) can reuse these for checks. |
+| **Debug hooks** (installed only with `?debug` or `?agent=shim`). `explorerDebug.viewGap` exposes the live gap uniforms. `labels()` includes `weight` and `fade`. `diagnostics().viewGap` reports amount, focus and radius. | `main.ts`, `brain-scene.ts` | The shim (§16) can reuse these for checks. |
 
 ---
 
@@ -925,7 +925,7 @@ interface Store {
 
 - `?agent=shim` installs a `document.modelContext` polyfill and `window.agentDebug.call(name, args)`.
 - The same tools run in any browser, including Claude's built-in browser, for scripted checks and screenshots.
-- The existing `explorerDebug.advance()` renders frames in background tabs. `explorerDebug.viewGap`, `labels()` (with `weight` and `fade`) and `diagnostics().viewGap` help check the view gap and callouts.
+- With `?debug` or `?agent=shim`, `explorerDebug.advance()` renders frames in background tabs. `explorerDebug.viewGap`, `labels()` (with `weight` and `fade`) and `diagnostics().viewGap` help check the view gap and callouts.
 
 **Acceptance in the ChatGPT desktop browser** (GPT-5.6 Sol or GPT-6 Sol), one prompt per capability:
 

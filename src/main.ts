@@ -174,36 +174,43 @@ agentControl.onChange((on) => {
   }
 });
 
-const noScene: ViewOutcome = { error: { code: "not_available", message: "The 3D view is not running." } };
 // Inspection hooks for automated checks: render frames in background tabs, read label placement,
 // and drive the view API by hand, e.g. explorerDebug.view({ camera: { frame: ["lgn", "v1"], from: "left" } }).
-Object.defineProperty(window, "explorerDebug", {
-  value: {
-    state,
-    get walking() {
-      return explorer.walking;
-    },
-    diagnostics: () => explorer.scene?.diagnostics(),
-    advance: (frames = 1) => explorer.scene?.advance(frames),
-    labels: () => explorer.scene?.labelsSnapshot(),
-    head: () => explorer.scene?.headSnapshot(),
-    routes: () => explorer.scene?.routesSnapshot(),
-    get viewGap() {
-      return explorer.scene?.viewGap;
-    },
-    snapshot: () => explorer.snapshot(),
-    view: (patch: unknown) => view?.apply(patch) ?? noScene,
-    undoView: () => view?.undo() ?? noScene,
-    currentView: () => view?.current(),
-    pose: () => explorer.scene?.pose(),
-    visibleRegions: () => explorer.scene?.visibleRegions(),
-    narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
-    narration,
-    tour,
-    quiz: quizCard,
-    pick,
-  },
-});
+// They write around the assistant switch, presence and the activity log, so they are installed only with
+// ?debug or the dev shim (?agent=shim), never on an ordinary visit.
+const debugParams = new URLSearchParams(location.search);
+if (debugParams.has("debug") || debugParams.get("agent") === "shim") installDebugHooks();
 
-// The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
-Object.defineProperty(window, "docsDebug", { value: docs });
+function installDebugHooks() {
+  const noScene: ViewOutcome = { error: { code: "not_available", message: "The 3D view is not running." } };
+  Object.defineProperty(window, "explorerDebug", {
+    value: {
+      state,
+      get walking() {
+        return explorer.walking;
+      },
+      diagnostics: () => explorer.scene?.diagnostics(),
+      advance: (frames = 1) => explorer.scene?.advance(frames),
+      labels: () => explorer.scene?.labelsSnapshot(),
+      head: () => explorer.scene?.headSnapshot(),
+      routes: () => explorer.scene?.routesSnapshot(),
+      get viewGap() {
+        return explorer.scene?.viewGap;
+      },
+      snapshot: () => explorer.snapshot(),
+      view: (patch: unknown) => view?.apply(patch) ?? noScene,
+      undoView: () => view?.undo() ?? noScene,
+      currentView: () => view?.current(),
+      pose: () => explorer.scene?.pose(),
+      visibleRegions: () => explorer.scene?.visibleRegions(),
+      narrate: (text: string, stop = 1, of = 1) => narration.show({ text, stop, of }),
+      narration,
+      tour,
+      quiz: quizCard,
+      pick,
+    },
+  });
+
+  // The docs API by hand, e.g. await docsDebug.doc({ action: "create", title: "T", markdown: "- a" }).
+  Object.defineProperty(window, "docsDebug", { value: docs });
+}
