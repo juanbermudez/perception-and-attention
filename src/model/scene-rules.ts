@@ -2,7 +2,8 @@
 // leaves of each region, and how strongly region highlights glow. Pure, so it is tested in
 // Node (tests/scene-rules.test.mjs); scene/brain-scene.ts gathers a FrameView once per frame.
 import type { PathId, RegionId } from "../content/types";
-import type { Isolation, LabelMode } from "./view";
+import type { ExplorerState } from "../state";
+import { type Isolation, LAYER_IDS, type LabelMode } from "./view";
 
 /** Layers 5 and 6 share V1's position, so only the one being shown (or isolated) gets a marker. */
 export const LAYER_MARKERS: ReadonlySet<RegionId> = new Set<RegionId>(["l5", "l6"]);
@@ -121,4 +122,35 @@ export function highlightWeight(
   if ((selected && view.focusActive) || isolated) return 1;
   if (view.overview || !context) return 0;
   return view.isolate ? Math.min(CONTEXT_HIGHLIGHT, view.isolate.keep) : CONTEXT_HIGHLIGHT;
+}
+
+/**
+ * Everything in the shared state that the frame reads, as one string. The scene compares it on each
+ * tick and draws again when it changes, since the UI, the view API and tours write the state without
+ * telling the scene. simTime is left out: the frame writes it.
+ */
+export function sceneStateKey(state: ExplorerState) {
+  const layers = LAYER_IDS.map((id) => state.layers[id]).join(",");
+  const isolate = state.isolate ? `${state.isolate.regions.join(",")}@${state.isolate.keep}` : "-";
+  const senses = `${+state.enabledSenses.vision}${+state.enabledSenses.hearing}${+state.enabledSenses.touch}`;
+  return [
+    state.overview,
+    state.path,
+    state.step,
+    state.selected,
+    state.playing,
+    state.labelMode,
+    state.xray,
+    state.spotlight,
+    layers,
+    state.layerEffect,
+    isolate,
+    state.viewFocus,
+    state.homeFocus,
+    state.pick?.join(",") ?? "-",
+    state.focus,
+    senses,
+    state.priority,
+    state.controlNetwork,
+  ].join("|");
 }

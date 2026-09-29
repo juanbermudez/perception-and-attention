@@ -28,9 +28,12 @@ const {
   HOME_FOCUS,
   HOME_GLOW,
   SPOT_DIM_REGION,
+  sceneStateKey,
+  createState,
 } = await bundle(`
   export * from "./src/model/view.ts";
   export * from "./src/model/scene-rules.ts";
+  export { createState } from "./src/state.ts";
 `);
 
 /** A step inside a topic: `shown` selected, the listed regions touched by drawn routes. */
@@ -173,4 +176,80 @@ test("labels are reached in reading order: the left column top to bottom, then t
     order.map((l) => l.id),
     ["c", "b", "d", "a"],
   );
+});
+
+test("the scene state key changes with every setting the frame reads, and not with simulated time", () => {
+  const state = createState(false);
+  const key = sceneStateKey(state);
+  state.simTime += 3;
+  assert.equal(sceneStateKey(state), key, "simTime is written by the frame itself");
+  const changes = [
+    (s) => {
+      s.overview = false;
+    },
+    (s) => {
+      s.path = "vision";
+    },
+    (s) => {
+      s.step = 2;
+    },
+    (s) => {
+      s.selected = "lgn";
+    },
+    (s) => {
+      s.playing = !s.playing;
+    },
+    (s) => {
+      s.labelMode = "all";
+    },
+    (s) => {
+      s.xray = false;
+    },
+    (s) => {
+      s.spotlight = false;
+    },
+    (s) => {
+      s.layers.skull = 0.5;
+    },
+    (s) => {
+      s.layerEffect = "fade";
+    },
+    (s) => {
+      s.isolate = { regions: ["v1"], keep: 0.08 };
+    },
+    (s) => {
+      s.viewFocus = "mt";
+    },
+    (s) => {
+      s.homeFocus = "touch";
+    },
+    (s) => {
+      s.pick = ["a1"];
+    },
+    (s) => {
+      s.focus = 10;
+    },
+    (s) => {
+      s.enabledSenses.hearing = false;
+    },
+    (s) => {
+      s.priority = "vision";
+    },
+    (s) => {
+      s.controlNetwork = false;
+    },
+  ];
+  for (const change of changes) {
+    const changed = createState(false);
+    change(changed);
+    assert.notEqual(sceneStateKey(changed), key, change.toString());
+  }
+  // The layers and senses objects are often changed in place.
+  const inPlace = createState(false);
+  const before = sceneStateKey(inPlace);
+  inPlace.isolate = { regions: ["v1"], keep: 0.08 };
+  const isolated = sceneStateKey(inPlace);
+  inPlace.isolate.keep = 0.2;
+  assert.notEqual(sceneStateKey(inPlace), isolated);
+  assert.notEqual(isolated, before);
 });

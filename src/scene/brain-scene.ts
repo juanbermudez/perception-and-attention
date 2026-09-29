@@ -17,7 +17,17 @@ import { regions } from "../content/regions";
 import type { Edge, PathId, RegionId, Signal } from "../content/types";
 import atlas from "../data/atlas-data.json";
 import skullData from "../data/skull-data.json";
-import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepPoint, stepWeight, type WeightMotion } from "../model/activity";
+import {
+  ACTIVITY_CUTOFF,
+  type ColorMotion,
+  createColor,
+  createWeight,
+  relax,
+  stepColor as springColor,
+  stepPoint as springPoint,
+  stepWeight as springWeight,
+  type WeightMotion,
+} from "../model/activity";
 import { isolateKeepsRoute, regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
 import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, readingOrder, type Silhouette } from "../model/callouts";
 import {
@@ -29,6 +39,7 @@ import {
   markerActive,
   markerVisible,
   regionSpot,
+  sceneStateKey,
 } from "../model/scene-rules";
 import {
   anglesFromDirection,
@@ -67,6 +78,8 @@ const PER_EDGE = 32;
 // Simulated seconds per wall-clock second while the flow plays.
 const FLOW_TIME_SCALE = 2;
 const TRAIL = 14;
+/** Point size of each trail position: the head is largest. */
+const TAIL_SIZES = Float32Array.from({ length: TRAIL }, (_, tail) => (tail === 0 ? 3.6 : lerp(2.8, 1.4, tail / TRAIL)));
 const CLUSTER_POINTS = 96;
 const VOLLEY_PARTICLES = 16;
 // Illustrative conduction speed in scene units per simulated second. Real axons
@@ -258,6 +271,30 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let userOrbited = false;
   /** True between OrbitControls start and end: the user is moving the view, so agent camera changes wait. */
   let gesturing = false;
+  // The loop draws only while something changes (see animate). Everything that can change the picture
+  // outside frame() calls wake(); inside it, every spring goes through the three wrappers below, which
+  // note whether it is still moving.
+  let settled = false,
+    moving = false;
+  function wake() {
+    settled = false;
+  }
+  function stepWeight(motion: WeightMotion, target: number, delta: number, reduced = false, smoothTime?: number) {
+    const value = springWeight(motion, target, delta, reduced, smoothTime);
+    if (motion.velocity !== 0 || value !== clamp(target, 0, 1)) moving = true;
+    return value;
+  }
+  function stepColor(motion: ColorMotion, target: Vec3, delta: number, reduced = false) {
+    const value = springColor(motion, target, delta, reduced);
+    for (let axis = 0; axis < 3; axis++) if (motion.velocity[axis] !== 0 || value[axis] !== clamp(target[axis], 0, 1)) moving = true;
+    return value;
+  }
+  function stepPoint(motion: ColorMotion, target: Vec3, delta: number, reduced = false) {
+    const value = springPoint(motion, target, delta, reduced);
+    for (let axis = 0; axis < 3; axis++) if (Math.abs(motion.velocity[axis]) > 1e-5 || Math.abs(value[axis] - target[axis]) > 1e-5) moving = true;
+    return value;
+  }
+  controls.addEventListener("change", wake);
   controls.autoRotateSpeed = -0.5;
   controls.addEventListener("start", () => {
     // A user gesture cancels any camera animation, including an agent's.
@@ -473,7 +510,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const highlightTargetColor = new THREE.Color();
   const highlightTemplate = highlightMaterial();
   let highlightedRegion: RegionId | undefined, selectedHighlight: HighlightLayer;
-  const selectionStart = performance.now();
+  // The selected region's pulse runs on its own clock, which stops while the animation is paused.
+  let pulseClock = 0;
   /** The highlight layer for a region's anatomy, created on first use and shared by regions with the same parts. */
   function highlightLayerFor(id: RegionId) {
     const key = regionAnatomy[id].parts.join("|");
@@ -577,6 +615,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   // Frame the whole head when the skull is shown; preserve all atlas coordinates.
   const skullCenterY = (skullData.bounds.min[1] + skullData.bounds.max[1]) * 0.5;
   function resetOverview() {
+    wake();
     focusStarted = -1;
     clearDamping();
     homeCamera(skullCenterY, _pose_target, _home_position);
@@ -587,6 +626,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     homeDistance = contextDistance;
   }
   function focusRegion(id: RegionId, focusCamera = false) {
+    wake();
     highlightRegion(id);
     if (!focusCamera) return;
     // Each region has a viewing direction that keeps it in front of the skull.
@@ -596,6 +636,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   }
   /** Ease the camera to look at `target` from `direction` at `distance`, orbiting the short way round. */
   function animateCamera(target: Vec3, direction: THREE.Vector3, distance: number) {
+    wake();
     clearDamping();
     controls.target.toArray(focusFrom);
     vec3.copy(focusTo, target);
@@ -629,6 +670,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   }
   function endPreview(restore = true) {
     if (!preview) return;
+    wake();
     const saved = preview;
     preview = null;
     if (!restore) return;
@@ -720,17 +762,18 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const particleCount = routes.length * PER_EDGE * TRAIL;
   const particlePositions = new Float32Array(particleCount * 3);
   const particleColors = new Float32Array(particleCount * 3);
+  // Only trail positions that can light are drawn (inhibitory and feedback routes have short trails),
+  // so slots are packed and each slot's size is written with it. Sizes are uploaded only when the
+  // packing changes, which is when the set of drawn routes does.
   const particleSizes = new Float32Array(particleCount);
-  for (let i = 0; i < particleCount; i++) {
-    const tail = i % TRAIL;
-    particleSizes[i] = tail === 0 ? 3.6 : lerp(2.8, 1.4, tail / TRAIL);
-  }
+  const sizeAttribute = new THREE.BufferAttribute(particleSizes, 1);
+  let particleLayout: number | null = null;
   const particleGeo = new THREE.BufferGeometry();
   const posAttribute = new THREE.BufferAttribute(particlePositions, 3).setUsage(THREE.DynamicDrawUsage);
   const colorAttribute = new THREE.BufferAttribute(particleColors, 3).setUsage(THREE.DynamicDrawUsage);
   particleGeo.setAttribute("position", posAttribute);
   particleGeo.setAttribute("color", colorAttribute);
-  particleGeo.setAttribute("size", new THREE.BufferAttribute(particleSizes, 1));
+  particleGeo.setAttribute("size", sizeAttribute);
   const particles = new THREE.Points(particleGeo, activityMaterial());
   particles.frustumCulled = false;
   particles.renderOrder = 3;
@@ -975,6 +1018,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     orbitSurface.style.cursor = "grab";
   });
   orbitSurface.addEventListener("dragstart", (e) => e.preventDefault());
+  // Pointer and focus changes move or keep labels (lift, press, a focused label), so they wake the loop.
+  for (const type of ["pointerdown", "pointermove", "pointerleave", "pointerup", "pointercancel"]) orbitSurface.addEventListener(type, wake, { passive: true });
+  labelContainer.addEventListener("focusin", wake);
+  labelContainer.addEventListener("focusout", wake);
+  reducedMotion.addEventListener("change", wake);
   // Keyboard: Tab reaches the view itself. The arrow keys turn it, Shift and the arrow keys move it,
   // and + and − zoom, each in the direction a drag would. A click focuses the view too, but then the
   // arrow keys keep stepping through the walkthrough (keyboard.ts), so the keys act only when the
@@ -1037,7 +1085,10 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     camera.fov = stageFov(camera.aspect);
     camera.updateProjectionMatrix();
   }
-  const observer = new ResizeObserver(resize);
+  const observer = new ResizeObserver(() => {
+    resize();
+    wake();
+  });
   observer.observe(container);
   resize();
   let lastTime = 0;
@@ -1190,6 +1241,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     volley = null;
   }
   function sendVolley(hops: Signal, fallback: RegionId) {
+    wake();
     const own = routes.filter((route) => route.path === state.path);
     const built: Hop[] = [];
     for (const pairs of hops) {
@@ -1234,10 +1286,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let snapPresence = false;
   function frame(ms: number, dt: number) {
     const simDt = state.playing ? dt * FLOW_TIME_SCALE : 0;
+    if (state.playing) pulseClock += dt;
     state.simTime += simDt;
     const time = state.simTime;
     const reduced = reducedMotion.matches,
-      pulseAmount = regionPulse((ms - selectionStart) / 1000, reduced);
+      pulseAmount = regionPulse(pulseClock, reduced);
     const shown = shownRegion();
     const isolate = state.isolate;
     // The overview map applies on the plain overview: no hover preview, agent focus or isolate.
@@ -1277,7 +1330,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     // The overview turns slowly until someone takes hold of the model.
     controls.autoRotate = state.overview && state.playing && !reduced && !userOrbited && focusStarted < 0;
     updateFocus(ms);
-    controls.update(dt);
+    const cameraMoved = controls.update(dt);
     // 0 at the default distance, 1 when zoomed in close (smoothstep).
     const near = zoomNearness(camera.position.distanceTo(controls.target), homeDistance);
     // Layer presence: each layer eases toward its setting (capped while isolating).
@@ -1376,7 +1429,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     frameView.labelMode = state.labelMode;
     frameView.labelsOn = state.labels && state.layers.labels > 0;
     frameView.spotOn = spotOn;
-    let offset = 0;
+    let offset = 0,
+      layout = 0;
     regionEnergy.clear();
     regionColors.clear();
     activeRegionIds.clear();
@@ -1413,6 +1467,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       const volleyScale = routesPresence * (isolate ? spot : 1);
       const stage = route.edge.stage ?? route.index;
       const trailCount = route.edge.kind === "inhibitory" ? 3 : route.edge.kind === "feedback" ? 9 : TRAIL;
+      layout = (layout * 31 + trailCount) | 0;
       for (let p = 0; p < PER_EDGE; p++) {
         let t = repeat(time * route.rate * (1 + (p % 5) * 0.07) + p / PER_EDGE, 1);
         const packet = (0.5 + 0.5 * Math.cos((t - time * 0.16 + stage * 0.13) * Math.PI * 6)) ** 6;
@@ -1425,7 +1480,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
           lane = Math.sqrt((p + 0.5) / PER_EDGE),
           u = Math.cos(angle),
           v = Math.sin(angle);
-        for (let tail = 0; tail < TRAIL; tail++) {
+        for (let tail = 0; tail < trailCount; tail++) {
           const raw = t - tail * 0.006,
             pt = clamp(raw, 0, 1);
           const s = pt * SAMPLES;
@@ -1440,7 +1495,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
                 lerp(route.binormals[n * 3 + axis], route.binormals[(n + 1) * 3 + axis], s - n) * v) *
               spread;
           vec3.toBuffer(particlePositions, _particle_position, offset);
-          const alpha = raw > 0 && raw < 1 && tail < trailCount ? strength * (1 - tail / trailCount) ** 1.5 * (tail === 0 ? 1.35 : 0.6) : 0;
+          const alpha = raw > 0 && raw < 1 ? strength * (1 - tail / trailCount) ** 1.5 * (tail === 0 ? 1.35 : 0.6) : 0;
+          particleSizes[offset / 3] = TAIL_SIZES[tail];
           particleColors[offset] = route.color.r * alpha;
           particleColors[offset + 1] = route.color.g * alpha;
           particleColors[offset + 2] = route.color.b * alpha;
@@ -1451,6 +1507,11 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     particleGeo.setDrawRange(0, offset / 3);
     posAttribute.needsUpdate = true;
     colorAttribute.needsUpdate = true;
+    layout = (layout * 31 + offset) | 0;
+    if (layout !== particleLayout) {
+      particleLayout = layout;
+      sizeAttribute.needsUpdate = true;
+    }
     const pathColor = pathwayColors.get(state.path)!;
     clusters.forEach((cluster, index) => {
       let energy = ((regionEnergy.get(cluster.id) ?? 0) + (impulse.get(cluster.id) ?? 0) * 0.75) * regionSpot(cluster.id, frameView);
@@ -1600,17 +1661,29 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       setLabelStyle(marker, "opacity", opacity.toFixed(3));
       setLabelStyle(marker, "--dim", ((1 - inSpot) / (1 - SPOT_DIM_MARKER)).toFixed(2));
       setLeader(marker, leaderPath(marker), (opacity * lerp(0.45, 1, inSpot)).toFixed(3));
+      if (marker.fade < 1 || Math.abs(marker.labelX - marker.targetX) > 0.05 || Math.abs(marker.labelY - marker.targetY) > 0.05) moving = true;
     }
     updateTabStop(focused);
     renderer.render(scene, camera);
     frameCount++;
+    // Settled: nothing eases, moves or flows, so the next frame would draw the same picture.
+    settled = !moving && !cameraMoved && !state.playing && focusStarted < 0 && volley === null && impulse.size === 0;
+    moving = false;
   }
+  // Each tick costs almost nothing once the view has settled: the frame is skipped until something
+  // wakes it or the shared state changes (the UI, the view API and tours write it directly).
+  let stateKey = "";
   function animate(ms: number) {
     requestAnimationFrame(animate);
     const dt = lastTime ? Math.min((ms - lastTime) / 1000, 0.05) : 0;
     lastTime = ms;
     if (document.hidden) return;
-    frame(ms, dt);
+    const key = sceneStateKey(state);
+    if (key !== stateKey) {
+      stateKey = key;
+      settled = false;
+    }
+    if (!settled) frame(ms, dt);
   }
   requestAnimationFrame(animate);
   renderer.domElement.addEventListener("webglcontextlost", (e) => {
@@ -1717,6 +1790,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     visibleRegions,
     /** Make layer presence jump to its targets on the next frame instead of easing. */
     snapLayers() {
+      wake();
       snapPresence = true;
     },
     /** True while the user is orbiting, panning or zooming. */
