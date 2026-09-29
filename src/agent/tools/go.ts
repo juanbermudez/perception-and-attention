@@ -6,7 +6,7 @@ export const goTool = defineTool({
   name: "go",
   title: "Go to a place in the guide",
   description:
-    "Navigate to a ref: overview, an About tab, a topic, a step, a region (optionally #section) or topic:attention/streams. Changes what the user sees; the 3D camera follows unless camera is false. Stops a playing walkthrough. Returns the new place and its brief text.",
+    "Show a place: the side panel switches to it and the 3D camera turns to it (unless camera is false). Places: overview, about, topic:vision, step:vision/2, region:v1 (or region:v1#mechanism), topic:attention/streams. doc:, quiz: and block: refs open a window; a quiz opens as its question list for editing (to let the user take it, use quiz open). To change only the 3D view, use set_view. Stops a walkthrough or tour. Returns the new place, its short text and the view.",
   readOnly: false,
   idempotent: true,
   input: z.strictObject({

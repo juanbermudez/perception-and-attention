@@ -192,7 +192,7 @@ test("the region enum and the help card are generated from content", () => {
   assert.deepEqual(refs.regionIdEnum.options, ids);
   assert.deepEqual(refs.REGION_IDS, ids);
   const card = refs.helpCard();
-  assert.deepEqual(Object.keys(card.regions), ids);
+  assert.deepEqual(card.regions.split(" "), ids);
   assert.deepEqual(
     Object.keys(card.topics),
     pathways.map((path) => path.id),

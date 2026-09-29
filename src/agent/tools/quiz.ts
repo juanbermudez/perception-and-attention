@@ -5,6 +5,8 @@ import { refField, regionIdSchema, viewPatchField } from "../schemas";
 import { defineTool } from "../webmcp";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
+/** A custom message for a wrong type only; range errors keep zod's own wording. */
+const onlyType = (message: string) => (issue: { code: string }) => (issue.code === "invalid_type" ? message : undefined);
 const itemText = text(LIMITS.promptChars);
 
 /** A guide place, checked against the guide, with suggestions for near misses. */
@@ -47,7 +49,11 @@ const choiceQuestion = z
     kind: z.literal("choice"),
     ...base,
     choices: z.array(itemText).min(2).max(6),
-    answer: z.array(z.number().int().min(0).max(5)).min(1).max(6).describe("0-based indexes of the correct choices; more than one makes it multi-select"),
+    answer: z
+      .array(z.number().int().min(0).max(5), { error: onlyType("a choice answer is a list of 0-based indexes, e.g. [0] or [0, 2]") })
+      .min(1)
+      .max(6)
+      .describe("0-based indexes of the correct choices; more than one makes it multi-select"),
   })
   .superRefine((question, context) => {
     const outside = question.answer.find((index) => index >= question.choices.length);
@@ -60,7 +66,11 @@ const regionQuestion = z
   .strictObject({
     kind: z.literal("region"),
     ...base,
-    answer: z.array(regionIdSchema).min(1).max(12).describe("Region ids that count as right; the user clicks one region"),
+    answer: z
+      .array(regionIdSchema, { error: onlyType('a region answer is a list of region ids, e.g. ["ffa"]') })
+      .min(1)
+      .max(12)
+      .describe("Region ids that count as right; the user clicks one region"),
     choices: z.array(regionIdSchema).min(2).max(12).optional().describe("The regions marked on the brain. Default: the regions of the question's topic"),
   })
   .superRefine((question, context) => {
@@ -72,7 +82,9 @@ const regionQuestion = z
 
 export const questionSchema = z.discriminatedUnion("kind", [
   choiceQuestion,
-  z.strictObject({ kind: z.literal("truefalse"), ...base, answer: z.boolean() }).superRefine(fitsInBlock),
+  z
+    .strictObject({ kind: z.literal("truefalse"), ...base, answer: z.boolean({ error: onlyType("a truefalse answer is true or false") }) })
+    .superRefine(fitsInBlock),
   regionQuestion,
   z
     .strictObject({ kind: z.literal("order"), ...base, items: z.array(itemText).min(3).max(8).describe("In the correct order; the card shuffles them") })
@@ -96,7 +108,7 @@ export const quizTool = defineTool({
   name: "quiz",
   title: "Quiz the user",
   description:
-    "Create a quiz and show it in a draggable card on the page, one question at a time; or open, close or reset (start again from question 1) a quiz. Kinds: choice (answer = correct 0-based indexes; more than one makes it multi-select), truefalse, region (the user clicks a region on the 3D brain; answer = region ids that count), order (items in the correct order; shown shuffled) and recall (the user types, reveals the model answer and marks it). The page grades answers and stores every attempt: read the quiz with detail results for scores; get_context shows answers as they come in. Edit questions later with edit_blocks (set on a question block).",
+    'Quiz the user in a card, one question at a time: create a quiz, or open, close or reset one. The page grades and keeps attempts; read it with detail results for scores. Example: {"action":"create","title":"Vision","questions":[{"kind":"choice","prompt":"Which relays vision to V1?","choices":["LGN","MGN","VPL"],"answer":[0]},{"kind":"region","prompt":"Click the face area.","answer":["ffa"]},{"kind":"truefalse","prompt":"Nasal fibres cross at the chiasm.","answer":true}]}',
   readOnly: false,
   // One object at the root (WebMCP input schemas must be type "object"); the action decides which fields apply.
   input: z

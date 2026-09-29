@@ -11,7 +11,7 @@ export const docTool = defineTool({
   name: "doc",
   title: "Create or manage a doc",
   description:
-    "Create a markdown doc for the user (it opens in a floating window), rename it, delete it (restorable for 30 days), restore it, or download it as .md. Markdown becomes blocks: headings, paragraphs, lists, to-dos, quotes, callouts (> [!tip]), code, tables, dividers. Link regions as [text](region:v1). Returns the doc ref and its blocks with ids and revs for edit_blocks.",
+    'Create a doc from markdown (it opens in a window), or rename, delete (restorable for 30 days), restore or download a doc or quiz. To list the user\'s docs and their refs, call outline({ ref: "docs" }); to read one, read; to change its content, edit_blocks; to show or move its window, window. Markdown becomes blocks: headings, paragraphs, lists, to-dos, quotes, callouts (> [!tip]), code, tables, dividers. Link regions as [text](region:v1). Returns the ref and blocks with ids and revs.',
   readOnly: false,
   untrustedContent: true,
   destructive: true,

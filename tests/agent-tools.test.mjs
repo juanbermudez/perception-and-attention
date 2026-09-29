@@ -59,6 +59,7 @@ function fakeApi({ throws = false } = {}) {
     walkthrough: answer("walkthrough", { at: "step:vision/optic-chiasm", walking: true, said: "Playing Vision." }),
     quiz: answer("quiz", { ref: "quiz:k3f9", said: "Created quiz." }),
     doc: answer("doc", { ref: "doc:k3f9", said: "Created doc." }),
+    editBlocks: answer("editBlocks", { ref: "doc:k3f9", said: "Edited 1 block." }),
     window: answer("window", { ref: "doc:k3f9", said: "Opened doc." }),
     tour: answer("tour", { at: "step:vision/optic-chiasm", said: "Started a 1-stop tour, about 6 s." }),
     setView: answer("setView", {
@@ -78,13 +79,15 @@ function setup({ on = true, throws = false } = {}) {
   return { api, control, presence, logged, runner };
 }
 
-test("twelve tools, each with a title, a description, and readOnly set only on the read tools", () => {
+test("twelve tools, each with a title, a description within Chrome's 500 characters, and readOnly set only on the read tools", () => {
   assert.deepEqual(
     tools.map((tool) => tool.name),
     ["get_context", "outline", "read", "search", "go", "walkthrough", "start_tour", "set_view", "doc", "edit_blocks", "window", "quiz"],
   );
   for (const tool of tools) {
     assert(tool.title && tool.description.length > 20, tool.name);
+    assert(tool.description.length <= 500, `${tool.name}: ${tool.description.length} characters`);
+    assert(!tool.description.includes("\u2014"), `${tool.name}: no em-dashes`);
     assert.equal(tool.readOnly, READ_TOOLS.includes(tool.name), tool.name);
   }
 });
@@ -501,6 +504,50 @@ test("inputs use unambiguous names, mapped to what the API and the store expect"
   assert(!(await runner.call("window", { action: "place", ref: "doc:k3f9", slot: "left" })).error);
   assert.deepEqual(api.calls.at(-1), ["window", { action: "place", ref: "doc:k3f9", at: "left" }]);
   assert.equal((await runner.call("window", { action: "place", ref: "doc:k3f9", at: "left" })).error.code, "bad_input");
+});
+
+test("descriptions name their neighbours, and the complex tools carry a worked example that passes validation", async () => {
+  const description = (name) => tools.find((tool) => tool.name === name).description;
+  assert.match(description("go"), /set_view/);
+  assert.match(description("set_view"), /\bgo\b/);
+  assert.match(description("window"), /quiz with action open/);
+  assert.match(description("doc"), /outline\(\{ ref: "docs" \}\)/);
+  assert.match(description("get_context"), /read\(\{ ref: "help" \}\)/);
+  assert.match(description("walkthrough"), /start_tour/);
+  const examples = { set_view: /Examples: (.*)$/, quiz: /Example: (.*)$/, edit_blocks: /Example \([^)]*\): (.*)$/, start_tour: /Example: (.*)$/ };
+  for (const [name, pattern] of Object.entries(examples)) {
+    const found = pattern.exec(description(name));
+    assert(found, `${name} has an example`);
+    for (const text of found[1].split(" · ")) {
+      const args = JSON.parse(text.replace(/ \(.*\)$/, ""));
+      const { runner } = setup();
+      const result = await runner.call(name, args);
+      assert(!result.error, `${name} ${text}: ${result.error?.message}`);
+    }
+  }
+});
+
+test("the common slips get messages that say how to fix them", async () => {
+  const { runner } = setup();
+  const message = async (name, args) => (await runner.call(name, args)).error.message;
+  const create = (question) => ({ action: "create", title: "T", questions: [question] });
+  assert.equal(
+    await message("edit_blocks", { ref: "doc:k3f9", ops: [{ op: "update", id: "b7x2k", md: "x" }] }),
+    'ops.0.rev: rev is required: copy the block\'s rev from outline({ ref: "doc:<id>" }) or read',
+  );
+  assert.match(
+    await message("quiz", create({ kind: "choice", prompt: "p", choices: ["a", "b"], answer: 0 })),
+    /answer: a choice answer is a list of 0-based indexes, e\.g\. \[0\]/,
+  );
+  assert.match(await message("quiz", create({ kind: "truefalse", prompt: "p", answer: "yes" })), /answer: a truefalse answer is true or false/);
+  assert.match(await message("quiz", create({ kind: "region", prompt: "p", answer: "ffa" })), /answer: a region answer is a list of region ids/);
+});
+
+test("edit_blocks takes a question's show_me as quiz does, and stores it as ref and view", async () => {
+  const { runner, api } = setup();
+  const question = { kind: "truefalse", prompt: "p", answer: true, show_me: { ref: "region:v1" } };
+  assert(!(await runner.call("edit_blocks", { ref: "doc:k3f9", ops: [{ op: "insert", question }] })).error);
+  assert.deepEqual(api.calls.at(-1)[1].ops[0].question, { kind: "truefalse", prompt: "p", answer: true, ref: "region:v1" });
 });
 
 test("a quiz question that passes the schema always fits in one stored block", async () => {

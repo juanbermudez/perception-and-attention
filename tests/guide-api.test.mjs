@@ -15,12 +15,13 @@ async function bundle(source) {
 }
 const m = await bundle(`
   export * from "./src/api/guide-content.ts";
+  export { helpCard } from "./src/agent/help.ts";
   export { createGuideApi } from "./src/api/guide-api.ts";
   export { createActivityLog } from "./src/api/activity.ts";
   export { stepRef, formatRef, placeRef } from "./src/model/refs.ts";
   export { pathways, regions, regionGuides } from "./src/content/index.ts";
 `);
-const { outline, read, createGuideApi, createActivityLog, pathways, regions, regionGuides, stepRef } = m;
+const { outline, read, createGuideApi, createActivityLog, pathways, regions, regionGuides, stepRef, searchGuide, noMatchesHint, helpCard } = m;
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 /** Keys with a value: the runner drops undefined fields before results leave the page. */
 const keys = (value) => Object.keys(value).filter((key) => value[key] !== undefined);
@@ -57,6 +58,7 @@ test("outline(topic) lists steps with stable refs, then walkthrough regions and 
   const paged = outline("topic:vision", { limit: 4 });
   assert.equal(paged.steps.length, 4);
   assert.equal(paged.cursor, "4");
+  assert.equal(paged.more, true, "A cursor comes with more: true.");
   const next = outline("topic:vision", { limit: 4, cursor: paged.cursor });
   assert.equal(next.steps[0].n, 5);
   assert(isError(outline("topic:vision", { cursor: "x" }), "bad_input"));
@@ -208,8 +210,8 @@ test("typical results stay under 2 KB", () => {
   }
   for (const id of REGION_IDS) typical.push([`read region:${id}`, read(`region:${id}`)], [`outline region:${id}`, outline(`region:${id}`)]);
   for (const [label, result] of typical) {
-    // The reference card lists every tool, so it grows with the tool set (11 tools today).
-    const limit = label.includes("reference card") ? 3584 : 2048;
+    // The reference card maps tasks to the 12 tools and explains every error code, so it gets a little more room.
+    const limit = label.includes("reference card") ? 2560 : 2048;
     assert(bytes(result) < limit, `${label}: ${bytes(result)} bytes`);
   }
 });
@@ -414,6 +416,38 @@ test("a cursor from before a reload is recognised: the agent gets the latest ent
   assert.equal(after.cursor, `${log.epoch}.2`);
   assert.equal(api.context("not a cursor").reset !== undefined, true);
   assert.equal(api.context(after.cursor).reset, undefined);
+});
+
+test("a search with no hits says what to try next, naming close refs when there are some", () => {
+  const { api } = setup();
+  const typo = api.search("pulvinr", "guide");
+  assert.deepEqual(typo.hits, []);
+  assert.match(
+    typo.hint,
+    /^No matches for "pulvinr"\. Closest refs: region:pulvinar(, [a-z:/-]+)*\. Try fewer or different keywords, or browse with outline\(\)\.$/,
+  );
+  assert.equal(noMatchesHint("qqqxxz"), 'No matches for "qqqxxz". Try fewer or different keywords, or browse with outline().');
+  assert.equal(api.search("lgn", "guide").hint, undefined);
+  for (const hit of searchGuide("lgn relay", 50)) assert.notEqual(hit.snip, "", `${hit.ref}: an empty snip is left out`);
+});
+
+test("the help card maps tasks to tools and says what each error code asks for", () => {
+  const card = helpCard();
+  assert.equal(card.details.results, "a quiz's answers and score");
+  assert.equal(card.tasks["narrate your own sequence"], "start_tour");
+  assert.equal(card.tasks["list the user's docs"], "outline docs");
+  for (const code of [
+    "bad_input",
+    "unknown_ref",
+    "not_available",
+    "stale_rev",
+    "locked_by_user",
+    "limit",
+    "agent_control_off",
+    "store_unavailable",
+    "internal",
+  ])
+    assert(card.errors[code], code);
 });
 
 test("the activity log pages 30 entries at a time and keeps the latest 500", () => {

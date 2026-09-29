@@ -5,7 +5,7 @@ export const getContextTool = defineTool({
   name: "get_context",
   title: "What the user is looking at",
   description:
-    "What the user is looking at now (topic, step, panel, region, 3D view, tour progress, open doc windows, the block they are editing, selected text) and what they and you did since `since`, the cursor from your previous call. The page cannot notify you, so call this to catch up.",
+    'What the user sees now and what happened since your last call: the place (topic, step, region), the 3D view, open doc and quiz windows, the block being edited, selected text, tour and quiz progress, and a log of user and agent actions and quiz answers. walking means a walkthrough plays; animating, the 3D signals move. The page cannot notify you, so call this at the start of each turn. New here? outline() lists the topics; read({ ref: "help" }) lists every ref form and region id.',
   readOnly: true,
   untrustedContent: true,
   input: z.strictObject({

@@ -21,7 +21,7 @@ import { normalizeViewPatch } from "../model/view";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
 import type { ActivityLog } from "./activity";
 import { createDocsTools, type DocInput, type DocsApi, type EditBlocksInput } from "./docs-tools";
-import { type Detail, DOCS_LATER, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
+import { type Detail, DOCS_LATER, noMatchesHint, outline, type Page, read, refTitle, searchGuide } from "./guide-content";
 import type { QuizApi, QuizInput } from "./quiz-api";
 import { fail, isFailure, type Result, type WriteResult } from "./result";
 import { TOUR_LIMITS, type TourRunner, type TourStop } from "./tour";
@@ -224,7 +224,8 @@ export function createGuideApi({
   function search(query: string, scope: "guide" | "docs" | "all" = "all", limit = SEARCH_LIMIT.default): Result<object> | Promise<Result<object>> {
     if (docsTools && scope !== "guide") return docsTools.search(query, scope, limit);
     if (scope === "docs") return fail("not_available", DOCS_LATER);
-    return { scope: "guide", hits: searchGuide(query, limit) };
+    const hits = searchGuide(query, limit);
+    return { scope: "guide", hits, hint: hits.length ? undefined : noMatchesHint(query) };
   }
 
   /* ---------- Commands ---------- */

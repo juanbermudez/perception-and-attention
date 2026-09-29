@@ -9,7 +9,7 @@ export const windowTool = defineTool({
   name: "window",
   title: "Arrange the doc windows",
   description:
-    "Open, close, minimize, restore, focus or place the floating windows that show docs and quizzes, or arrange all open ones (tile or stack). Places are named slots and sizes (s, m, l), never pixels. A block ref opens its doc and scrolls to it. Without ref, commands act on the focused window. Closing keeps the doc; delete it with doc.",
+    "Open, close, minimize, restore, focus or place the floating windows that show docs and quizzes, or arrange all open ones (tile or stack). Positions are named slots and sizes (s, m, l), never pixels. A block ref opens its doc and scrolls to it. Without ref, commands act on the focused window. Closing keeps the doc; delete it with doc. A quiz ref opens its question list for editing; to let the user answer it, use quiz with action open.",
   readOnly: false,
   idempotent: true,
   input: z
