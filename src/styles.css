@@ -182,6 +182,8 @@ kbd {
   overflow-y: auto;
   scrollbar-width: none;
   background: var(--card);
+  /* The rail and the panel share a surface; this line keeps them apart. */
+  border-right: 1px solid var(--line);
 }
 .rail::-webkit-scrollbar {
   display: none;
