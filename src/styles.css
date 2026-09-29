@@ -1417,8 +1417,8 @@ kbd {
 .path-step h3 {
   margin: 0;
 }
-/* The dashed line joining the steps: 3 px dashes, 4 px gaps, a little brighter than --line so it still
-   reads with half its length missing. */
+/* The dashed line joining the steps: 3 px dashes, 4 px gaps, just brighter than --line so it still reads
+   with half its length missing. */
 .path-step::before {
   content: "";
   position: absolute;
@@ -1426,7 +1426,7 @@ kbd {
   top: 30px;
   bottom: -6px;
   width: 1px;
-  background: repeating-linear-gradient(to bottom, #ffffff2e 0 3px, transparent 3px 7px);
+  background: repeating-linear-gradient(to bottom, #ffffff1f 0 3px, transparent 3px 7px);
 }
 .path-step:last-child::before {
   display: none;
