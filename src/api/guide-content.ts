@@ -21,6 +21,7 @@ import {
   resolveRef,
   STREAMS_REF,
   stepRef,
+  suggest,
   topicRef,
 } from "../model/refs";
 import { createSearchIndex, type SearchDoc, type SearchIndex } from "../model/search";
@@ -133,6 +134,7 @@ export function outline(refText = "guide", page: Page = {}): Result<object> {
         title: path.title,
         steps: steps.items,
         cursor: steps.cursor,
+        more: steps.cursor === undefined ? undefined : true,
         regions: inSteps,
         also: onRoutes,
         streams: path.id === "attention" ? STREAMS_REF : undefined,
@@ -234,8 +236,10 @@ function readAbout(tab: AboutTab, detail: Detail): Result<object> {
       return { ref, title, sections: about.sections.map((section) => ({ title: section.title, text: paragraphs(section.paragraphs) })) };
     case "papers": {
       // About 240 citations: list refs here; read a topic, step or region with detail "sources" for titles and URLs.
+      // As the Papers tab lists them: topic sources first, then each region-guide URL not listed yet, once
+      // (some papers are cited under two ids).
       const listed = new Set(pathways.flatMap((path) => path.sourceIds.map((id) => sourceEntry(id)?.url)));
-      const regionOnly = guideSources.filter((source) => !listed.has(source.url)).length;
+      const regionOnly = new Set(guideSources.map((source) => source.url).filter((url) => !listed.has(url))).size;
       const text = "Papers, reviews and textbook chapters used for this guide, grouped by topic. Region guides cite more; read a region with detail sources.";
       if (detail === "brief")
         return { ref, title, text, topics: pathways.map((path) => ({ ref: topicRef(path.id), sources: path.sourceIds.length })), regionOnly };
@@ -397,5 +401,15 @@ export function guideHits(query: string, limit = SEARCH_LIMIT.default) {
   return guideIndex.search(query, { limit });
 }
 export function searchGuide(query: string, limit = SEARCH_LIMIT.default) {
-  return guideHits(query, limit).map((hit) => ({ ref: hit.ref, title: hit.title, snip: hit.snip }));
+  return guideHits(query, limit).map((hit) => ({ ref: hit.ref, title: hit.title, snip: hit.snip || undefined }));
+}
+
+const CLOSEST = 3;
+/**
+ * The hint on a search with no hits, for guide and doc search alike: refs whose ids or names are close to
+ * the query (a typo such as "pulvinr"), then where to go next.
+ */
+export function noMatchesHint(query: string): string {
+  const closest = suggest(query).slice(0, CLOSEST);
+  return `No matches for "${query}". ${closest.length ? `Closest refs: ${closest.join(", ")}. ` : ""}Try fewer or different keywords, or browse with outline().`;
 }

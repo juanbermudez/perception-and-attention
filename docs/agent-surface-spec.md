@@ -1,13 +1,13 @@
 # Agent surface over WebMCP: spec
 
-Status: draft for review · Written 2026-09-27 · Updated 2026-09-28 for commits up to `e3760b2` (see §4.1) · Stages: [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
+Status: draft for review · Written 2026-09-27 · Updated 2026-09-28 for commits up to `e3760b2` (see §4.1), and for the tool fixes from the 2026-09-28 review (see §2.1) · Stages: [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) · Evaluation: [`agent-evals.md`](agent-evals.md)
 
 ## TL;DR
 
-Perception & Attention becomes a shared surface that the user and an agent can both work on. The page registers **11 WebMCP tools**. With them, an agent in the ChatGPT desktop browser can:
+Perception & Attention becomes a shared surface that the user and an agent can both work on. The page registers **12 WebMCP tools**. With them, an agent in the ChatGPT desktop browser can:
 
 - read the guide a level at a time
-- navigate it and run walkthroughs
+- navigate it, run walkthroughs and narrate its own tours
 - control the 3D camera and layers (dissolve, isolate) in one declarative call
 - create and edit markdown docs and quizzes, shown in floating windows
 
@@ -47,7 +47,7 @@ These facts shape the design. Sources are listed in §18.
 | WebMCP has **tools only**: no MCP resources, prompts or skills. The page cannot push events to the agent. | Content is served through read-only tools. User activity is exposed through a polled `get_context` with a cursor. |
 | Tools belong to the page that registered them. "Tools used on one page won't automatically be available on others." | **No full-page navigations.** Routing stays hash-only, inside one document. |
 | ChatGPT treats tool definitions and results as **untrusted content**. It reviews each request before running it and asks for confirmation on consequential actions (purchases, deletions, permissions). | Results are factual data, never instructions. Deletes are soft and restorable, so they are low-stakes. The `help` card is reference data. It is not a "skill". |
-| The API is `document.modelContext.registerTool(tool, { signal })`. Unregister by aborting the signal. The ChatGPT example returns a **plain object** and sets `annotations: { readOnlyHint: true }`. The spec README returns MCP-style `{ content: [{ type: "text", text }] }`. | Feature-detect `document.modelContext` first, then `navigator.modelContext`, because older drafts used it. Put result encoding in one function (`encodeResult`) and let the Stage 1 spike choose the format. |
+| The API is `document.modelContext.registerTool(tool, { signal })`, which **returns a Promise** that rejects on a duplicate or invalid name, a denied `tools` policy or an agent cluster that is not origin-keyed. Unregister by aborting the signal. The ChatGPT example returns a **plain object** and sets `annotations: { readOnlyHint: true }`. The spec serializes any JSON value as the result. | Feature-detect `document.modelContext` first, then `navigator.modelContext`, because older drafts used it. Await every registration; results are plain objects (§2.1). |
 | Users can turn site tools off in ChatGPT under **Settings > Browser > Permissions**. | We add our own in-page switch as well (§12). |
 
 **Spike questions (Stage 1, day 1):**
@@ -60,8 +60,8 @@ These facts shape the design. Sources are listed in §18.
 
 **Spike status (2026-09-28): still pending.** Stage 1 was built without access to the ChatGPT desktop browser, so none of the questions above has an answer yet. Until the spike runs, Stage 1 makes the safe choices and keeps each one switchable:
 
-- Results are plain objects (`DEFAULT_RESULT_FORMAT` in `src/agent/webmcp.ts`). `encodeResult` is the only place that shapes them; `?agent-result=content` switches to `content[]` without a rebuild.
-- Read tools set `annotations: { readOnlyHint: true }`; write tools set it to `false`.
+- Results are plain objects. This is now decided (§2.1); the `content[]` mode and `?agent-result=content` are gone.
+- Read tools set `annotations: { readOnlyHint: true }`; write tools set it to `false`. The full set of hints is in §6.
 - Input schemas are fully inlined (no `$ref`), with `additionalProperties: false`.
 - Routing uses `history.replaceState` on the hash only, so the document never changes.
 
@@ -79,6 +79,25 @@ These facts shape the design. Sources are listed in §18.
 | COOP/COEP | Not needed. The SharedArrayBuffer-based `opfs` and `opfs-wl` VFSes are disabled through `sqlite3ApiConfig`, which also silences their startup warnings. |
 | ChatGPT desktop browser | **Not yet checked.** Run the checks in `IMPLEMENTATION_PLAN.md` Stage 3 there. |
 
+### 2.1 Review follow-up (2026-09-28)
+
+The review in [`reviews/2026-09-28`](reviews/2026-09-28/README.md) checked the adapter against the current WebMCP draft (`webmcp.md`, items G1–G12) and against tool-design practice (`tool-design.md`, R1–R11). What changed, and what was left:
+
+| Item | Decision |
+| --- | --- |
+| G1 `registerTool` returns a Promise | `registerTools` awaits every registration with `Promise.allSettled`, logs each refusal by tool name (ChatGPT rejects with an empty `{}`), and on any refusal aborts the controller so no partial list stays registered. `startAgentSurface().registered` is a Promise. The `?agent=shim` polyfill's `registerTool` is async and refuses what the spec refuses (duplicate names, names outside `[A-Za-z0-9_.-]{1,128}`, empty descriptions, an aborted signal). |
+| G3, R5 annotations | See §6. `untrustedContentHint` is set on the tools that return doc text. **Check in ChatGPT that flagged results still reach the model**: the spec lets a client hide them. |
+| G4, R7 schema weight | The ViewPatch is spelled out once, on `set_view`. Tour stops, `edit_blocks` inserts and a question's Show me take a loose object checked in code by `normalizeViewPatch`. zod's safe-integer bounds and `propertyNames` are dropped, and `oneOf` is written as `anyOf`. Definitions went from 33.6 KB to 26.9 KB, with some of the room spent on longer descriptions. |
+| G6 budgets | Every description is at most 500 characters (a test enforces it). The `help` card is 2.5 KB (was 3.1 KB): region ids without names. |
+| G8 cancellation | `execute(input, { signal })` passes the signal to the tool. ChatGPT passes none. |
+| G9 result format | **Plain objects.** The spec serializes any JSON value, ChatGPT keeps objects, and MCP-B wraps plain values itself; `content[]` double-encoded JSON inside a string. |
+| G11 | The `handle.unregister` path for pre-March drafts is gone. The `navigator.modelContext` fallback stays while Chrome 149 is in use. |
+| G2 origin-trial token | Not in the tool layer: the build injects an origin-trial meta tag for the hosted origin (separate build work), and the token must be registered for that origin. A token cannot help a `file://` copy. |
+| G5 dynamic registration on the kill switch | **Not done.** The case for it rests on one dated ChatGPT probe that saw the tool list refresh; the `agent_control_off` error already tells the agent why a write failed, and `get_context` reports `control: "off"`. Revisit if the spike confirms that ChatGPT re-reads the list. |
+| G12 presence from `toolactivated` events | **Not done.** ChatGPT's `modelContext` has no `addEventListener`, and the runner already drives presence. Low value. |
+| R2 tours | Split out of `walkthrough` into `start_tour` (§6.6). |
+| R10 name prefixes | **Not done.** Decide by the evaluation in [`agent-evals.md`](agent-evals.md), not by rule. |
+
 ---
 
 ## 3. Key decisions, with the strongest case against each
@@ -87,9 +106,10 @@ These facts shape the design. Sources are listed in §18.
 The case against: this is an extra layer, and for one host we could call the explorer directly.
 Why we do it anyway: the UI, keyboard, tests, the dev shim and any future remote MCP server all need the same commands. OpenAI's own guidance says to reuse application logic rather than duplicate it in WebMCP handlers. The explorer already acts as a controller, so the API mostly exposes and names what exists.
 
-**D2. Eleven tools, and one declarative `set_view` for everything in 3D.**
+**D2. Twelve tools, and one declarative `set_view` for everything in 3D.**
 The case against: one tool with a large schema is harder for a model than small `orbit`, `zoom` and `dissolve` tools.
 Why we do it anyway: the user asked for compact combined commands. A partial patch (for example "camera plus layers plus isolate") is atomic, idempotent, and a natural fit for this codebase: the UI writes state and the scene eases toward it with springs. Read-only tools stay separate from write tools so they can carry `readOnlyHint`.
+Tools share an `action` parameter only when the actions share a parameter shape. Tours were split from `walkthrough` into `start_tour` for that reason: the two features shared no parameters, and the tour capability was hidden under the walkthrough name. Multi-action tools (`doc`, `window`, `quiz`) keep one annotation set for all their actions, so `doc` is marked destructive for its `delete`.
 Rejected: a string DSL (`"focus v1; dissolve skull"`). It has no schema validation, so it produces more model errors and needs a second parser.
 
 **D3. SQLite (WASM) in the browser, not IndexedDB.**
@@ -131,8 +151,8 @@ WebMCP makes no network requests (tools run in the page), and local SQLite needs
 
 | Path | Responsibility |
 | --- | --- |
-| `src/agent/webmcp.ts` | Feature-detect, register tools with an `AbortSignal`, and wrap each call: validate, kill switch, presence, run, log, `encodeResult`. |
-| `src/agent/tools/*.ts` | One file per tool: name, description, zod input schema, `readOnly`, and `run(input, api)`. |
+| `src/agent/webmcp.ts` | Feature-detect, await registration of every tool with an `AbortSignal`, emit annotations, and wrap each call: validate, kill switch, presence, run, kill switch again, log. |
+| `src/agent/tools/*.ts` | One file per tool: name, description, zod input schema, `readOnly` and the other hints, and `run(input, api, { signal })`. |
 | `src/agent/help.ts` | Builds the `help` reference card from content (ids, layers, grammar). |
 | `src/api/guide-api.ts` | `outline`, `read`, `search`, `go`, `walkthrough`, `context`. |
 | `src/api/view-api.ts` | Normalize a `ViewPatch`, apply it to state and scene, report the resulting view, keep a view stack for undo. |
@@ -203,8 +223,10 @@ help                          agent reference card
 ```
 
 - Refs are case-insensitive.
+- A bare word that is exactly one topic id or one region id resolves as that ref: `vision` is `topic:vision`, `V1` is `region:v1`, `v1#role` is `region:v1#role`.
+- Extra segments are rejected (`step:vision/2/x`, `region:v1#role#x`), with the ref without them as the suggestion.
 - An unknown ref returns `unknown_ref` with up to 5 suggestions. Suggestions are ranked by edit distance on ids and by substring matches on labels. For example, `region:visual cortex` suggests `region:v1` and `region:extrastriate`.
-- **Fields that accept only regions take bare region ids** (a schema enum), for example `isolate: ["v1", "lgn"]`. Fields named `ref` take refs.
+- **Fields that accept only regions take region ids**, listed as an enum in the schema, for example `isolate: ["v1", "lgn"]`. They also accept `V1` and `region:v1`, since an agent that just used `go(region:v1)` will pass that form. Another kind of ref in a region field gets an error saying so. Fields named `ref` take refs.
 - Guide text rewrites `[[v1|primary visual cortex]]` as `[primary visual cortex](region:v1)`. Agents read these as normal links and can pass the ref straight to `go`.
 - **Step numbers shift when content changes** (the expansion in §4.1 renumbers Touch, Hearing, Feedback and Attention). Live tool calls can use `step:<path>/<n>`, but anything stored (doc `view` blocks, quiz `ref`s, saved tours, the hash) should store a stable form. Proposal: give each `Step` a `key` slug in content (for example `step:vision/parallel-channels`), accept both forms in `refs.ts`, and always store the key. A test checks that keys are unique per topic.
 
@@ -231,7 +253,7 @@ help                          agent reference card
 
 ### 5.3 View spec (`ViewPatch`)
 
-This one type is used by `set_view`, tour stops, `view` blocks and quiz "Show me" links.
+This one type is used by `set_view`, tour stops, `view` blocks and quiz "Show me" links. Only `set_view` spells it out in its JSON Schema. The others take a plain object that the view API's own rules (`normalizeViewPatch`) check, with the same forgiving region ids, so every entry point accepts exactly the same patches.
 
 ```ts
 type Side = "front" | "back" | "left" | "right" | "top" | "bottom";
@@ -266,45 +288,61 @@ interface ViewPatch {
 
 - Results are compact JSON. Defaults and nulls are omitted.
 - Every write tool returns `said`, a one-line summary for the user and the agent (for example, "Framed LGN and V1 from the left at 1.4×; skull dissolved"), plus the new state fragment so the agent can verify it.
-- Errors are **returned, not thrown**: `{ error: { code, message, options? } }`. The codes are `bad_input`, `unknown_ref`, `not_available`, `stale_rev`, `locked_by_user`, `limit`, `agent_control_off` and `store_unavailable`.
-- Lists take a `limit` (default 20, max 100) and return a `cursor`.
-- Target size for a typical result is **under 2 KB**.
+- Errors are **returned, not thrown**: `{ error: { code, message, options? } }`. The codes are `bad_input`, `unknown_ref`, `not_available`, `stale_rev`, `locked_by_user`, `limit`, `agent_control_off`, `store_unavailable` and `internal` (a bug in the page, not in the call). Docs errors can add `id`, `op`, `current` or `max`. The `help` card says what each code asks of the agent.
+- The commonest slips get messages that say how to fix them: a missing `rev`, a quiz `answer` of the wrong shape, another kind of ref in a region field. Pointers to the reference card use one syntax, `read({ ref: "help" })`.
+- Lists take a `limit` (default 20, max 100) and return a `cursor`, with `more: true`, while more remains.
+- Target size for a typical result is **under 2 KB**; the `help` card is allowed 2.5 KB.
+- **Descriptions** (what the agent sees) say what the tool does, which neighbouring tool to use instead and when, and, for `set_view`, `quiz`, `edit_blocks` and `start_tour`, give a worked example that a test runs through validation. Each is at most 500 characters (Chrome's guideline), without em-dashes.
+- **Parameter names mean one thing.** `ref` is always the target of the action; a question's Show me place is `show_me.ref`. `show` is the boolean for showing what was created; `open` is only an action. `slot` is a window position; `at` in results is always the current place.
+
+**Annotations.** WebMCP defines `readOnlyHint`, `untrustedContentHint` and `consequentialHint`; MCP bridges such as MCP-B also read MCP's `destructiveHint`, `idempotentHint` and `openWorldHint`, and browsers ignore members their WebIDL does not define. Every tool sends the WebMCP three and `openWorldHint: false` (nothing leaves the page); write tools also send `destructiveHint` and `idempotentHint`. `consequentialHint` stays false: deletes are soft, restorable for 30 days and undoable.
+
+| Tool | readOnly | untrustedContent (returns doc text) | destructive | idempotent |
+| --- | --- | --- | --- | --- |
+| `get_context`, `outline`, `read`, `search` | ✓ | ✓ | – | – |
+| `go`, `window` | | | false | **true** |
+| `walkthrough`, `start_tour`, `set_view`, `quiz` | | | false | false |
+| `doc`, `edit_blocks` | | ✓ | **true** | false |
 
 | # | Tool | Read-only | One-line description (what the agent sees) |
 | --- | --- | --- | --- |
-| 1 | `get_context` | ✓ | What the user is looking at now (topic, step, panel, region, 3D view, windows, selection) and user actions since a cursor. |
-| 2 | `outline` | ✓ | The structure under a ref, one level at a time: topics, a topic's steps and regions, the user's docs, a doc's blocks. |
-| 3 | `read` | ✓ | Content at a ref. `detail`: brief (default), full, sources, markdown (doc export), results (quiz). |
-| 4 | `search` | ✓ | Search the guide and the user's docs; returns refs with snippets. |
-| 5 | `go` | | Navigate to a ref. Changes what the user sees; the camera follows unless `camera: false`. |
-| 6 | `walkthrough` | | Play, pause, next, prev or restart a topic walkthrough, or run a custom captioned tour. |
-| 7 | `set_view` | | Change the 3D view in one call: camera, layer presence with dissolve/fade, isolate, labels. Only passed fields change. |
-| 8 | `doc` | | Create (from markdown), rename, delete (restorable 30 days), restore or download a doc. |
-| 9 | `edit_blocks` | | Batch block edits on one doc or quiz in one transaction. Updates need the block's `rev`. |
-| 10 | `quiz` | | Create a quiz and show it in a draggable card; open, close or reset one. Graded in the page. |
-| 11 | `window` | | Open, close, minimize, restore, focus, place or tile the floating windows. |
+| 1 | `get_context` | ✓ | What the user sees now and what happened since the last call; call it at the start of each turn. Points to `outline()` and `read({ ref: "help" })`. |
+| 2 | `outline` | ✓ | What is inside a ref, one level down: topics, a topic's steps and regions, the user's docs (`docs`, the way to find a doc's ref), a doc's blocks with revs. |
+| 3 | `read` | ✓ | The text at a ref. `detail` per kind: guide refs brief, full, sources; doc and quiz refs brief, full, markdown, results. |
+| 4 | `search` | ✓ | Find guide content and the user's docs by keyword; a search with no hits returns a hint with the closest refs. |
+| 5 | `go` | | Show a place: the panel and the camera move together. Doc refs open a window; `quiz open` lets the user take a quiz; `set_view` changes only the 3D view. |
+| 6 | `walkthrough` | | Play, pause, next, prev, restart or stop a topic's built-in walkthrough; the same verbs control a running tour. |
+| 7 | `start_tour` | | Play the agent's own narrated stops: a place, a view patch and a caption each. |
+| 8 | `set_view` | | Change only the 3D view in one call: camera, layer presence with dissolve/fade, isolate, labels. Only passed fields change. |
+| 9 | `doc` | | Create (from markdown), rename, delete (restorable 30 days), restore or download a doc; names the tools for listing, reading, editing and showing it. |
+| 10 | `edit_blocks` | | Batch block edits on one doc or quiz in one transaction. Updates need the block's `rev`. |
+| 11 | `window` | | Open, close, minimize, restore, focus, place or tile the floating windows. A quiz ref opens its question list for editing. |
+| 12 | `quiz` | | Create a quiz and show it in a card; open, close or reset one. Graded in the page. |
 
 ### 6.1 `get_context`
 
 ```ts
-input:  { since?: number }   // activity cursor from the previous call
+input:  { since?: string }   // the cursor from the previous call, "<epoch>.<seq>"
 ```
 ```json
 {
   "at": "step:vision/4", "title": "Primary visual cortex (V1)", "panel": "walkthrough",
-  "selected": "v1", "playing": false, "walking": false,
+  "selected": "v1", "animating": false, "walking": false,
   "view": { "focus": "v1", "yaw": -152, "pitch": 12, "zoom": 1.06, "layers": { "skull": 0.1 }, "gated": ["ears", "auditory_nerve", "temporal_bone"] },
   "windows": [{ "ref": "doc:k3f9", "title": "Vision notes", "state": "open", "focused": true }],
   "editing": "block:b7x2k",
   "selection": { "ref": "step:vision/4", "text": "Only ganglion cells send output to the brain." },
   "tour": { "stop": 3, "of": 7, "paused": true },
-  "activity": [{ "seq": 41, "by": "user", "kind": "answered", "ref": "block:q2", "ok": false }],
-  "cursor": 41,
+  "activity": [{ "seq": 41, "by": "user", "kind": "answered", "ref": "block:q2", "ok": false, "ago_s": 12 }],
+  "cursor": "mfx3k2a.41",
   "store": "local"
 }
 ```
 
 The activity log records user navigation, user block edits, quiz answers, window changes, and user orbit/zoom (debounced to 1 s, coalesced). Hovers are not logged because they are too noisy. Each call returns at most 30 entries.
+
+- `walking`: a walkthrough is playing. `animating`: the 3D signal animation runs (Space pauses it).
+- `seq` restarts at 1 on every page load, so the cursor carries the load's `epoch`. A cursor from an earlier load (or anything that is not a cursor) returns the latest entries and a `reset` note instead of silently skipping what happened after the reload.
 
 ### 6.2 `outline`
 
@@ -317,7 +355,7 @@ input: { ref?: string /* default "guide" */, limit?: number, cursor?: string }
 | `guide` | `overview`, the 6 topics `{ ref, title, steps }`, `about`, `docs { count }` |
 | `topic:*` | `{ steps: [{ ref, title, region }], regions: [...], also: [...] }` (walkthrough regions, then route-only regions, as in `topicRegions`) |
 | `region:*` | available sections, the topics it appears in, and its steps |
-| `docs` | `[{ ref, kind, title, blocks, updated, open }]`, newest first |
+| `docs` | `[{ ref, kind, title, blocks, updated, open }]`, newest first; the description names this as the way to find a doc's ref |
 | `doc:*` / `quiz:*` | `{ rev, blocks: [{ id, type, text /* first 80 chars */, rev }] }`, the compact block list |
 | `help` | same as `read help` |
 
@@ -333,7 +371,7 @@ input: { ref: string, detail?: "brief" | "full" | "sources" | "markdown" | "resu
 | step | title + body | + key fact, signal route in words ("retina → chiasm → LGN"), region brief | region guide sources | |
 | region | summary + where | all sections; the role in the current topic (or all roles, if not in a topic) | guide sources | `#section` reads one section |
 | doc / quiz | title + outline | every block `{ id, type, md, rev, data? }` | | `markdown`: the export text; `results`: quiz attempts |
-| help | reference card: ref grammar, every region id with its short name (50 today; generated from `regions`), layer ids, sides, limits | | | |
+| help | reference card: ref grammar, topics, every region id (50 today; generated from `regions`), details, the view patch in brief, limits, a task-to-tool map, and what each error code asks for; about 2.5 KB | | | |
 
 Bundled fact-check verdicts could be added to `full` later (§15).
 
@@ -344,7 +382,10 @@ input: { query: string, scope?: "guide" | "docs" | "all", limit?: number /* defa
 ```
 ```json
 { "hits": [{ "ref": "region:pulvinar", "title": "Pulvinar", "snip": "…coordinates activity between cortical areas…" }] }
+{ "hits": [], "hint": "No matches for \"pulvinr\". Closest refs: region:pulvinar. Try fewer or different keywords, or browse with outline()." }
 ```
+
+- `query` is keywords, not a question. Words match as prefixes; there is no spelling correction, which is why a search with no hits names the closest refs (`noMatchesHint` in `guide-content.ts`, shared by guide and doc search). An empty `snip` is left out.
 
 One scorer (`model/search.ts`) handles both sources.
 
@@ -365,20 +406,25 @@ input: { ref: string, camera?: boolean /* default true */ }
 
 It returns `{ at, title, brief, view, said }`, so the agent does not need a second read.
 
-### 6.6 `walkthrough`
+### 6.6 `walkthrough` and `start_tour`
 
 ```ts
-input: {
-  action: "play" | "pause" | "next" | "prev" | "restart" | "tour" | "stop";
-  ref?: string;          // topic for play/restart; default current topic
-  seconds?: number;      // per step, 3–20, default 5.5
-  stops?: { ref?: string; view?: ViewPatch; say?: string /* ≤280 */; seconds?: number /* 2–30, default 6 */ }[]; // 1–20, for "tour"
+walkthrough: {
+  action: "play" | "pause" | "next" | "prev" | "restart" | "stop";
+  ref?: string;          // play and restart: a topic or step; default the current topic
+  seconds?: number;      // play and restart: per step, 3–20, default 5.5
+}
+start_tour: {
+  stops: { ref?: string; view?: ViewPatch; say?: string /* ≤280 */; seconds?: number /* 2–30 */ }[]; // 1–20
+  seconds?: number;      // for stops without their own, 2–30, default 6
 }
 ```
 
-- **Tours** run the stops in order. At each stop: `go(ref)`, then `set_view(view)`. The `say` text shows in a narration bar at the bottom of the stage ("Assistant tour · 3/7", with pause, skip and close).
+- `start_tour` runs the stops in order. At each stop: `go(ref)`, then `set_view(view)`. The `say` text shows in a narration bar at the bottom of the stage ("Assistant tour · 3/7", with pause, skip and close). Every stop is checked before the first one plays.
 - Any user orbit, click or key **pauses** the tour; it does not stop it. `get_context.tour` reports progress.
+- While a tour runs, `walkthrough` `pause`, `play`, `next`, `prev`, `restart` and `stop` control the tour. `play` or `restart` with a `ref` or `seconds` starts a walkthrough instead, which ends the tour; so does `go`.
 - `play` reuses the existing timer and progress-dot fill. The only change is that `seconds` replaces `STEP_SECONDS`.
+- Each tool checks `seconds` against its own range: 3–20 per walkthrough step, 2–30 per tour stop.
 
 ### 6.7 `set_view`
 
@@ -397,7 +443,7 @@ input: ViewPatch   // §5.3
 
 ```ts
 input:
-  | { action: "create"; title: string; markdown?: string; open?: boolean /* default true */ }
+  | { action: "create"; title: string; markdown?: string; show?: boolean /* default true: open it in a window */ }
   | { action: "rename"; ref: string; title: string }
   | { action: "delete" | "restore" | "download"; ref: string }
 ```
@@ -412,12 +458,12 @@ input:
 input: {
   ref: string;   // doc:* or quiz:*
   ops: (                                                          // 1–50, applied in order, one transaction
-    | { op: "insert"; after?: string /* block id | "start" | "end" (default) */; md?: string; view?: "current" | ViewPatch; question?: Question }
+    | { op: "insert"; after?: string /* block id | "start" | "end" (default) */; md?: string; view?: "current" | ViewPatch; question?: Question /* show_me or stored ref/view */ }
     | { op: "update"; id: string; md: string; rev: number }
     | { op: "replace"; id: string; find: string; with: string; rev: number }   // exact, first match
     | { op: "delete"; id: string }
     | { op: "move"; id: string; after: string }
-    | { op: "set"; id: string; data: object; rev: number }          // view/question/code/todo data
+    | { op: "set"; id: string; data: object; rev: number }          // code {lang}, to-do {checked}, callout {tone: note|tip|warning}, view, question
   )[];
 }
 ```
@@ -434,19 +480,21 @@ input: {
 ### 6.10 `quiz`
 
 ```ts
+type ShowMe = { ref?: string; view?: ViewPatch };   // where Show me goes after the answer
 type Question =
-  | { kind: "choice"; prompt: string; choices: string[] /* 2–6 */; answer: number[]; explain?: string; ref?: string }
-  | { kind: "truefalse"; prompt: string; answer: boolean; explain?: string; ref?: string }
-  | { kind: "region"; prompt: string; answer: RegionId[]; choices?: RegionId[]; explain?: string; ref?: string }  // click the brain
-  | { kind: "order"; prompt: string; items: string[] /* 3–8, correct order; shuffled on display */; explain?: string; ref?: string }
-  | { kind: "recall"; prompt: string; answer: string; explain?: string; ref?: string };  // self-graded
+  | { kind: "choice"; prompt: string; choices: string[] /* 2–6 */; answer: number[]; explain?: string; show_me?: ShowMe }
+  | { kind: "truefalse"; prompt: string; answer: boolean; explain?: string; show_me?: ShowMe }
+  | { kind: "region"; prompt: string; answer: RegionId[]; choices?: RegionId[]; explain?: string; show_me?: ShowMe }  // click the brain
+  | { kind: "order"; prompt: string; items: string[] /* 3–8, correct order; shuffled on display */; explain?: string; show_me?: ShowMe }
+  | { kind: "recall"; prompt: string; answer: string; explain?: string; show_me?: ShowMe };  // self-graded
 input:
-  | { action: "create"; title: string; questions: Question[] /* 1–30 */; open?: boolean }
+  | { action: "create"; title: string; questions: Question[] /* 1–30 */; show?: boolean /* default true */ }
   | { action: "open" | "close" | "reset"; ref: string }
 ```
 
 - A `choice` question with more than one index in `answer` renders as multi-select.
-- Prompts are at most 300 characters and support inline markdown and region links.
+- Prompts are at most 300 characters and support inline markdown and region links. `explain` is at most 2,000 characters, and each question must fit in one 8,000-character block as stored; the schema checks both, so a valid call never fails in the store.
+- The tool input names the Show me destination `show_me`, so it cannot be mistaken for the quiz's own `ref`. It is stored as the question's `ref` and `view`, which is what `read(full)` returns; `edit_blocks` accepts either form.
 - To edit questions after creation, use `edit_blocks` (`set` on a question block).
 - `read(ref, "results")` returns `{ summary: { answered, correct, of }, questions: [{ id, kind, attempts, correct, last }] }`.
 
@@ -456,7 +504,7 @@ input:
 input: {
   action: "open" | "close" | "minimize" | "restore" | "focus" | "place" | "arrange";
   ref?: string;                                           // doc:* | quiz:* | block:*
-  at?: "left" | "right" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  slot?: "left" | "right" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
   size?: "s" | "m" | "l";
   layout?: "tile" | "stack";                              // for arrange
 }
@@ -845,8 +893,10 @@ interface Store {
   - Agent `set_view` camera changes are rejected mid-gesture.
 - **Kill switch:** About → "Let assistants control this guide", stored in `settings` (or in localStorage before the store exists).
   - When off, write tools return `agent_control_off`. Read tools keep working.
+  - It is shared by every tab of the guide: a `storage` event carries a change to the other tabs, which stop their tours and hide presence.
+  - A write that is still running when the switch goes off (a store boot can take seconds) does not land quietly: the runner checks again after it finishes, undoes what landed, and returns `agent_control_off`. Store writes get a second guard inside the docs API, just before they commit (part of the docs fixes).
   - Tools stay registered, because the list is static and predictable.
-- **Static tool list:** all 11 tools register at startup. Tools that don't apply in the current state return `not_available` with a reason, for example Streams outside the Attention topic. We avoid `toolchange` churn, since it is unknown whether ChatGPT re-reads the list.
+- **Static tool list:** all 12 tools register at startup, all or none: if the browser refuses one, the rest are unregistered and each refusal is logged by name. Tools that don't apply in the current state return `not_available` with a reason, for example Streams outside the Attention topic. We avoid `toolchange` churn: one dated probe saw ChatGPT refresh its list after registration and abort, but that is not confirmed for the current build (§2.1, G5).
 - **Hash routing:** `go` and the UI keep `location.hash` in sync (`#/vision/4`, `#/region/v1`, `#/doc/k3f9`) through `replaceState`. Reload restores the place. Tools survive because the document never changes.
 
 ---
@@ -863,7 +913,7 @@ interface Store {
   - ≤ 20 tour stops
   - ≤ 280 characters per caption
 - **Rendering:** agent- and user-authored markdown goes through the escaped, allow-listed renderer. There is no raw HTML, no `javascript:` or `data:` links, and external links get `rel="noopener noreferrer"`.
-- **Results are data:** only `help` contains usage guidance, and it is written as reference material. Doc text is user content, which may include pasted text. ChatGPT already treats tool results as untrusted.
+- **Results are data:** only `help` contains usage guidance, and it is written as reference material. Doc text is user content, which may include pasted text, so the tools that return it (`read`, `search`, `outline`, `get_context`, `doc`, `edit_blocks`) carry `untrustedContentHint`. ChatGPT already treats tool results as untrusted.
 - **No secrets in the page.** Remote credentials live only on a server.
 - **No network by default.** The About "Code" tab keeps saying so. When sync is enabled, it says that too.
 
@@ -919,7 +969,9 @@ interface Store {
 
 **Store:** sqlite-wasm in Node, in-memory. Covers migrations, `applyBlockOps` atomicity, `stale_rev`, `ord` renumbering, soft delete and restore, and history trimming.
 
-**Tool handlers:** run against a fake `GuideApi` (dependency injection). Covers schema fixtures (valid and invalid), error shapes, and the kill switch.
+**Tool handlers:** run against a fake `GuideApi` (dependency injection). Covers schema fixtures (valid and invalid), error shapes, annotations, the description budget, the worked examples in descriptions (each must pass validation), registration against a spec-shaped model context (Promises, refusals, abort), and the kill switch across tabs and mid-call.
+
+**GuideApi end to end:** the real `GuideApi`, view API, tour runner and **real explorer** (`ui/explorer.ts` on an inert DOM, `tests/support/explorer-dom.mjs`), so navigation rules are never re-implemented in a test double. Only the scene, caption bar and clocks are fakes.
 
 **In the browser without ChatGPT:**
 
@@ -927,10 +979,12 @@ interface Store {
 - The same tools run in any browser, including Claude's built-in browser, for scripted checks and screenshots.
 - With `?debug` or `?agent=shim`, `explorerDebug.advance()` renders frames in background tabs. `explorerDebug.viewGap`, `labels()` (with `weight` and `fade`) and `diagnostics().viewGap` help check the view gap and callouts.
 
+**Evaluation:** the 12-task plan in [`agent-evals.md`](agent-evals.md) (headless and in ChatGPT, with negative and held-out tasks and a scorecard) replaces pass/fail acceptance as the measure of tool-design changes.
+
 **Acceptance in the ChatGPT desktop browser** (GPT-5.6 Sol or GPT-6 Sol), one prompt per capability:
 
 1. "What does this guide cover?" → `outline`
-2. "Walk me through hearing, and stop at the MGN to explain it in more depth." → `go`, `walkthrough`, `read`
+2. "Walk me through hearing, and stop at the MGN to explain it in more depth." → `go`, `walkthrough` or `start_tour`, `read`
 3. "Show only the LGN and V1 from the left and dissolve everything else." → `set_view` with isolate
 4. "Make a 5-question quiz on vision with one click-the-region question." → `quiz`
 5. "Put my notes on attention in a doc, with a 3D view of the priority map." → `doc`, `edit_blocks` with `view: "current"`

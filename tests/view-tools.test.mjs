@@ -1,9 +1,14 @@
-// Stage 2 tools end to end in Node: set_view, walkthrough tour/stop, get_context.view/tour and the view
-// reset on navigation, through the real tool runner, GuideApi, view API and tour runner. The scene,
-// explorer, caption bar and clock are fakes.
+// Stage 2 tools end to end in Node: set_view, start_tour, walkthrough stop, get_context.view/tour and the view
+// reset on navigation, through the real tool runner, GuideApi, view API, tour runner and explorer. The scene,
+// the DOM under the explorer, the caption bar and the clock are fakes.
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { build } from "esbuild";
+import { inertScene, installInertDom, recordGoTo } from "./support/explorer-dom.mjs";
+
+installInertDom();
+// The explorer's walkthrough timer never fires on its own; tours use their own fake clock.
+mock.timers.enable({ apis: ["setTimeout"] });
 
 async function bundle(source) {
   const result = await build({
@@ -24,11 +29,13 @@ const m = await bundle(`
   export { createTourRunner } from "./src/api/tour.ts";
   export { createViewApi } from "./src/api/view-api.ts";
   export { createState } from "./src/state.ts";
+  export { createExplorer } from "./src/ui/explorer.ts";
+  export { hostTopic, topicHasRegion } from "./src/model/topics.ts";
   export { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov } from "./src/model/view.ts";
   export { pathways, regions } from "./src/content/index.ts";
 `);
-const { tools, createToolRunner, createGuideApi, createActivityLog, createTourRunner, createViewApi, createState, pathways, regions } = m;
-const { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov } = m;
+const { tools, createToolRunner, createGuideApi, createActivityLog, createTourRunner, createViewApi, createState, createExplorer, pathways, regions } = m;
+const { anglesFromDirection, clearViewOnNavigate, defaultLayers, focusPreset, frameFit, stageFov, hostTopic, topicHasRegion } = m;
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 const topic = (id) => pathways.find((path) => path.id === id);
 
@@ -63,60 +70,11 @@ function fakeScene() {
   };
 }
 
-/** The explorer's navigation, reduced to what GuideApi sees; it resets the view as ui/explorer.ts does. */
-function fakeExplorer(state) {
-  const s = { panel: "guide", region: null, walking: false, seconds: 5.5 };
-  const calls = [];
-  const place = () => {
-    if (state.overview) return { kind: "overview" };
-    if (s.panel === "streams") return { kind: "streams" };
-    if (s.panel === "region") return s.region ? { kind: "region", path: state.path, id: s.region } : { kind: "regions", path: state.path };
-    return { kind: "step", path: state.path, index: state.step };
-  };
-  // Selecting a region in 3D clears an agent's view focus (scene.focusRegion).
-  const select = (id) => Object.assign(state, { selected: id, viewFocus: null });
-  function selectPath(path, step = 0) {
-    clearViewOnNavigate(state, { overview: false, path });
-    Object.assign(state, { overview: false, path, step });
-    select(topic(path).steps[step].region);
-  }
-  return {
-    calls,
-    state: s,
-    snapshot: () => ({ overview: state.overview, path: state.path, step: state.step, selected: state.selected, ...s, place: place() }),
-    goTo(target, options) {
-      calls.push([target.kind === "overview" ? "overview" : `${target.kind}:${target.path ?? ""}/${target.index ?? target.id ?? ""}`, options]);
-      s.walking = false;
-      s.region = null;
-      s.panel = "guide";
-      if (target.kind === "overview") {
-        clearViewOnNavigate(state, { overview: true });
-        Object.assign(state, { overview: true, path: "attention" });
-        select("pfc");
-      } else if (target.kind === "step") {
-        if (state.overview || state.path !== target.path) selectPath(target.path, target.index);
-        else {
-          state.step = target.index;
-          select(topic(target.path).steps[target.index].region);
-        }
-      } else if (target.kind === "streams") {
-        if (state.overview || state.path !== "attention") selectPath("attention");
-        s.panel = "streams";
-      } else if (target.kind === "region") {
-        const host = target.path ?? pathways.find((path) => path.steps.some((step) => step.region === target.id)).id;
-        if (state.overview || state.path !== host) selectPath(host);
-        Object.assign(s, { panel: "region", region: target.id });
-        select(target.id);
-      }
-    },
-    startWalk(seconds) {
-      Object.assign(s, { walking: true, seconds });
-    },
-    stopWalk() {
-      s.walking = false;
-    },
-    selection: () => null,
-  };
+/** The real explorer (ui/explorer.ts) on an inert DOM, recording its goTo calls; the scene only clears view focus. */
+function realExplorer(state) {
+  const explorer = createExplorer(state, { matches: true }, () => {});
+  explorer.attachScene(inertScene(state));
+  return recordGoTo(explorer);
 }
 
 function fakeClock() {
@@ -148,7 +106,7 @@ function setup() {
   const state = createState(false);
   const scene = fakeScene();
   const view = createViewApi(state, scene);
-  const explorer = fakeExplorer(state);
+  const explorer = realExplorer(state);
   const clock = fakeClock();
   const narration = {
     shown: null,
@@ -231,12 +189,12 @@ test("mid-gesture the camera part returns locked_by_user and the rest applies", 
 });
 
 test("set_view without a 3D view is not_available", () => {
-  const explorer = fakeExplorer(createState(false));
+  const explorer = realExplorer(createState(false));
   const api = createGuideApi({ explorer, about: { tab: () => null }, activity: createActivityLog(), playing: () => true, agentControl: () => true });
   assert.equal(api.setView({ labels: "all" }).error.code, "not_available");
   assert.equal(api.context().view, undefined);
   assert.equal(api.context().tour, undefined);
-  assert.equal(api.walkthrough({ action: "tour", stops: [{ say: "Hi" }] }).error.code, "not_available");
+  assert.equal(api.tour({ stops: [{ say: "Hi" }] }).error.code, "not_available");
 });
 
 /* ---------- get_context and go ---------- */
@@ -261,6 +219,17 @@ test("get_context.view and go's view report the settled view: focus, angles, zoo
   assert.deepEqual(view.gated, ["ears", "auditory_nerve", "temporal_bone"]);
 });
 
+test("go to a region follows the explorer's own rule: stay in the open topic if it covers the region, else its host topic", async () => {
+  const { state, call } = setup();
+  const routeOnly = await call("go", { ref: "region:retinaR" });
+  assert.equal(routeOnly.at, "region:retinaR", "A region drawn only on a route still opens.");
+  assert.equal(state.path, hostTopic("retinaR").id);
+  const covering = pathways.find((path) => path.id !== hostTopic("v1").id && topicHasRegion(path, "v1"));
+  await call("go", { ref: `topic:${covering.id}` });
+  await call("go", { ref: "region:v1" });
+  assert.equal(state.path, covering.id, "The open topic covers V1, so the guide stays in it.");
+});
+
 /* ---------- Tours ---------- */
 
 const STOPS = [
@@ -278,7 +247,7 @@ test("a tour goes to each stop in order, then applies its view, with the caption
     driving.push(tour.driving);
     goTo(...args);
   };
-  const started = await call("walkthrough", { action: "tour", stops: STOPS });
+  const started = await call("start_tour", { stops: STOPS });
   assert.equal(started.said, "Started a 3-stop tour, about 12 s.");
   assert.deepEqual(started.tour, { stop: 1, of: 3, paused: false });
   assert.equal(started.at, `step:vision/${topic("vision").steps[0].key}`);
@@ -305,7 +274,7 @@ test("a tour goes to each stop in order, then applies its view, with the caption
 
 test("user input pauses the tour; walkthrough controls act on it; stop clears the caption", async () => {
   const { clock, narration, tour, explorer, call } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   clock.tick(1000);
   tour.pause("user");
   assert.deepEqual((await call("get_context", {})).tour, { stop: 1, of: 3, paused: true });
@@ -331,12 +300,12 @@ test("user input pauses the tour; walkthrough controls act on it; stop clears th
 
 test("go and a new walkthrough end a tour", async () => {
   const { tour, narration, call } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   const went = await call("go", { ref: "region:mgn" });
   assert.match(went.said, / Ended the tour\.$/);
   assert.equal(tour.active, false);
   assert.equal(narration.shown, null);
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   const played = await call("walkthrough", { action: "play", ref: "topic:touch" });
   assert.match(played.said, /^Playing Touch step 1 .* Ended the tour\.$/);
   assert.equal(tour.active, false);
@@ -344,25 +313,24 @@ test("go and a new walkthrough end a tour", async () => {
 
 test("a bad stop rejects the whole tour before anything plays", async () => {
   const { explorer, narration, api, call } = setup();
-  const unknown = await call("walkthrough", { action: "tour", stops: [{ ref: "topic:vision" }, { ref: "region:visual cortex" }] });
+  const unknown = await call("start_tour", { stops: [{ ref: "topic:vision" }, { ref: "region:visual cortex" }] });
   assert.equal(unknown.error.code, "unknown_ref");
   assert.match(unknown.error.message, /^stops\.1\.ref: /);
   assert.equal(unknown.error.options[0], "region:v1");
-  const about = await call("walkthrough", { action: "tour", stops: [{ ref: "about/papers" }] });
+  const about = await call("start_tour", { stops: [{ ref: "about/papers" }] });
   assert.match(about.error.message, /^stops\.0\.ref: tour stops go to places in the guide/);
-  const view = api.walkthrough({ action: "tour", stops: [{ say: "Hi" }, { view: { camera: { focus: "v1", frame: ["v1"] } } }] });
+  const view = api.tour({ stops: [{ say: "Hi" }, { view: { camera: { focus: "v1", frame: ["v1"] } } }] });
   assert.match(view.error.message, /^stops\.1\.view: camera\.focus and camera\.frame/);
-  assert.match(api.walkthrough({ action: "tour", stops: [{}] }).error.message, /^stops\.0: give the stop a ref, a view or say text/);
-  assert.equal(api.walkthrough({ action: "tour", stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) }).error.code, "limit");
-  assert.equal(api.walkthrough({ action: "tour", stops: [{ say: "Hi" }], ref: "topic:vision" }).error.code, "bad_input");
-  assert.equal(api.walkthrough({ action: "next", stops: [{ say: "Hi" }] }).error.code, "bad_input");
+  assert.match(api.tour({ stops: [{}] }).error.message, /^stops\.0: give the stop a ref, a view or say text/);
+  assert.equal(api.tour({ stops: Array.from({ length: 21 }, () => ({ say: "Hi" })) }).error.code, "limit");
+  assert.equal(api.tour({ stops: [] }).error.code, "bad_input");
   assert.deepEqual(explorer.calls, []);
   assert.equal(narration.shown, null);
 });
 
-test("walkthrough seconds is the default for tour stops without their own", async () => {
+test("start_tour seconds is the default for stops without their own", async () => {
   const { clock, explorer, call } = setup();
-  await call("walkthrough", { action: "tour", seconds: 3, stops: [{ ref: "topic:vision" }, { ref: "topic:touch", seconds: 10 }, { ref: "overview" }] });
+  await call("start_tour", { seconds: 3, stops: [{ ref: "topic:vision" }, { ref: "topic:touch", seconds: 10 }, { ref: "overview" }] });
   clock.tick(3000);
   assert.equal(explorer.calls.length, 2);
   clock.tick(9999);
@@ -411,7 +379,7 @@ test("going home or to another topic resets layers, isolate, labels and view foc
 
 test("typical Stage 2 results stay under 2 KB", async () => {
   const { call, clock } = setup();
-  await call("walkthrough", { action: "tour", stops: STOPS });
+  await call("start_tour", { stops: STOPS });
   clock.tick(6000);
   for (let i = 0; i < 5; i++) await call("set_view", { camera: { orbit: [10, 0] }, layers: { skull: 0.2, cortex: 0.4 } });
   const results = [

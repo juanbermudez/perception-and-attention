@@ -4,31 +4,34 @@ import type { ActivityLog } from "../api/activity";
 import type { GuideApi } from "../api/guide-api";
 import { installAgentDebug, installModelContextShim } from "./shim";
 import { agentTools } from "./tools";
-import { createToolRunner, findModelContext, type PresencePort, registerTools, resultFormat } from "./webmcp";
+import { createToolRunner, findModelContext, type PresencePort, registerTools } from "./webmcp";
 
 export interface AgentSurfaceDeps {
   api: GuideApi;
   control: { readonly on: boolean };
   presence: PresencePort;
   activity: ActivityLog;
-  /** location.search: `agent=shim` installs the dev shim; `agent-result=content` switches the result format. */
+  /** location.search: `agent=shim` installs the dev shim. */
   search: string;
 }
 
 export function startAgentSurface({ api, control, presence, activity, search }: AgentSurfaceDeps) {
-  const format = resultFormat(search);
   const runner = createToolRunner({ tools: agentTools, api, control, presence, activity });
-  if (new URLSearchParams(search).get("agent") === "shim") installAgentDebug(runner, installModelContextShim(), format);
+  if (new URLSearchParams(search).get("agent") === "shim") installAgentDebug(runner, installModelContextShim());
   const controller = new AbortController();
   const modelContext = findModelContext();
-  if (modelContext) {
-    try {
-      registerTools(modelContext, runner, controller.signal, format);
-    } catch (error) {
-      // The guide must work without the agent surface.
-      console.warn("Could not register the guide's tools", error);
-      controller.abort();
-    }
-  }
-  return { runner, registered: modelContext !== null && !controller.signal.aborted, stop: () => controller.abort() };
+  // All or nothing: a partial tool list would leave the agent planning with tools that are missing.
+  // The guide must work without the agent surface, so a refusal is logged, never thrown.
+  const registered = modelContext
+    ? registerTools(modelContext, runner, controller.signal).then((failed) => {
+        if (failed.length) controller.abort();
+        return failed.length === 0;
+      })
+    : Promise.resolve(false);
+  return {
+    runner,
+    /** Resolves true once every tool is registered; false without a model context or after a refusal. */
+    registered,
+    stop: () => controller.abort(),
+  };
 }
