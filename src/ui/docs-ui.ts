@@ -607,7 +607,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     placeNotes();
     notesPanel.hidden = false;
     notesButton.setAttribute("aria-expanded", "true");
-    void renderNotes().then(() => (notesPanel.querySelector<HTMLElement>(".note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus());
+    void renderNotes().then(() => (notesPanel.querySelector<HTMLElement>("button.note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus());
   }
 
   function closeNotes(refocus = true) {
@@ -623,7 +623,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       event.stopPropagation();
       closeNotes();
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      const rows = [...notesPanel.querySelectorAll<HTMLElement>(".note-row")];
+      const rows = [...notesPanel.querySelectorAll<HTMLElement>("button.note-row")];
       const index = rows.indexOf(document.activeElement as HTMLElement);
       if (!rows.length) return;
       event.preventDefault();
@@ -668,7 +668,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     button.textContent = "Delete?";
     button.setAttribute("aria-label", `${button.dataset.label}: press again to confirm`);
     armed = { button, timer: setTimeout(disarm, 4000) };
-    button.addEventListener("blur", disarm, { once: true });
+    button.addEventListener("blur", () => armed?.button === button && disarm(), { once: true });
   }
 
   notesPanel.addEventListener("click", (event) => {
