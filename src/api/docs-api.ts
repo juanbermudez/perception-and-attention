@@ -749,8 +749,9 @@ export function createDocsApi(options: DocsApiOptions) {
   }
 
   /**
-   * Store-level block ops from the user's editor or from an Undo (spec §9.3): no markdown, no rev check.
-   * Batches over the per-call limit are split, so each part is its own transaction.
+   * Store-level block ops from the user's editor or from an Undo (spec §9.3): no markdown, and revs only
+   * where the ops carry them. The whole save is one transaction, so a large paste or reorder is saved
+   * whole or not at all.
    */
   function saveBlocks(ref: string, ops: BlockOp[], actor: Actor = "user"): Result<BlockOpsResult> {
     return withStore(async (db) => {
@@ -763,17 +764,7 @@ export function createDocsApi(options: DocsApiOptions) {
       }
       const blocked = writeBlocked(actor);
       if (blocked) return blocked;
-      let result: BlockOpsResult = { rev: 0, changed: [], inserted: [], deleted: [] };
-      for (let start = 0; start < ops.length; start += LIMITS.opsPerCall) {
-        const part = await db.applyBlockOps(id, ops.slice(start, start + LIMITS.opsPerCall), actor);
-        result = {
-          rev: part.rev,
-          changed: [...result.changed, ...part.changed],
-          inserted: [...result.inserted, ...part.inserted],
-          deleted: [...result.deleted, ...part.deleted],
-        };
-      }
-      return result;
+      return db.applyBlockOps(id, ops, actor);
     });
   }
 

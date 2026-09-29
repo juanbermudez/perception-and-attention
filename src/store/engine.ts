@@ -401,8 +401,9 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
 
   function applyBlockOps(artifactId: string, ops: BlockOp[], actor: Actor): BlockOpsResult {
     if (!Array.isArray(ops) || ops.length === 0) throw new StoreError("bad_input", "Send at least one op.");
-    if (ops.length > LIMITS.opsPerCall)
-      throw new StoreError("limit", `At most ${LIMITS.opsPerCall} ops per call (got ${ops.length}). Split the batch.`, { max: LIMITS.opsPerCall });
+    // 50 ops is the agent's limit per call; the user's editor saves (and undo) in one transaction of up to 2,000.
+    const max = actor === "agent" ? LIMITS.opsPerCall : LIMITS.opsPerSave;
+    if (ops.length > max) throw new StoreError("limit", `At most ${max} ops per call (got ${ops.length}). Split the batch.`, { max });
     return transaction(db, () => {
       const artifact = artifactRow(artifactId);
       const at = now();

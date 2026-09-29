@@ -538,3 +538,18 @@ test("L3: read(full) and read(markdown) stop at a size bound and say how to get 
   assert.equal(whole.truncated, undefined);
   assert.equal(whole.hint, undefined);
 });
+
+/* ---------- L16: one transaction per user save ---------- */
+
+test("L16: a user save of more than 50 ops commits together or not at all", async () => {
+  const { api, engine } = setup();
+  const { ref } = ok(await api.doc({ action: "create", title: "Big paste", markdown: "Start" }, "user"));
+  const inserts = (count) => Array.from({ length: count }, (_, index) => ({ op: "insert", after: "end", blocks: [{ type: "p", text: `Line ${index}` }] }));
+  const failing = [...inserts(60), { op: "delete", id: "zzzzz" }];
+  err(await api.saveBlocks(ref, failing), "unknown_ref");
+  assert.equal(engine.getArtifact(ref.slice(4)).blocks.length, 1, "Nothing from the failed save was kept.");
+  const saved = ok(await api.saveBlocks(ref, inserts(120)));
+  assert.equal(saved.inserted.length, 120);
+  assert.equal(saved.rev, 2, "One transaction, one artifact rev.");
+  err(await api.editBlocks({ ref, ops: inserts(51).map(({ blocks }) => ({ op: "insert", md: blocks[0].text })) }), "limit");
+});

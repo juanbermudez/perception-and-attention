@@ -6,6 +6,8 @@ export const LIMITS = {
   blocksPerArtifact: 500,
   charsPerBlock: 8000,
   opsPerCall: 50,
+  /** Not in the spec: the user's editor saves in one transaction; a full reorder of 500 blocks with edits stays under this. */
+  opsPerSave: 2000,
   questionsPerQuiz: 30,
   promptChars: 300,
   tourStops: 20,
