@@ -251,6 +251,29 @@ test("the kill switch reads the live setting", async () => {
   assert.equal(blocked.on, false, "Works for the visit when storage is blocked.");
 });
 
+test("switching control in one tab switches it in the others", () => {
+  const storage = new Map();
+  const shared = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
+  const tabA = new EventTarget();
+  const tabB = new EventTarget();
+  const a = createAgentControl(shared, tabA);
+  const b = createAgentControl(shared, tabB);
+  const heard = [];
+  b.onChange((on) => heard.push(on));
+  a.set(false);
+  // The browser fires "storage" in every other tab of the origin, never in the tab that wrote.
+  const changed = (key) => Object.assign(new Event("storage"), { key });
+  tabB.dispatchEvent(changed("perception-attention:agent-control"));
+  assert.equal(b.on, false);
+  assert.deepEqual(heard, [false], "Tab B stops its tour and hides presence through onChange.");
+  tabB.dispatchEvent(changed("some-other-key"));
+  assert.deepEqual(heard, [false]);
+  storage.clear();
+  tabB.dispatchEvent(changed(null));
+  assert.equal(b.on, true, "Cleared storage means the default, on.");
+  assert.equal(createAgentControl(shared, null).on, true, "Works without a window.");
+});
+
 test("a write shows presence, logs one agent entry, and keeps its undo out of the result", async () => {
   const { runner, presence, logged, api } = setup();
   const result = await runner.call("go", { ref: "step:vision/2" });
