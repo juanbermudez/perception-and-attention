@@ -199,8 +199,9 @@ export type StoreStatus = { store: "unopened" | "unavailable" } | { store: Store
 // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 const SNIPPET = 80;
-/** The hint for an empty docs outline. */
-export const NO_DOCS = 'No docs yet. Create one with doc({ action: "create", title, markdown }).';
+/** How an agent makes the first doc, and the hint for an empty docs outline. */
+export const CREATE_DOC = 'Create one with doc({ action: "create", title, markdown }).';
+export const NO_DOCS = `No docs yet. ${CREATE_DOC}`;
 const DAY_MS = 86_400_000;
 /** The one way docs errors are made: a code, a message, and details the agent can act on. */
 const fail = (code: ApiErrorCode, message: string, details: Record<string, unknown> = {}): ApiError => ({ error: { code, message, ...details } });

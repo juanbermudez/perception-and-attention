@@ -8,7 +8,7 @@ import { formatRef, type Ref, resolveRef, suggest } from "../model/refs";
 import { createSearchIndex, type SearchDoc } from "../model/search";
 import { LIMITS } from "../store/limits";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
-import { type ApiError, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
+import { type ApiError, CREATE_DOC, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
 import type { WindowCommand, WindowInput, WindowsPort } from "./guide-api";
 import { guideHits, outline as guideOutline, type Page } from "./guide-content";
 import { fail, type Result, type Undo, type WriteResult } from "./result";
@@ -93,10 +93,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
   /** What reads of docs return before any doc exists in this browser. */
   function noDocsYet(ref: Ref): Result<object> {
     if (ref.kind === "docs") return { ref: "docs", count: 0, docs: [], hint: NO_DOCS };
-    return fail(
-      "unknown_ref",
-      `No ${formatRef(ref)}: there are no docs or quizzes in this browser yet. Create one with doc({ action: "create", title, markdown }).`,
-    );
+    return fail("unknown_ref", `No ${formatRef(ref)}: there are no docs or quizzes in this browser yet. ${CREATE_DOC}`);
   }
 
   function read(refText: string, detail?: string): Maybe<Result<object>> | undefined {
@@ -181,6 +178,7 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
 
   async function go(ref: Ref): Promise<Result<WriteResult>> {
     if (ref.kind === "docs") {
+      if (!present()) return fail("not_available", `Docs open in their own windows, and there are none yet. ${CREATE_DOC}`);
       const listed = await docs.outlineDocs({ limit: 5 });
       return fail("not_available", "Docs open in their own windows. Go to one of them.", isApiError(listed) ? [] : listed.docs.map((doc) => doc.ref));
     }
