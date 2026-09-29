@@ -42,6 +42,8 @@
 body {
   margin: 0;
   overflow: hidden;
+  /* Explicit, so a host page's own background (an embedding frame, a reset stylesheet) never shows through. */
+  background: var(--canvas);
 }
 button,
 a,
