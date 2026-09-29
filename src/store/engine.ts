@@ -236,7 +236,9 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
       where.push("a.kind = ?");
       bind.push(options.kind);
     }
-    if (!options.includeDeleted) where.push("a.deleted_at IS NULL");
+    if (options.onlyDeleted) where.push("a.deleted_at IS NOT NULL");
+    else if (!options.includeDeleted) where.push("a.deleted_at IS NULL");
+    const total = count(`SELECT count(*) FROM artifacts a WHERE ${where.join(" AND ")}`, bind.length ? [...bind] : undefined);
     if (options.cursor) {
       const match = /^([0-9a-z]+)\.([0-9a-z]+)$/.exec(options.cursor);
       if (!match) throw new StoreError("bad_input", "That cursor is not valid. Start again without one.");
@@ -252,7 +254,7 @@ export function createEngine(db: SqlDb, options: EngineOptions = {}) {
     );
     const items = records.slice(0, limit).map(toSummary);
     const last = items.at(-1);
-    return records.length > limit && last ? { items, cursor: `${last.updatedAt.toString(36)}.${last.id}` } : { items };
+    return records.length > limit && last ? { items, cursor: `${last.updatedAt.toString(36)}.${last.id}`, total } : { items, total };
   }
 
   function getArtifact(id: string, options: { includeDeleted?: boolean } = {}): Artifact | null {

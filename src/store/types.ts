@@ -96,11 +96,15 @@ export interface BlockOpsResult {
 export interface Page<T> {
   items: T[];
   cursor?: string;
+  /** How many match, over every page. */
+  total: number;
 }
 
 export interface ListOptions {
   kind?: ArtifactKind;
   includeDeleted?: boolean;
+  /** Only soft-deleted artifacts (the "Recently deleted" list), newest deletion first. */
+  onlyDeleted?: boolean;
   limit?: number;
   cursor?: string;
 }

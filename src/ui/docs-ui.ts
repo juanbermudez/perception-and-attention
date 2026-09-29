@@ -6,13 +6,14 @@
 // saved windows from an earlier visit (remembered with one localStorage flag).
 
 import type { ActivityLog } from "../api/activity";
-import { type DocsApi, isApiError } from "../api/docs-api";
+import { type ApiError, type DocListing, type DocsApi, isApiError } from "../api/docs-api";
 import type { WindowCommand, WindowInfo, WindowsPort } from "../api/guide-api";
 import { fail, isFailure, type Result } from "../api/result";
 import type { ViewOutcome } from "../api/view-api";
 import type { RegionId } from "../content/types";
 import { regionById } from "../model/inline";
 import { resolveRef } from "../model/refs";
+import { LIMITS } from "../store/limits";
 import type { Artifact, Block, BlockData } from "../store/types";
 import { type BlockEditor, createDocEditor, type DocEditorHost } from "./doc-editor";
 import { toast } from "./dom";
@@ -138,10 +139,18 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   /** Whether docs may exist, so agent searches include them only then. */
   const present = () => docs.status().store !== "unopened" || remembered();
 
-  function bannerHtml(): string {
+  /** The storage banner (spec §11.1) in a doc window or the Notes list; hidden while docs save normally. */
+  function renderBanner(element: HTMLElement) {
     const status = docs.status();
-    if (!("banner" in status) || !status.banner) return "";
-    return `<b>${status.banner.text}</b>${status.banner.detail ? ` ${status.banner.detail}` : ""}`;
+    const banner = "banner" in status ? status.banner : undefined;
+    element.hidden = !banner;
+    if (!banner) {
+      element.replaceChildren();
+      return;
+    }
+    const text = document.createElement("b");
+    text.textContent = banner.text;
+    element.replaceChildren(text, banner.detail ? ` ${banner.detail}` : "");
   }
 
   function statusText(): string {
@@ -182,9 +191,7 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
 
   function renderMeta(window: DocWindow) {
     window.meta.textContent = `Edited ${ago(window.lastEdit.at)} · ${window.lastEdit.by === "agent" ? "Assistant" : "You"}`;
-    const banner = bannerHtml();
-    window.banner.hidden = !banner;
-    window.banner.innerHTML = banner;
+    renderBanner(window.banner);
   }
 
   function showView(data: BlockData, caption: string) {
@@ -458,12 +465,64 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     notesPanel.style.right = `${Math.max(12, box.right - button.right - 4)}px`;
   }
 
+  /** Every page of a listing: the store keeps up to 200 docs, and a page holds 100. */
+  async function listAll(deleted: boolean): Promise<DocListing[] | ApiError> {
+    const all: DocListing[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await docs.outlineDocs({ limit: 100, cursor, deleted });
+      if (isApiError(page)) return page;
+      all.push(...page.docs);
+      cursor = page.cursor;
+    } while (cursor);
+    return all;
+  }
+
+  function noteItem(doc: DocListing): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "note-item";
+    item.innerHTML = `<button type="button" class="note-row" data-ref="${doc.ref}">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></button><button type="button" class="note-delete" data-delete="${doc.ref}">${TRASH_ICON}</button>`;
+    item.querySelector(".note-title")!.textContent = doc.title;
+    item.querySelector(".note-meta")!.textContent = `${ago(Date.parse(doc.updated))}${doc.open || doc.minimized ? " · open" : ""}`;
+    const remove = item.querySelector<HTMLButtonElement>(".note-delete")!;
+    remove.setAttribute("aria-label", `Delete ${doc.title}`);
+    remove.title = "Delete";
+    return item;
+  }
+
+  function deletedItem(doc: DocListing): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "note-item is-deleted";
+    item.innerHTML = `<span class="note-row">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></span><button type="button" class="note-restore" data-restore="${doc.ref}">Restore</button>`;
+    item.querySelector(".note-title")!.textContent = doc.title;
+    const days = Math.max(0, Math.ceil((Date.parse(doc.purge ?? "") - Date.now()) / 86_400_000));
+    item.querySelector(".note-meta")!.textContent = `${days} ${days === 1 ? "day" : "days"} left`;
+    item.querySelector(".note-restore")!.setAttribute("aria-label", `Restore ${doc.title}`);
+    return item;
+  }
+
+  /** "Recently deleted": docs deleted in the last 30 days, with Restore. Stays open across renders once opened. */
+  let deletedOpen = false;
+  function deletedSection(deleted: DocListing[]): HTMLLIElement {
+    const item = document.createElement("li");
+    item.className = "notes-deleted";
+    const details = document.createElement("details");
+    details.open = deletedOpen;
+    details.addEventListener("toggle", () => {
+      deletedOpen = details.open;
+    });
+    details.innerHTML = `<summary>Recently deleted (${deleted.length})</summary><p class="notes-deleted-note">Deleted notes are kept for ${LIMITS.purgeAfterDays} days, then removed for good.</p>`;
+    const list = document.createElement("ul");
+    list.append(...deleted.map(deletedItem));
+    details.append(list);
+    item.append(details);
+    return item;
+  }
+
   async function renderNotes() {
-    const listed = await docs.outlineDocs({ limit: 100 });
+    const [listed, deleted] = await Promise.all([listAll(false), listAll(true)]);
     const banner = notesPanel.querySelector<HTMLElement>(".notes-banner")!;
-    const bannerText = bannerHtml();
-    banner.hidden = !bannerText;
-    banner.innerHTML = bannerText;
+    renderBanner(banner);
     if (isApiError(listed)) {
       const item = document.createElement("li");
       item.className = "notes-empty";
@@ -471,23 +530,15 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
       notesList.replaceChildren(item);
       return;
     }
-    if (!listed.docs.length) {
-      notesList.innerHTML = '<li class="notes-empty">No notes yet. Start one, or import a Markdown file.</li>';
-      return;
+    const items: HTMLLIElement[] = listed.map(noteItem);
+    if (!items.length) {
+      const empty = document.createElement("li");
+      empty.className = "notes-empty";
+      empty.textContent = "No notes yet. Start one, or import a Markdown file.";
+      items.push(empty);
     }
-    notesList.replaceChildren(
-      ...listed.docs.map((doc) => {
-        const item = document.createElement("li");
-        item.className = "note-item";
-        item.innerHTML = `<button type="button" class="note-row" data-ref="${doc.ref}">${KIND_ICONS[doc.kind]}<span class="note-title"></span><span class="note-meta"></span></button><button type="button" class="note-delete" data-delete="${doc.ref}">${TRASH_ICON}</button>`;
-        item.querySelector(".note-title")!.textContent = doc.title;
-        item.querySelector(".note-meta")!.textContent = `${ago(Date.parse(doc.updated))}${doc.open || doc.minimized ? " · open" : ""}`;
-        const remove = item.querySelector<HTMLButtonElement>(".note-delete")!;
-        remove.setAttribute("aria-label", `Delete ${doc.title}`);
-        remove.title = "Delete";
-        return item;
-      }),
-    );
+    if (!isApiError(deleted) && deleted.length) items.push(deletedSection(deleted));
+    notesList.replaceChildren(...items);
   }
 
   function openNotes() {
@@ -521,23 +572,60 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   document.addEventListener("pointerdown", (event) => {
     if (!notesPanel.hidden && !notesPanel.contains(event.target as Node) && !notesButton.contains(event.target as Node)) closeNotes(false);
   });
+  function restoreDoc(ref: string) {
+    void docs.doc({ action: "restore", ref }, "user").then((result) => {
+      if (isApiError(result)) return toast(`Could not restore: ${result.error.message}`);
+      activity.append({ by: "user", kind: "restored", ref });
+      toast(result.said);
+      if (!notesPanel.hidden) void renderNotes();
+    });
+  }
+
+  function deleteDoc(ref: string) {
+    void docs.doc({ action: "delete", ref }, "user").then((result) => {
+      if (isApiError(result)) return toast(result.error.message);
+      activity.append({ by: "user", kind: "deleted", ref });
+      toast(`${result.said}. Find it under Recently deleted.`, { label: "Undo", run: () => restoreDoc(ref) });
+      void renderNotes();
+    });
+  }
+
+  /** The trash button asks once: the first click arms it ("Delete?"), a second click within 4 s deletes. */
+  let armed: { button: HTMLButtonElement; timer: ReturnType<typeof setTimeout> } | null = null;
+  function disarm() {
+    if (!armed) return;
+    clearTimeout(armed.timer);
+    armed.button.classList.remove("armed");
+    armed.button.innerHTML = TRASH_ICON;
+    armed.button.setAttribute("aria-label", armed.button.dataset.label ?? "Delete");
+    armed = null;
+  }
+  function arm(button: HTMLButtonElement) {
+    disarm();
+    button.dataset.label = button.getAttribute("aria-label") ?? "Delete";
+    button.classList.add("armed");
+    button.textContent = "Delete?";
+    button.setAttribute("aria-label", `${button.dataset.label}: press again to confirm`);
+    armed = { button, timer: setTimeout(disarm, 4000) };
+    button.addEventListener("blur", disarm, { once: true });
+  }
+
   notesPanel.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
-    const row = target.closest<HTMLElement>(".note-row");
-    const remove = target.closest<HTMLElement>(".note-delete");
+    const row = target.closest<HTMLElement>("button.note-row");
+    const remove = target.closest<HTMLButtonElement>(".note-delete");
+    const restore = target.closest<HTMLElement>(".note-restore");
     if (row?.dataset.ref) {
       closeNotes(false);
       void openWindow(row.dataset.ref, { focus: true }).then((opened) => {
         if ("error" in opened) toast(opened.error.message);
       });
     } else if (remove?.dataset.delete) {
-      const ref = remove.dataset.delete;
-      void docs.doc({ action: "delete", ref }, "user").then((result) => {
-        if (isApiError(result)) return toast(result.error.message);
-        activity.append({ by: "user", kind: "deleted", ref });
-        toast(result.said, { label: "Undo", run: () => void docs.doc({ action: "restore", ref }, "user") });
-        void renderNotes();
-      });
+      if (armed?.button !== remove) return arm(remove);
+      disarm();
+      deleteDoc(remove.dataset.delete);
+    } else if (restore?.dataset.restore) {
+      restoreDoc(restore.dataset.restore);
     } else if (target.closest(".notes-new")) {
       closeNotes(false);
       void docs.doc({ action: "create", title: "Untitled", markdown: "" }, "user").then((created) => {

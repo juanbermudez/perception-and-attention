@@ -352,3 +352,62 @@ test("M7: an agent write waiting for the store does not land after control is sw
   allowed = true;
   ok(await api.editBlocks({ ref: mine.ref, ops: [{ op: "insert", md: "y" }] }));
 });
+
+/* ---------- M4: deleted docs can be found and restored; R11 outline docs ---------- */
+
+test("M4: outline({ ref: docs, deleted: true }) lists recently deleted docs with when they go for good", async () => {
+  const { api, tools } = toolsSetup();
+  const empty = ok(await tools.outline("docs"));
+  assert.deepEqual(empty, { ref: "docs", count: 0, docs: [], hint: 'No docs yet. Create one with doc({ action: "create", title, markdown }).' });
+  const kept = ok(await api.doc({ action: "create", title: "Kept" }, "user"));
+  const gone = ok(await api.doc({ action: "create", title: "Gone" }, "user"));
+  ok(await api.doc({ action: "delete", ref: gone.ref }, "user"));
+  const live = ok(await tools.outline("docs"));
+  assert.equal(live.count, 1);
+  assert.deepEqual(
+    live.docs.map((doc) => doc.ref),
+    [kept.ref],
+  );
+  assert.equal(live.deleted, 1);
+  assert.match(live.hint, /outline\(\{ ref: "docs", deleted: true \}\)/);
+  const deleted = ok(await tools.outline("docs", { deleted: true }));
+  assert.equal(deleted.ref, "docs");
+  assert.equal(deleted.count, 1);
+  assert.deepEqual(
+    deleted.docs.map((doc) => [doc.ref, doc.title]),
+    [[gone.ref, "Gone"]],
+  );
+  const [{ deleted: at, purge }] = deleted.docs;
+  assert.equal(Date.parse(purge) - Date.parse(at), 30 * 86_400_000, "Gone for good 30 days after it was deleted.");
+  assert.match(deleted.hint, /kept for 30 days.*doc\(\{ action: "restore", ref \}\)/);
+  ok(await tools.doc({ action: "restore", ref: gone.ref }));
+  assert.equal(ok(await tools.outline("docs")).count, 2);
+});
+
+test("M4: the outline tool takes deleted: true", async () => {
+  const built = await build({
+    stdin: { contents: `export { outlineTool } from "./src/agent/tools/outline.ts";`, resolveDir: process.cwd(), loader: "ts" },
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    write: false,
+    logLevel: "silent",
+  });
+  const { outlineTool } = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`);
+  assert(outlineTool.input.safeParse({ ref: "docs", deleted: true }).success);
+  const seen = [];
+  await outlineTool.run({ ref: "docs", deleted: true }, { outline: (ref, page) => seen.push([ref, page]) });
+  assert.equal(seen[0][1].deleted, true);
+});
+
+test("M4: the docs list pages past 100", async () => {
+  const { api, engine } = setup();
+  for (let index = 0; index < 130; index++) engine.createArtifact({ kind: "doc", title: `Doc ${index}`, blocks: [] }, "user");
+  const first = ok(await api.outlineDocs({ limit: 100 }));
+  assert.equal(first.docs.length, 100);
+  assert.equal(first.count, 130);
+  assert.equal(first.more, true);
+  const second = ok(await api.outlineDocs({ limit: 100, cursor: first.cursor }));
+  assert.equal(second.docs.length, 30);
+  assert.equal(second.cursor, undefined);
+});

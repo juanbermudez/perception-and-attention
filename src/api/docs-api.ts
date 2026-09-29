@@ -96,7 +96,21 @@ export interface DocListing {
   updated: string;
   open?: true;
   minimized?: true;
+  /** When it was deleted, and when it goes for good (spec §11.2). */
   deleted?: string;
+  purge?: string;
+}
+
+export interface DocsOutline {
+  ref: "docs";
+  /** Docs on every page (only deleted ones with `deleted: true`). */
+  count: number;
+  docs: DocListing[];
+  cursor?: string;
+  more?: true;
+  /** Recently deleted docs, in the list of live ones. */
+  deleted?: number;
+  hint?: string;
 }
 
 export interface FullBlock {
@@ -171,6 +185,7 @@ export type StoreStatus = { store: "unopened" | "unavailable" } | { store: Store
 // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 const SNIPPET = 80;
+const DAY_MS = 86_400_000;
 /** The one way docs errors are made: a code, a message, and details the agent can act on. */
 const fail = (code: ApiErrorCode, message: string, details: Record<string, unknown> = {}): ApiError => ({ error: { code, message, ...details } });
 export const isApiError = (value: unknown): value is ApiError => typeof value === "object" && value !== null && "error" in value;
@@ -531,16 +546,31 @@ export function createDocsApi(options: DocsApiOptions) {
     const item: DocListing = { ref: refOf(summary), kind: summary.kind, title: summary.title, blocks: summary.blockCount, updated: stamp(summary.updatedAt) };
     if (summary.window === "open") item.open = true;
     if (summary.window === "minimized") item.minimized = true;
-    if (summary.deletedAt !== undefined) item.deleted = stamp(summary.deletedAt);
+    if (summary.deletedAt !== undefined) {
+      item.deleted = stamp(summary.deletedAt);
+      item.purge = stamp(summary.deletedAt + LIMITS.purgeAfterDays * DAY_MS);
+    }
     return item;
   }
 
-  function outlineDocs(
-    input: { limit?: number; cursor?: string; kind?: ArtifactKind; deleted?: boolean } = {},
-  ): Result<{ docs: DocListing[]; cursor?: string }> {
+  /** The user's docs and quizzes, newest first; `deleted: true` lists the recently deleted ones instead. */
+  function outlineDocs(input: { limit?: number; cursor?: string; kind?: ArtifactKind; deleted?: boolean } = {}): Result<DocsOutline> {
     return withStore(async (db) => {
-      const page = await db.listArtifacts({ kind: input.kind, includeDeleted: input.deleted, limit: input.limit, cursor: input.cursor });
-      return page.cursor ? { docs: page.items.map(listing), cursor: page.cursor } : { docs: page.items.map(listing) };
+      const onlyDeleted = input.deleted === true;
+      const page = await db.listArtifacts({ kind: input.kind, onlyDeleted, limit: input.limit, cursor: input.cursor });
+      const result: DocsOutline = { ref: "docs", count: page.total, docs: page.items.map(listing) };
+      if (page.cursor) Object.assign(result, { cursor: page.cursor, more: true });
+      if (onlyDeleted) {
+        if (page.total) result.hint = `Deleted docs are kept for ${LIMITS.purgeAfterDays} days. Bring one back with doc({ action: "restore", ref }).`;
+        return result;
+      }
+      const deleted = (await db.listArtifacts({ kind: input.kind, onlyDeleted: true, limit: 1 })).total;
+      if (deleted) result.deleted = deleted;
+      const create = 'Create one with doc({ action: "create", title, markdown }).';
+      const recent = deleted ? ` ${plural(deleted, "recently deleted doc")}: outline({ ref: "docs", deleted: true }).` : "";
+      if (!page.total) result.hint = `No docs yet. ${create}${recent}`;
+      else if (recent) result.hint = recent.trim();
+      return result;
     });
   }
 

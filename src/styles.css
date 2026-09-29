@@ -3242,6 +3242,65 @@ dialog::backdrop {
   width: 14px;
   height: 14px;
 }
+.note-delete.armed {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f0a3a3;
+  background: var(--hover);
+  opacity: 1;
+}
+.notes-deleted {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--line);
+}
+.notes-deleted summary {
+  padding: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--inner-radius);
+}
+.notes-deleted summary:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+.notes-deleted ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notes-deleted-note {
+  margin: 0;
+  padding: 0 8px 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--quiet);
+}
+.note-item.is-deleted .note-row {
+  padding-right: 78px;
+}
+.note-item.is-deleted .note-row:hover {
+  background: none;
+}
+.note-item.is-deleted .note-title {
+  color: var(--muted);
+}
+.note-restore {
+  position: absolute;
+  right: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: 4px;
+  background: var(--hover);
+}
+.note-restore:hover {
+  background: #ffffff17;
+}
 .notes-empty {
   padding: var(--space-3);
   font-size: 12px;

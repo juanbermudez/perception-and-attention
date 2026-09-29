@@ -78,11 +78,9 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       const base = guideOutline(refText, page);
       if ("error" in base) return base;
       if (!present()) return { ...base, docs: { ref: "docs", count: 0 } };
-      return docs
-        .outlineDocs({ limit: 100 })
-        .then((listed) => (isApiError(listed) ? base : { ...base, docs: { ref: "docs", count: listed.docs.length, more: listed.cursor ? true : undefined } }));
+      return docs.outlineDocs({ limit: 1 }).then((listed) => (isApiError(listed) ? base : { ...base, docs: { ref: "docs", count: listed.count } }));
     }
-    if (ref.kind === "docs") return docs.outlineDocs({ limit: page.limit, cursor: page.cursor });
+    if (ref.kind === "docs") return docs.outlineDocs({ limit: page.limit, cursor: page.cursor, deleted: (page as { deleted?: boolean }).deleted });
     if (ref.kind === "doc" || ref.kind === "quiz") return docs.outlineArtifact(`${ref.kind}:${ref.id}`, page);
     if (ref.kind === "block") return readBlock(ref.id, false);
     return undefined;
