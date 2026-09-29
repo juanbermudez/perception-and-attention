@@ -48,7 +48,9 @@ pnpm install
 pnpm preview      # build, then serve dist/ at http://localhost:8769
 ```
 
-`dist/index.html` also opens directly in a WebGL-capable browser.
+Notes are saved in the browser's storage for one origin, so the server sends requests for `127.0.0.1` and other host names to `http://localhost:8769`.
+
+`dist/index.html` also opens directly in a WebGL-capable browser (notes then last only until the tab closes).
 
 | Script | What it does |
 | --- | --- |
