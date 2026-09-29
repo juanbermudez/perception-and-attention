@@ -358,11 +358,21 @@ test("switching control off while a write is running undoes what landed and retu
   const presence = { events: [], begin: (tool) => presence.events.push(["begin", tool]), end: (said) => presence.events.push(["end", said]) };
   const logged = [];
   const runner = createToolRunner({ tools, api, control, presence, activity: { append: (entry) => logged.push(entry) } });
+  const runningDuringUndo = [];
+  api.go = (
+    (go) =>
+    (...args) =>
+      go(...args).then((result) => ({
+        ...result,
+        undo: { ...result.undo, run: () => (result.undo.run(), queueMicrotask(() => runningDuringUndo.push(runner.running))) },
+      }))
+  )(api.go);
   const pending = runner.call("go", { ref: "step:vision/2" });
   await Promise.resolve();
   control.on = false;
   finish();
   const result = await pending;
+  assert.deepEqual(runningDuringUndo, [true], "The explorer reports the undo's navigation while the call still counts as the agent's.");
   assert.equal(result.error.code, "agent_control_off");
   assert.match(result.error.message, /its change was undone/);
   assert.deepEqual(api.calls.at(-1), ["undo"]);

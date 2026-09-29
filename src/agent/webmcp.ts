@@ -115,6 +115,11 @@ export function createToolRunner({ tools, api, control, presence, activity }: Ru
     let result: Result<object>;
     try {
       result = await execute(tool, parsed.data, options);
+      if (!isFailure(result) && !control.on) {
+        result = switchedOff((result as WriteResult).undo);
+        // Let the undo's navigation settle (the explorer reports it in a microtask) while it still counts as the agent's.
+        await Promise.resolve();
+      }
     } finally {
       running--;
     }
@@ -123,11 +128,6 @@ export function createToolRunner({ tools, api, control, presence, activity }: Ru
       return compact(result);
     }
     const { undo, ...data } = result as WriteResult;
-    if (!control.on) {
-      const off = switchedOff(undo);
-      quietly("presence", () => presence?.end());
-      return off;
-    }
     quietly("activity", () => activity?.append({ by: "agent", kind: tool.name, ref: typeof data.at === "string" ? data.at : undefined, said: data.said }));
     quietly("presence", () => presence?.end(data.said, undo));
     return compact(data);
