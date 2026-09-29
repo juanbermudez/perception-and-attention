@@ -501,6 +501,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
 
   /* ---------- Event wiring ---------- */
 
+  byId("intro-title").textContent = overview.title;
   byId("intro-scroll").innerHTML = introHtml();
   byId("pathway-list").innerHTML = railButtonsHtml();
   byId("sensory-streams").innerHTML = streamRowsHtml();

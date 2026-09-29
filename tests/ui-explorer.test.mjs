@@ -161,8 +161,13 @@ test("the overview lists the topics without icons or a heading, the introduction
   assert.equal(rows.length, pathways.length);
   assert.equal(intro.querySelectorAll(".journey svg.journey-icon").length, 0);
   assert.equal(intro.querySelectorAll("h3").length, 0, "No Topics heading.");
-  const order = intro.querySelectorAll(".intro-title, .journey-list, .intro-lede-block").map((node) => node.className);
-  assert.deepEqual(order, ["intro-title", "journey-list", "intro-lede-block"]);
+  // The title stays in the fixed header; the list comes first in the scrolling part, then the introduction.
+  assert.equal(byId("intro-title").textContent, "Perception & Attention");
+  assert(byId("intro-view").querySelector(".inspector-heading").contains(byId("intro-title")));
+  const order = intro.querySelectorAll(".journey-list, .intro-lede-block").map((node) => node.className);
+  assert.deepEqual(order, ["journey-list", "intro-lede-block"]);
+  // One line per topic: its number and name.
+  assert.equal(rows[0].textContent.trim(), `1. ${pathways[0].title}`);
   // Each row's topic is the rail button beside it, in the same order.
   const railOrder = byId("pathway-list")
     .querySelectorAll("button")

@@ -24,18 +24,18 @@ export function railButtonsHtml() {
 }
 
 /**
- * The overview. Its title and topic rows sit on the rail's rhythm, so each row lines up with its icon in the
- * rail (which is why the rows carry no icons of their own); the introduction follows the list.
+ * The overview's scrolling part. Its topic rows sit on the rail's rhythm, below the title in the fixed header,
+ * so each row lines up with its icon in the rail (which is why the rows carry no icons of their own); the
+ * introduction follows the list.
  */
 export function introHtml() {
   const topics = pathways
     .map(
       (path, i) =>
-        `<li><button class="journey" data-path="${path.id}" style="--path-color:${path.color}"><span class="journey-text"><b>${i + 1}. ${escapeHtml(path.title)}</b><span>${escapeHtml(path.subtitle)}</span></span>${chevronIcon("journey-arrow")}</button></li>`,
+        `<li><button class="journey" data-path="${path.id}" style="--path-color:${path.color}"><span>${i + 1}. ${escapeHtml(path.title)}</span>${chevronIcon("journey-arrow")}</button></li>`,
     )
     .join("");
   return `<div class="intro">
-    <h2 class="intro-title" id="intro-title">${escapeHtml(overview.title)}</h2>
     <ol class="journey-list" aria-label="Topics">${topics}</ol>
     <div class="intro-lede-block">${overview.lede.map((p) => `<p class="intro-lede">${linkedText(p)}</p>`).join("")}</div>
   </div>`;

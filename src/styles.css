@@ -29,8 +29,9 @@
   --space-5: 24px;
   --inspector-width: 368px;
   --rail-width: 56px;
-  /* One rail slot. The overview's title and topic rows use the same height, so they line up with the icons. */
-  --rail-pitch: 68px;
+  /* One rail slot. Each panel's header and the overview's topic rows use the same height, so they line up
+     with the icons. */
+  --rail-pitch: 48px;
   --rail-top: var(--space-3);
   --drawer-height: 46svh;
   color: var(--ink);
@@ -38,6 +39,10 @@
 }
 * {
   box-sizing: border-box;
+}
+/* Focus rings are for the keyboard: nothing focused by a click, a tap or a drag draws one. */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 /* The page fills its frame rather than the screen, so a host's padding (a phone's safe areas) never clips it. */
 html,
@@ -1144,13 +1149,13 @@ kbd {
   color: var(--muted);
 }
 
-/* The explanation panel: full height, framed only along its edge with the stage. */
+/* The explanation panel: full height, with a hairline along its edge with the stage. */
 .inspector {
   position: relative;
   min-width: 0;
   min-height: 0;
   background: var(--card);
-  border-right: var(--frame-size) solid var(--frame);
+  border-right: 1px solid var(--line);
   z-index: 9;
 }
 .inspector-surface {
@@ -1175,12 +1180,13 @@ kbd {
   scrollbar-color: var(--scrollbar) transparent;
   overscroll-behavior: contain;
 }
+/* A 9 px grab area centred on the 1 px edge: 4 px of panel, the line, 4 px of stage. */
 .inspector-resize {
   position: absolute;
-  right: calc(-1 * var(--frame-size) - 3px);
+  right: -5px;
   top: 0;
   bottom: 0;
-  width: calc(var(--frame-size) + 6px);
+  width: 9px;
   cursor: ew-resize;
   touch-action: none;
   z-index: 2;
@@ -1188,7 +1194,7 @@ kbd {
 .inspector-resize::before {
   content: "";
   position: absolute;
-  left: 4px;
+  left: calc(50% - 2px);
   top: calc(50% - 18px);
   width: 4px;
   height: 36px;
@@ -1196,6 +1202,10 @@ kbd {
   background: #ffffff1f;
   opacity: 0;
   transition: opacity 0.16s ease-out;
+}
+/* Grabbing the edge focuses it (so the arrow keys resize next); its grip, not a ring, shows that. */
+.inspector-resize:focus {
+  outline: none;
 }
 .inspector-resize:hover::before,
 .inspector-resize:focus-visible::before,
@@ -1207,24 +1217,24 @@ kbd {
   cursor: ew-resize;
 }
 
-/* Overview (initial state). The title and each topic row take one rail slot, so they line up with the
-   overview and topic icons in the rail; the introduction follows the list. */
-.intro {
-  padding: var(--rail-top) var(--space-5) var(--space-5);
+/* Overview (initial state). Its title fills the header's rail slot, and each topic row takes the next slot,
+   so the rows line up with the topic icons in the rail; the introduction follows the list. */
+.inspector-heading.intro-heading {
+  padding-bottom: 0;
 }
-.intro h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-  text-wrap: balance;
-}
-.intro-title {
-  display: flex;
-  align-items: center;
+.intro-heading .heading-slot {
   height: var(--rail-pitch);
   border-bottom: 1px solid var(--line);
+}
+.intro-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.intro {
+  padding: 0 var(--space-5) var(--space-5);
 }
 .intro-lede-block {
   margin-top: var(--space-5);
@@ -1249,38 +1259,22 @@ kbd {
   border-bottom: 1px solid var(--line);
 }
 .journey {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   width: 100%;
   height: 100%;
   padding: 0 2px;
-  text-align: left;
-}
-.journey-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.journey-text b {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--ink);
-}
-.journey-text span {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--quiet);
+  text-align: left;
 }
 .journey .journey-arrow {
   width: 14px;
   height: 14px;
+  flex: none;
   color: var(--quiet);
   transition:
     transform 0.16s ease-out,
@@ -1290,14 +1284,18 @@ kbd {
   color: var(--ink);
   transform: translateX(2px);
 }
-.journey:hover .journey-text span {
-  color: var(--muted);
-}
 
-/* Pathway view */
+/* Pathway view. The header's first slot (the way back and the title) is centred on the rail's first icon. */
 .inspector-heading {
-  padding: var(--space-4) var(--space-5) var(--space-3);
+  padding: var(--rail-top) var(--space-5) var(--space-3);
   flex: none;
+}
+.heading-slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: var(--rail-pitch);
 }
 /* A region page has no tabs, so the header keeps the line the tabs would draw. */
 .region-page .inspector-heading {
@@ -1307,9 +1305,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin: 0 0 var(--space-3) -4px;
-  padding: 2px 6px 2px 0;
-  min-height: 28px;
+  margin: 0 0 0 -4px;
+  padding: 0 6px 0 0;
+  min-height: 24px;
   font-size: 11.5px;
   color: var(--quiet);
   border-radius: var(--inner-radius);
@@ -1327,10 +1325,10 @@ kbd {
 }
 #path-title {
   margin: 0;
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  line-height: 1.25;
+  line-height: 1.2;
   text-wrap: balance;
 }
 #path-title::before {
@@ -2118,12 +2116,11 @@ dialog::backdrop {
     padding: 0 var(--space-4);
   }
 }
-/* Narrow screens keep the rail down the left and stack the panel under the stage, framed along its top
-   edge. With the panel below, the overview rows no longer line up with the rail, so they size to fit. */
+/* Narrow screens keep the rail down the left and stack the panel under the stage, with a hairline along its top
+   edge. With the panel below the stage, its rows keep the rail's rhythm but no longer sit beside the icons. */
 @media (max-width: 740px) {
   :root {
     --rail-width: 48px;
-    --rail-pitch: 52px;
   }
   .workspace {
     grid-template-columns: var(--rail-width) minmax(0, 1fr);
@@ -2142,30 +2139,20 @@ dialog::backdrop {
     grid-row: 2;
     height: auto;
     border-right: 0;
-    border-top: var(--frame-size) solid var(--frame);
-  }
-  .intro-title,
-  .journey-list li {
-    height: auto;
-  }
-  .intro-title {
-    padding-bottom: var(--space-3);
-  }
-  .journey {
-    padding: 10px 2px;
+    border-top: 1px solid var(--line);
   }
   .inspector-resize {
     left: 0;
     right: 0;
-    top: calc(-1 * var(--frame-size) - 3px);
+    top: -5px;
     bottom: auto;
     width: auto;
-    height: calc(var(--frame-size) + 6px);
+    height: 9px;
     cursor: ns-resize;
   }
   .inspector-resize::before {
     left: calc(50% - 18px);
-    top: 4px;
+    top: calc(50% - 2px);
     width: 36px;
     height: 4px;
     opacity: 1;
@@ -2174,16 +2161,10 @@ dialog::backdrop {
     cursor: ns-resize;
   }
   .intro {
-    padding: var(--space-4);
-  }
-  .intro h2 {
-    font-size: 19px;
+    padding: 0 var(--space-4) var(--space-4);
   }
   .inspector-heading {
-    padding: var(--space-3) var(--space-4) var(--space-2);
-  }
-  .back-link {
-    margin-bottom: var(--space-1);
+    padding: var(--space-2) var(--space-4) var(--space-2);
   }
   #path-title {
     font-size: 18px;
@@ -2295,13 +2276,6 @@ dialog::backdrop {
 .region-row:hover .region-row-text {
   color: var(--muted);
 }
-.back-chevron {
-  transform: rotate(180deg);
-}
-#drawer-content > .back-link {
-  margin-bottom: var(--space-3);
-}
-
 /* The About link stays pinned under the overview. */
 .intro-footer {
   flex: none;

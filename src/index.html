@@ -24,13 +24,16 @@
       <div class="inspector-resize" id="inspector-resize" role="separator" aria-label="Resize explanation panel" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="560" aria-valuenow="368" tabindex="0"></div>
       <div class="inspector-surface">
         <section class="intro-view" id="intro-view" aria-labelledby="intro-title">
+          <header class="inspector-heading intro-heading"><div class="heading-slot"><h2 class="intro-title" id="intro-title"></h2></div></header>
           <div class="inspector-scroll" id="intro-scroll"></div>
           <footer class="intro-footer"><button class="about-link" id="intro-about">About this project <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button></footer>
         </section>
         <section class="path-view" id="path-view" aria-labelledby="path-title" hidden>
           <header class="inspector-heading">
-            <button class="back-link" id="back-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span id="back-label">Overview</span></button>
-            <h2 id="path-title" tabindex="-1"></h2>
+            <div class="heading-slot">
+              <button class="back-link" id="back-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span id="back-label">Overview</span></button>
+              <h2 id="path-title" tabindex="-1"></h2>
+            </div>
             <p class="path-subtitle" id="path-subtitle"></p>
           </header>
           <div class="panel-tabs" id="panel-tabs" role="tablist" aria-label="Topic sections">
