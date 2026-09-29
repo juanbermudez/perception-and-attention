@@ -24,10 +24,11 @@ const m = await bundle(`
   export { createGuideApi } from "./src/api/guide-api.ts";
   export { createActivityLog } from "./src/api/activity.ts";
   export { stepRef, formatRef, placeRef } from "./src/model/refs.ts";
-  export { pathways, regions, regionGuides } from "./src/content/index.ts";
+  export { pathways, regions, regionGuides, guideSources, sources } from "./src/content/index.ts";
   export { createState } from "./src/state.ts";
   export { createExplorer } from "./src/ui/explorer.ts";
 `);
+const { guideSources, sources } = m;
 const {
   outline,
   read,
@@ -218,6 +219,13 @@ test("guide text reaches agents with markdown region links, never [[id|text]]", 
   const links = [...all.matchAll(/\]\(region:([a-zA-Z0-9]+)\)/g)].map((match) => match[1]);
   assert(links.length > 50, `${links.length} region links`);
   for (const id of links) assert(id in regions, `link to unknown region ${id}`);
+});
+
+test("About › Papers counts each region-only paper once, by URL, as the Papers tab lists them", () => {
+  // The Papers tab lists topic sources first, then region-guide papers whose URL is not listed yet, each URL once.
+  const topicUrls = new Set(pathways.flatMap((path) => path.sourceIds.map((id) => sources.find((source) => source.id === id)?.url)));
+  const regionUrls = new Set(guideSources.map((source) => source.url).filter((url) => !topicUrls.has(url)));
+  for (const detail of ["brief", "full"]) assert.equal(read("about/papers", detail).regionOnly, regionUrls.size, detail);
 });
 
 test("typical results stay under 2 KB", () => {

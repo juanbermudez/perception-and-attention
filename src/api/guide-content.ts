@@ -236,8 +236,10 @@ function readAbout(tab: AboutTab, detail: Detail): Result<object> {
       return { ref, title, sections: about.sections.map((section) => ({ title: section.title, text: paragraphs(section.paragraphs) })) };
     case "papers": {
       // About 240 citations: list refs here; read a topic, step or region with detail "sources" for titles and URLs.
+      // As the Papers tab lists them: topic sources first, then each region-guide URL not listed yet, once
+      // (some papers are cited under two ids).
       const listed = new Set(pathways.flatMap((path) => path.sourceIds.map((id) => sourceEntry(id)?.url)));
-      const regionOnly = guideSources.filter((source) => !listed.has(source.url)).length;
+      const regionOnly = new Set(guideSources.map((source) => source.url).filter((url) => !listed.has(url))).size;
       const text = "Papers, reviews and textbook chapters used for this guide, grouped by topic. Region guides cite more; read a region with detail sources.";
       if (detail === "brief")
         return { ref, title, text, topics: pathways.map((path) => ({ ref: topicRef(path.id), sources: path.sourceIds.length })), regionOnly };
