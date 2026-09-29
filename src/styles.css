@@ -39,6 +39,11 @@
 * {
   box-sizing: border-box;
 }
+/* The page fills its frame rather than the screen, so a host's padding (a phone's safe areas) never clips it. */
+html,
+body {
+  height: 100%;
+}
 body {
   margin: 0;
   overflow: hidden;
@@ -120,8 +125,9 @@ kbd {
 .workspace {
   display: grid;
   grid-template-columns: var(--rail-width) var(--inspector-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   width: 100%;
-  height: 100svh;
+  height: 100%;
   background: var(--canvas);
 }
 .framed-card {
@@ -172,7 +178,6 @@ kbd {
   flex-direction: column;
   align-items: center;
   min-height: 0;
-  height: 100svh;
   padding: var(--rail-top) 0 var(--space-3);
   overflow-y: auto;
   scrollbar-width: none;
@@ -1142,7 +1147,6 @@ kbd {
   position: relative;
   min-width: 0;
   min-height: 0;
-  height: 100svh;
   background: var(--card);
   border-right: var(--frame-size) solid var(--frame);
   z-index: 9;
