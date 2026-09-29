@@ -692,11 +692,12 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const shownRegion = () => preview?.id ?? state.viewFocus ?? state.selected;
   resetOverview();
 
-  // An understated orbit underneath makes the 3D space readable.
+  // An understated orbit underneath makes the 3D space readable. It sits well clear of the head.
+  const RING_RADIUS = { x: 3.9, z: 3.3 };
   const ringPoints: THREE.Vector3[] = [];
   for (let i = 0; i <= 180; i++) {
     const a = (i / 180) * Math.PI * 2;
-    ringPoints.push(new THREE.Vector3(3.05 * Math.cos(a), -2.9, 2.6 * Math.sin(a)));
+    ringPoints.push(new THREE.Vector3(RING_RADIUS.x * Math.cos(a), -2.9, RING_RADIUS.z * Math.sin(a)));
   }
   const ringMaterial = new THREE.LineBasicMaterial({ color: "#686868", transparent: true, opacity: 0.16 });
   const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPoints), ringMaterial);
