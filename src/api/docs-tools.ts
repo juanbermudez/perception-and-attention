@@ -4,10 +4,10 @@
 // No DOM, so it runs against the real store engine in Node tests.
 
 import { inlinePlainText } from "../model/inline";
-import { formatRef, type Ref, resolveRef } from "../model/refs";
+import { formatRef, type Ref, resolveRef, suggest } from "../model/refs";
 import { createSearchIndex, type SearchDoc } from "../model/search";
 import type { Layout, SizeName, Slot } from "../ui/window-geometry";
-import { type ApiError, type DocInput, type DocsApi, type EditBlocksInput, isApiError, undoOps } from "./docs-api";
+import { type ApiError, type DocInput, type DocsApi, type EditBlocksInput, isApiError, NO_DOCS, undoOps } from "./docs-api";
 import type { WindowCommand, WindowInput, WindowsPort } from "./guide-api";
 import { guideHits, outline as guideOutline, type Page } from "./guide-content";
 import { fail, type Result, type Undo, type WriteResult } from "./result";
@@ -80,15 +80,28 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
       if (!present()) return { ...base, docs: { ref: "docs", count: 0 } };
       return docs.outlineDocs({ limit: 1 }).then((listed) => (isApiError(listed) ? base : { ...base, docs: { ref: "docs", count: listed.count } }));
     }
+    if (!ARTIFACT_KINDS.has(ref.kind)) return undefined;
+    // Reads do not start the store while no doc can exist (M8): another tab may hold the database.
+    if (!present()) return noDocsYet(ref);
     if (ref.kind === "docs") return docs.outlineDocs({ limit: page.limit, cursor: page.cursor, deleted: (page as { deleted?: boolean }).deleted });
     if (ref.kind === "doc" || ref.kind === "quiz") return docs.outlineArtifact(`${ref.kind}:${ref.id}`, page);
     if (ref.kind === "block") return readBlock(ref.id, false);
     return undefined;
   }
 
+  /** What reads of docs return before any doc exists in this browser. */
+  function noDocsYet(ref: Ref): Result<object> {
+    if (ref.kind === "docs") return { ref: "docs", count: 0, docs: [], hint: NO_DOCS };
+    return fail(
+      "unknown_ref",
+      `No ${formatRef(ref)}: there are no docs or quizzes in this browser yet. Create one with doc({ action: "create", title, markdown }).`,
+    );
+  }
+
   function read(refText: string, detail?: string): Maybe<Result<object>> | undefined {
     const ref = resolved(refText);
     if (!ref || !ARTIFACT_KINDS.has(ref.kind)) return undefined;
+    if (!present()) return noDocsYet(ref);
     if (ref.kind === "docs") return docs.outlineDocs();
     if (ref.kind !== "doc" && ref.kind !== "quiz" && ref.kind !== "block") return undefined;
     if (ref.kind === "block") return readBlock(ref.id, detail === "full");
@@ -120,15 +133,29 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     };
   }
 
+  /**
+   * The search result: the scope asked for, hits without empty snippets, for `all` how many hits are
+   * doc blocks, and a next step when nothing matched (tool-design R6).
+   */
+  function searchResult(query: string, scope: "docs" | "all", hits: { ref: string; in?: string; title: string; snip?: string }[]) {
+    const result: { scope: string; hits: object[]; docs?: number; hint?: string } = {
+      scope,
+      hits: hits.map((hit) => ({ ref: hit.ref, in: hit.in, title: hit.title, snip: hit.snip || undefined })),
+    };
+    if (scope === "all") result.docs = hits.filter((hit) => hit.in !== undefined || /^(doc|quiz):/.test(hit.ref)).length;
+    if (!hits.length) {
+      const closest = suggest(query).slice(0, 3);
+      result.hint = `No matches for "${query}". ${closest.length ? `Closest refs: ${closest.join(", ")}. ` : ""}Try fewer or different keywords, or browse with outline().`;
+    }
+    return result;
+  }
+
   /** Guide and doc hits ranked by one scorer (spec §6.4); docs are searched only when they may exist. */
   async function search(query: string, scope: "docs" | "all", limit: number): Promise<Result<object>> {
     const guide = scope === "all" ? guideHits(query, limit) : [];
-    if (scope === "all" && !present()) return { scope: "guide", hits: guide.map(({ ref, title, snip }) => ({ ref, title, snip })) };
+    if (!present()) return searchResult(query, scope, guide);
     const rows = await docs.searchRows();
-    if (isApiError(rows)) {
-      if (scope === "docs") return rows;
-      return { scope: "guide", hits: guide.map(({ ref, title, snip }) => ({ ref, title, snip })) };
-    }
+    if (isApiError(rows)) return scope === "docs" ? rows : searchResult(query, scope, guide);
     const entries: SearchDoc[] = [];
     const artifacts = new Map<string, string>();
     for (const row of rows) {
@@ -144,8 +171,8 @@ export function createDocsTools({ docs, windows, present }: DocsToolsDeps) {
     const hits = [...guide, ...docHits]
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map((hit) => ({ ref: hit.ref, in: "in" in hit ? hit.in : undefined, title: hit.title, snip: hit.snip || undefined }));
-    return { scope, hits };
+      .map((hit) => ({ ref: hit.ref, in: "in" in hit ? (hit.in as string | undefined) : undefined, title: hit.title, snip: hit.snip }));
+    return searchResult(query, scope, hits);
   }
 
   /* ---------- Commands ---------- */

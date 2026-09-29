@@ -411,3 +411,51 @@ test("M4: the docs list pages past 100", async () => {
   assert.equal(second.docs.length, 30);
   assert.equal(second.cursor, undefined);
 });
+
+/* ---------- R6 search, M8 read-only tools ---------- */
+
+test("R6: search reports the scope asked for, drops empty snippets, and a zero-hit search gets a next step", async () => {
+  let present = false;
+  const base = setup();
+  const tools = createDocsTools({ docs: base.api, present: () => present });
+  const all = ok(await tools.search("pulvinar", "all", 5));
+  assert.equal(all.scope, "all");
+  assert.equal(all.docs, 0);
+  assert(all.hits.length > 0);
+  for (const hit of all.hits) assert.notEqual(hit.snip, "", JSON.stringify(hit));
+  const none = ok(await tools.search("zqxwv", "all", 5));
+  assert.deepEqual(none.hits, []);
+  assert.equal(none.hint, 'No matches for "zqxwv". Try fewer or different keywords, or browse with outline().');
+  const close = ok(await tools.search("pulvinr", "all", 5));
+  assert.match(
+    close.hint ?? "",
+    /^No matches for "pulvinr"\. Closest refs: region:pulvinar(, [a-z:/-]+)*\. Try fewer or different keywords, or browse with outline\(\)\.$/,
+  );
+  assert.equal(base.opens(), 0, "Nothing opened the store: no docs exist.");
+
+  present = true;
+  const { ref } = ok(await base.api.doc({ action: "create", title: "Pulvinar notes", markdown: "The pulvinar coordinates cortex." }, "user"));
+  const docs = ok(await tools.search("pulvinar coordinates", "docs", 5));
+  assert.equal(docs.scope, "docs");
+  assert.equal(docs.hits[0].in, ref);
+  const merged = ok(await tools.search("pulvinar", "all", 20));
+  assert(merged.docs >= 1);
+  const empty = ok(await tools.search("zqxwv", "docs", 5));
+  assert.equal(empty.hint, 'No matches for "zqxwv". Try fewer or different keywords, or browse with outline().');
+});
+
+test("M8: read-only doc tools do not start the store before any doc exists", async () => {
+  const base = setup();
+  const tools = createDocsTools({ docs: base.api, present: () => false });
+  assert.deepEqual(ok(await tools.outline("docs")), {
+    ref: "docs",
+    count: 0,
+    docs: [],
+    hint: 'No docs yet. Create one with doc({ action: "create", title, markdown }).',
+  });
+  err(await tools.read("doc:k3f9"), "unknown_ref");
+  err(await tools.read("block:b1234"), "unknown_ref");
+  err(await tools.outline("quiz:k3f9"), "unknown_ref");
+  assert.deepEqual(ok(await tools.search("anything", "docs", 5)).hits, []);
+  assert.equal(base.opens(), 0);
+});

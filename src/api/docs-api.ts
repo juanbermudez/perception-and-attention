@@ -185,6 +185,8 @@ export type StoreStatus = { store: "unopened" | "unavailable" } | { store: Store
 // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 const SNIPPET = 80;
+/** The hint for an empty docs outline. */
+export const NO_DOCS = 'No docs yet. Create one with doc({ action: "create", title, markdown }).';
 const DAY_MS = 86_400_000;
 /** The one way docs errors are made: a code, a message, and details the agent can act on. */
 const fail = (code: ApiErrorCode, message: string, details: Record<string, unknown> = {}): ApiError => ({ error: { code, message, ...details } });
@@ -566,9 +568,8 @@ export function createDocsApi(options: DocsApiOptions) {
       }
       const deleted = (await db.listArtifacts({ kind: input.kind, onlyDeleted: true, limit: 1 })).total;
       if (deleted) result.deleted = deleted;
-      const create = 'Create one with doc({ action: "create", title, markdown }).';
       const recent = deleted ? ` ${plural(deleted, "recently deleted doc")}: outline({ ref: "docs", deleted: true }).` : "";
-      if (!page.total) result.hint = `No docs yet. ${create}${recent}`;
+      if (!page.total) result.hint = `${NO_DOCS}${recent}`;
       else if (recent) result.hint = recent.trim();
       return result;
     });

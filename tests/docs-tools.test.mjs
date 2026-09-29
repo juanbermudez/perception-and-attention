@@ -463,7 +463,7 @@ test("without a window manager, window and go(doc) are not_available; doc still 
 test("search: docs, all (merged with the guide), and never opening the store when no docs exist", async () => {
   const fresh = setup();
   const guideOnly = ok(await fresh.call("search", { query: "pulvinar" }));
-  assert.equal(guideOnly.scope, "guide");
+  assert.equal(guideOnly.scope, "all");
   assert.equal(fresh.opens(), 0, "search(all) does not start the store before any doc exists.");
   const context = ok(await fresh.call("get_context", {}));
   for (const field of ["windows", "editing", "store"]) assert.equal(context[field], undefined, field);
