@@ -10,12 +10,12 @@ export const pixelRatio = () => Math.min(devicePixelRatio, 1.8);
  */
 export interface ViewGap {
   gapFocus: { value: THREE.Vector3 };
-  /** Channel radius near the camera, in scene units; it narrows to 75% at the focus. */
+  /** Channel radius near the camera, in scene units (1.5 ≈ 52 mm); it narrows to 75% at the focus. */
   gapRadius: { value: number };
   /** 0 closed, 1 fully open. */
   gapAmount: { value: number };
 }
-export function createViewGap(radius = 1.05): ViewGap {
+export function createViewGap(radius = 1.5): ViewGap {
   return { gapFocus: { value: new THREE.Vector3() }, gapRadius: { value: radius }, gapAmount: { value: 0 } };
 }
 
