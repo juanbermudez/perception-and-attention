@@ -1,4 +1,4 @@
-// Docs on the page (spec §8, §9): doc windows with the editor, the "Notes" list in the dock,
+// Docs on the page (spec §8, §9): doc windows with the editor, the "Notes" list from the rail,
 // downloads, importing dropped .md files, and the window port the agent's tools use. It connects
 // the docs API (store), the window manager, the doc editor, the 3D view and the activity log.
 //
@@ -519,11 +519,13 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
   notesButton.setAttribute("aria-expanded", "false");
   const notesList = notesPanel.querySelector<HTMLElement>(".notes-list")!;
 
+  /** The list opens at the stage's left edge, level with the Notes button in the rail, and stays on screen. */
   function placeNotes() {
     const box = stage.getBoundingClientRect();
     const button = notesButton.getBoundingClientRect();
-    notesPanel.style.top = `${button.bottom - box.top + 10}px`;
-    notesPanel.style.right = `${Math.max(12, box.right - button.right - 4)}px`;
+    const room = box.height - notesPanel.offsetHeight - 12;
+    notesPanel.style.left = "12px";
+    notesPanel.style.top = `${Math.round(Math.max(12, Math.min(button.top - box.top, room)))}px`;
   }
 
   /** Every page of a listing: the store keeps up to 200 docs, and a page holds 100. */
@@ -604,10 +606,14 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
 
   function openNotes() {
     if (!notesList.children.length) notesList.innerHTML = '<li class="notes-empty">Loading…</li>';
-    placeNotes();
     notesPanel.hidden = false;
+    placeNotes();
     notesButton.setAttribute("aria-expanded", "true");
-    void renderNotes().then(() => (notesPanel.querySelector<HTMLElement>("button.note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus());
+    void renderNotes().then(() => {
+      // The list's height is known once it has rendered.
+      placeNotes();
+      (notesPanel.querySelector<HTMLElement>("button.note-row") ?? notesPanel.querySelector<HTMLElement>(".notes-new"))?.focus();
+    });
   }
 
   function closeNotes(refocus = true) {

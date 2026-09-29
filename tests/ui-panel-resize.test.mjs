@@ -25,6 +25,8 @@ const { setupPanelResize } = await bundle(`export { setupPanelResize } from "./s
 let dom, workspace, handle, narrow, compact;
 /** The stylesheet, reduced to what sizes the panel: an inline size wins over the media-query defaults. */
 function layout() {
+  // The rail beside the panel is 56 px wide on wide screens.
+  dom.document.getElementById("rail").rect = () => ({ width: narrow.matches ? 48 : 56, height: dom.window.innerHeight });
   const inspector = dom.document.getElementById("inspector");
   inspector.rect = () => {
     const width = workspace.style.getPropertyValue("--inspector-width");
@@ -62,10 +64,11 @@ beforeEach(() => start(1400));
 
 test("arrow keys, Home and End resize the panel within its bounds", () => {
   assert.equal(now(), "368");
-  key("ArrowLeft");
+  // The handle is on the panel's right edge, toward the 3D view: ArrowRight widens the panel.
+  key("ArrowRight");
   assert.equal(inlineWidth(), "392px");
-  key("ArrowRight");
-  key("ArrowRight");
+  key("ArrowLeft");
+  key("ArrowLeft");
   assert.equal(inlineWidth(), "344px");
   key("End");
   assert.equal(inlineWidth(), "560px");
@@ -85,11 +88,11 @@ test("a width the user set is dropped when the window crosses into the narrower 
 test("a width the user set is clamped again when the window shrinks", () => {
   start(990);
   key("End");
-  assert.equal(inlineWidth(), "560px");
+  assert.equal(inlineWidth(), "514px", "990 px less the 56 px rail and 420 px of stage.");
   resizeTo(800);
-  assert.equal(inlineWidth(), "380px", "The stage keeps at least 420 px.");
-  assert.equal(now(), "380");
-  assert.equal(handle.getAttribute("aria-valuemax"), "380");
+  assert.equal(inlineWidth(), "324px", "The rail and at least 420 px of stage stay beside the panel.");
+  assert.equal(now(), "324");
+  assert.equal(handle.getAttribute("aria-valuemax"), "324");
 });
 
 test("on narrow screens the drawer height is clamped when the window gets shorter", () => {

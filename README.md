@@ -25,9 +25,10 @@ This is a first version; I expect to keep adding detail.
 
 ## What it does
 
+- **Layout.** A rail of topic icons runs down the left edge, the explanation panel sits beside it (drag its edge to resize it) and the 3D view fills the rest. On the overview each topic's row lines up with its icon in the rail. On narrow screens the panel moves under the 3D view.
 - **Walkthroughs.** Each step highlights one region, sends a signal along the routes involved, and explains what happens there with one key fact. Play advances through the steps automatically.
 - **Spotlight.** Routes, regions and labels the current step is not about are dimmed.
-- **Region guides.** The Region tab lists a topic's regions with a one-line description; each opens a short guide with its sources. Hovering a region name in the panel turns the camera to it; moving away returns the view.
+- **Region guides.** The Regions tab lists a topic's regions with a one-line description; each opens as a page of the panel, with its sources, and the panel's back button returns to the list or the step it came from. Hovering a region name in the panel turns the camera to it; moving away returns the view.
 - **Attention streams.** In the Attention topic, a simplified normalization model shows how giving one sense priority reduces the others without switching them off.
 - **Labels outside the head.** Callouts are placed in columns beside the head, 14 px apart when there is room, and joined to their regions by two-segment leader lines: a 45° bend out of the region, then a horizontal run to the label.
 - **Links to a place.** The URL hash follows what you are looking at (`#/vision/parallel-channels`, `#/hearing/region/soc`), so a reload or a shared link opens the same step or region.
@@ -112,7 +113,7 @@ src/
     materials.ts       Point and highlight shaders
   ui/
     explorer.ts        Controller: overview, topics, steps, panels, hover previews
-    templates.ts       HTML builders for the side panel and dock
+    templates.ts       HTML builders for the side panel and the rail
     about.ts           About dialog (About, Papers, Code, Models) and the assistant switch
     agent-presence.ts  "Assistant" pill and action toasts
     dom.ts             Element lookup, escaping, [[region|text]] links, toasts

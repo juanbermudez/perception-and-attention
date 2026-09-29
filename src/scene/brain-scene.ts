@@ -1195,7 +1195,6 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   const skullOutline = outlineSample(skullGeometry.getAttribute("position").array, 480);
   const head: Silhouette = { left: 0, right: 0, top: 0, bottom: 0 },
     calloutBounds: CalloutBounds = { width: 0, top: 0, bottom: 0, margin: 10 };
-  const dock = stage.querySelector<HTMLElement>(".dock");
   function measureHead() {
     const outline = skullOutline;
     head.left = Infinity;
@@ -1554,8 +1553,7 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     clusterColorAttribute.needsUpdate = true;
     // Labels: read the two rects before any write, write only what changed, and measure a label
     // only when it shows, so a frame forces at most one layout (none once labels settle).
-    const origin = labelContainer.getBoundingClientRect(),
-      dockBottom = dock ? dock.getBoundingClientRect().bottom - origin.top : 0;
+    const origin = labelContainer.getBoundingClientRect();
     const pick = state.pick;
     if ((pick !== null) !== measuredInPick) {
       measuredInPick = pick !== null;
@@ -1649,10 +1647,10 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
         marker.labelHeight = marker.label.offsetHeight || marker.labelHeight;
         marker.measured = true;
       }
-    // Callouts: columns just outside the projected head, kept below the dock.
+    // Callouts: columns just outside the projected head.
     measureHead();
     calloutBounds.width = width;
-    calloutBounds.top = dock ? dockBottom + 12 : 14;
+    calloutBounds.top = 14;
     calloutBounds.bottom = Math.max(calloutBounds.top + 40, height - 14);
     layoutCallouts(visibleMarkers, visibleCount, head, calloutBounds, dt, reduced);
     // Labels near the mouse scale up and come forward. Off while dragging, since

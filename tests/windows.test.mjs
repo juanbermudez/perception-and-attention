@@ -21,7 +21,8 @@ const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h 
 test("sizes: s 320×380, m 440×540, l 600×min(760, stage − 40), shrunk to fit small stages", () => {
   assert.deepEqual(g.sizeFor("s", DESKTOP), { w: 320, h: 380 });
   assert.deepEqual(g.sizeFor("m", DESKTOP), { w: 440, h: 540 });
-  assert.deepEqual(g.sizeFor("l", DESKTOP), { w: 600, h: DESKTOP.height - g.TOP_INSET - g.MARGIN });
+  assert.deepEqual(g.sizeFor("l", DESKTOP), { w: 600, h: Math.min(760, DESKTOP.height - g.TOP_INSET - g.MARGIN) });
+  assert.deepEqual(g.sizeFor("l", { width: 1280, height: 700 }), { w: 600, h: 660 });
   assert.deepEqual(g.sizeFor("l", { width: 1600, height: 1200 }), { w: 600, h: 760 });
   const small = g.sizeFor("l", SMALL);
   assert(small.w <= SMALL.width - 2 * g.MARGIN && small.h <= SMALL.height - g.TOP_INSET - g.MARGIN);
@@ -35,7 +36,7 @@ test("every slot resolves inside the stage, below the dock, on its side", () => 
       for (const slot of g.SLOTS) {
         const rect = g.slotRect(slot, g.sizeFor(size, stage), stage);
         assert(inside(rect, stage), `${slot} ${size} ${JSON.stringify(rect)}`);
-        assert(rect.y >= g.TOP_INSET, `${slot} ${size} clears the dock`);
+        assert(rect.y >= g.TOP_INSET, `${slot} ${size} keeps the top margin`);
       }
   const size = g.sizeFor("s", DESKTOP);
   const at = (slot) => g.slotRect(slot, size, DESKTOP);
@@ -90,9 +91,9 @@ test("mobile below 720 px", () => {
   assert.equal(g.MAX_OPEN, 8);
 });
 
-// Real stages: the viewport minus the 332–560 px side panel (code-guide review L7).
+// Real stages: the viewport minus the 56 px rail and the 332–560 px side panel with its 6 px frame (code-guide review L7).
 const REALISTIC = [
-  { width: 656, height: 768 },
+  { width: 594, height: 768 },
   { width: 1072, height: 600 },
   { width: 940, height: 700 },
   { width: 1600, height: 900 },
@@ -113,9 +114,9 @@ test("tile never overlaps or runs past the stage at realistic sizes; it stacks w
       for (let i = 0; i < rects.length; i++)
         for (let j = i + 1; j < rects.length; j++) assert(!overlap(rects[i], rects[j]), `${count} on ${JSON.stringify(stage)}: ${i} and ${j} overlap`);
     }
-  // A 1024×768 viewport leaves a 656×768 stage: three windows fit as a 2×2 grid, eight only as a stack that stays inside.
+  // A 1024×768 viewport leaves a 594×768 stage: three windows fit one above another, eight only as a stack that stays inside.
   const three = g.arrange("tile", 3, REALISTIC[0]);
-  assert.equal(new Set(three.map((rect) => rect.x)).size, 2);
+  assert.equal(new Set(three.map((rect) => rect.y)).size, 3);
   assert.deepEqual(g.arrange("tile", 8, REALISTIC[0]), g.arrange("stack", 8, REALISTIC[0]));
   // Wide stages keep windows side by side.
   assert.equal(new Set(g.arrange("tile", 3, DESKTOP).map((rect) => rect.y)).size, 1);

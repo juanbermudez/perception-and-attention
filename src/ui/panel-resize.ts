@@ -1,5 +1,5 @@
-// Drag or arrow-key resizing along the panel's framed edge. On narrow screens the
-// panel sits below the stage, so the same handle resizes its height instead.
+// Drag or arrow-key resizing along the panel's framed edge, between it and the 3D view. On narrow
+// screens the panel sits below the stage, so the same handle resizes its height instead.
 import { byId } from "./dom";
 
 export function setupPanelResize() {
@@ -17,7 +17,9 @@ export function setupPanelResize() {
       const max = Math.max(180, window.innerHeight - 260);
       return { min: Math.min(220, max), max };
     }
-    return { min: 300, max: Math.max(300, Math.min(560, window.innerWidth - 420)) };
+    // The rail and at least 420 px of 3D view stay beside the panel.
+    const rail = document.getElementById("rail")?.getBoundingClientRect().width ?? 0;
+    return { min: 300, max: Math.max(300, Math.min(560, window.innerWidth - rail - 420)) };
   };
   const currentSize = () => {
     const rect = panel.getBoundingClientRect();
@@ -58,13 +60,13 @@ export function setupPanelResize() {
   });
   handle.addEventListener("pointermove", (event) => {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
-    // The panel grows as the pointer moves left (or up on narrow screens).
-    setSize(gesture.size + gesture.start - (gesture.vertical ? event.clientY : event.clientX));
+    // The panel grows as the pointer moves right, toward the 3D view (or up on narrow screens).
+    setSize(gesture.vertical ? gesture.size + gesture.start - event.clientY : gesture.size + event.clientX - gesture.start);
   });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) handle.addEventListener(type, finish);
   handle.addEventListener("keydown", (event) => {
-    const grow = NARROW.matches ? "ArrowUp" : "ArrowLeft";
-    const shrink = NARROW.matches ? "ArrowDown" : "ArrowRight";
+    const grow = NARROW.matches ? "ArrowUp" : "ArrowRight";
+    const shrink = NARROW.matches ? "ArrowDown" : "ArrowLeft";
     if (![grow, shrink, "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     event.stopPropagation();

@@ -1,7 +1,8 @@
 // Controller for the overview, topic walkthroughs, region guides and attention streams.
-// It owns the side panel and dock, writes the shared state, and tells the scene what to show.
+// It owns the side panel and the rail, writes the shared state, and tells the scene what to show.
 import type { ExplorerSnapshot, Panel } from "../api/guide-api";
 import { pathways } from "../content/pathways";
+import { regions } from "../content/regions";
 import { overview } from "../content/site";
 import type { PathId, RegionId, SenseId } from "../content/types";
 import { attentionGain, sensoryStreams } from "../model/attention";
@@ -12,11 +13,11 @@ import type { BrainScene } from "../scene/brain-scene";
 import type { ExplorerState } from "../state";
 import { byId, linkedText, nextTabIndex, toast } from "./dom";
 import {
-  dockButtonsHtml,
   introHtml,
   normalizationHtml,
   pathAfterHtml,
   priorityButtonsHtml,
+  railButtonsHtml,
   regionHtml,
   regionListHtml,
   stepDotsHtml,
@@ -43,8 +44,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   let scene: BrainScene | undefined;
   let panel: Panel = "guide";
   let expandedStep: number | null = 0;
-  /** Region shown in the Region tab; null shows the list of regions. */
+  /** Region whose page fills the panel; null with the Regions tab open shows the list of regions. */
   let shownRegion: RegionId | null = null;
+  /** Where a region page's back button returns: the Regions list it was picked from, or the walkthrough. */
+  let regionFrom: "guide" | "list" = "guide";
   let walkTimer: ReturnType<typeof setTimeout> | undefined;
   let onEvent: ((event: ExplorerEvent) => void) | undefined;
 
@@ -75,12 +78,12 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("intro-scroll").scrollTop = 0;
     byId("scene-title").textContent = overview.title;
     inspector.style.setProperty("--path-color", "var(--accent)");
-    updateDock();
+    updateRail();
     if (camera) scene?.reset();
     routeChanged();
   }
 
-  function updateDock() {
+  function updateRail() {
     byId("home-button").setAttribute("aria-pressed", String(state.overview));
     for (const button of byId("pathway-list").querySelectorAll<HTMLButtonElement>("button")) {
       const active = !state.overview && button.dataset.path === state.path;
@@ -106,8 +109,6 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("path-view").hidden = false;
     inspector.style.setProperty("--path-color", path.color);
     byId("scene-title").textContent = path.title;
-    byId("path-title").textContent = path.title;
-    byId("path-subtitle").textContent = path.subtitle;
     byId("path-intro").innerHTML = linkedText(path.intro);
     stepList.innerHTML = stepsHtml(path);
     stepDots.innerHTML = stepDotsHtml(path);
@@ -115,7 +116,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     byId("streams-tab").hidden = id !== "attention";
     updateAttention();
     setPanel("guide");
-    updateDock();
+    updateRail();
     setStep(step, { camera });
     body.scrollTop = 0;
   }
@@ -160,6 +161,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (panel === "region") {
       if (shownRegion === null) renderRegionList();
       else if (shownRegion !== state.selected) renderRegion(state.selected);
+      else updateHeader();
     }
   }
 
@@ -237,18 +239,48 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     body.scrollTop = 0;
     if (next !== "region") shownRegion = null;
     if (next === "streams") updateAttention();
+    updateHeader();
     routeChanged();
+  }
+
+  /**
+   * The panel's header. A topic page shows the topic, its tabs and the way back to the overview; a region
+   * page shows the region instead of the tabs, and the way back to where it was opened from.
+   */
+  function updateHeader() {
+    const path = current();
+    const region = panel === "region" && shownRegion !== null ? regions[shownRegion] : null;
+    const origin = regionFrom === "list" ? "Regions" : `Step ${state.step + 1}`;
+    byId("path-title").textContent = region ? region.label : path.title;
+    byId("path-subtitle").textContent = region ? region.where : path.subtitle;
+    byId("back-label").textContent = region ? `${path.short} / ${origin}` : "Overview";
+    byId("back-link").setAttribute("aria-label", region ? `Back to ${path.title}, ${origin.toLowerCase()}` : "Back to the overview");
+    byId("panel-tabs").hidden = region !== null;
+    byId("path-view").classList.toggle("region-page", region !== null);
+    // Without its tab, the drawer is a page of its own, named by the header's title.
+    const drawer = byId("region-drawer");
+    drawer.setAttribute("role", region ? "region" : "tabpanel");
+    drawer.setAttribute("aria-labelledby", region ? "path-title" : "region-tab");
+  }
+
+  /** Leave a region page for the list or the step it was opened from, keeping the user's place. */
+  function leaveRegion() {
+    if (regionFrom === "list") showRegionList();
+    else setPanel("guide");
+    focusTarget().focus({ preventScroll: true });
   }
 
   function renderRegion(id: RegionId) {
     shownRegion = id;
     byId("drawer-content").innerHTML = regionHtml(id, current());
+    updateHeader();
     routeChanged();
   }
 
   function renderRegionList() {
     shownRegion = null;
     byId("drawer-content").innerHTML = regionListHtml(current(), state.selected);
+    updateHeader();
     routeChanged();
   }
 
@@ -258,6 +290,10 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   }
 
   function showRegion(id: RegionId = state.selected, { camera = true, section }: { camera?: boolean; section?: RegionSection } = {}) {
+    // A region picked in the Regions list returns there; one reached from a step, a label or a link inside
+    // another region's page returns to the walkthrough (or wherever that page returns).
+    if (state.overview || panel !== "region") regionFrom = "guide";
+    else if (shownRegion === null) regionFrom = "list";
     if (state.overview) {
       // From the overview, open the first topic that features the region.
       const host = hostTopic(id);
@@ -266,7 +302,8 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     selectRegion(id, camera);
     setPanel("region");
     renderRegion(id);
-    byId("drawer-title").focus({ preventScroll: true });
+    body.scrollTop = 0;
+    byId("path-title").focus({ preventScroll: true });
     if (section && section !== "summary")
       byId("drawer-content").querySelector(`[data-section="${section}"]`)?.scrollIntoView({ block: "start", behavior: smooth() });
   }
@@ -297,7 +334,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (state.overview) return byId("intro-scroll").querySelector<HTMLElement>(".journey") ?? byId("home-button");
     if (panel === "guide") return byId(`step-toggle-${state.step}`);
     if (panel === "streams") return byId("sensory-controls");
-    if (shownRegion) return byId("drawer-title");
+    if (shownRegion) return byId("path-title");
     // The region list: the row of the region just shown, so going back to the list keeps the user's place.
     const drawer = byId("drawer-content");
     return drawer.querySelector<HTMLElement>(".region-row.current") ?? drawer.querySelector<HTMLElement>(".region-row") ?? byId("region-drawer");
@@ -465,7 +502,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
   /* ---------- Event wiring ---------- */
 
   byId("intro-scroll").innerHTML = introHtml();
-  byId("pathway-list").innerHTML = dockButtonsHtml();
+  byId("pathway-list").innerHTML = railButtonsHtml();
   byId("sensory-streams").innerHTML = streamRowsHtml();
   byId("attention-priority").innerHTML = priorityButtonsHtml();
 
@@ -474,7 +511,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     if (button) selectPath(button.dataset.path as PathId);
   });
   byId("home-button").addEventListener("click", () => showIntro());
-  // On the overview, pointing at a topic (in the list or the dock) previews its system in the 3D view.
+  // On the overview, pointing at a topic (in the list or the rail) previews its system in the 3D view.
   const previewTopic = (event: Event) => {
     if (!state.overview) return;
     const topic = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
@@ -491,7 +528,12 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     list.addEventListener("focusout", endTopicPreview);
   }
   byId("intro-about").addEventListener("click", onOpenAbout);
-  byId("back-to-intro").addEventListener("click", () => {
+  byId("back-link").addEventListener("click", () => {
+    cancelPreview();
+    if (panel === "region" && shownRegion !== null) {
+      leaveRegion();
+      return;
+    }
     showIntro();
     byId("home-button").focus({ preventScroll: true });
   });
@@ -532,8 +574,6 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     }
     cancelPreview();
     if (button.dataset.openRegion) showRegion(button.dataset.openRegion as RegionId);
-    else if (button.hasAttribute("data-region-list")) showRegionList();
-    else if (button.hasAttribute("data-back-guide")) setPanel("guide");
     else if (button.dataset.region) {
       const id = button.dataset.region as RegionId;
       if (panel === "region" && shownRegion !== id) showRegion(id);

@@ -17,12 +17,13 @@ async function bundle(source) {
   });
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
 }
-const { createExplorer, createState, pathways, placeHash, hostTopic } = await bundle(`
+const { createExplorer, createState, pathways, placeHash, hostTopic, regions } = await bundle(`
   export { createExplorer } from "./src/ui/explorer.ts";
   export { createState } from "./src/state.ts";
   export { pathways } from "./src/content/pathways.ts";
   export { placeHash } from "./src/model/refs.ts";
   export { hostTopic } from "./src/model/topics.ts";
+  export { regions } from "./src/content/regions.ts";
 `);
 const page = await readFile("src/index.html", "utf8");
 const topic = (id) => pathways.find((path) => path.id === id);
@@ -70,7 +71,7 @@ test("the overview: intro shown, topic view hidden, Overview pressed, no hash", 
   assert(sceneCalls.some(([name]) => name === "reset"));
 });
 
-test("selecting a topic opens its walkthrough at step 1 and marks it in the dock", async () => {
+test("selecting a topic opens its walkthrough at step 1 and marks it in the rail", async () => {
   explorer.selectPath("vision");
   await settle();
   const vision = topic("vision");
@@ -82,8 +83,8 @@ test("selecting a topic opens its walkthrough at step 1 and marks it in the dock
   assert.equal(byId("path-steps").children.length, vision.steps.length);
   assert.equal(byId("step-toggle-0").getAttribute("aria-expanded"), "true");
   assert.equal(byId("streams-tab").hidden, true, "Only Attention has a Streams tab.");
-  const dock = byId("pathway-list").querySelector('[data-path="vision"]');
-  assert.equal(dock.getAttribute("aria-pressed"), "true");
+  const rail = byId("pathway-list").querySelector('[data-path="vision"]');
+  assert.equal(rail.getAttribute("aria-pressed"), "true");
   assert.equal(byId("home-button").getAttribute("aria-pressed"), "false");
   assert.equal(dom.location.hash, `#/vision/${vision.steps[0].key}`);
   assert.deepEqual(
@@ -132,7 +133,44 @@ test("a region from the overview opens in the topic that teaches it, with focus 
   assert.deepEqual(place(), { kind: "region", path: state.path, id: "v1" });
   assert.equal(byId("region-drawer").hidden, false);
   assert.equal(byId("guide-panel").hidden, true);
-  assert.equal(active(), "<h3#drawer-title>");
+  assert.equal(active(), "<h2#path-title>");
+});
+
+test("a region opens as a page of the panel: its name and place in the header, no tabs, a way back", () => {
+  explorer.selectPath("vision");
+  explorer.showRegion("lgn");
+  assert.equal(byId("path-title").textContent, regions.lgn.label);
+  assert.equal(byId("path-subtitle").textContent, regions.lgn.where);
+  assert.equal(byId("panel-tabs").hidden, true);
+  assert.equal(byId("region-drawer").getAttribute("role"), "region");
+  assert.equal(byId("region-drawer").getAttribute("aria-labelledby"), "path-title");
+  assert.equal(byId("back-label").textContent, `Vision / Step ${state.step + 1}`);
+  assert.equal(byId("drawer-content").querySelector("[data-region-list], [data-back-guide], #drawer-title"), null, "The header is the only way back.");
+  // Back on the topic page, the header names the topic again.
+  explorer.goTo({ kind: "step", path: "vision", index: 0 });
+  assert.equal(byId("path-title").textContent, topic("vision").title);
+  assert.equal(byId("panel-tabs").hidden, false);
+  assert.equal(byId("back-label").textContent, "Overview");
+  assert.equal(byId("region-drawer").getAttribute("role"), "tabpanel");
+});
+
+test("the overview lists the topics without icons or a heading, the introduction after them", () => {
+  explorer.restore("");
+  const intro = byId("intro-scroll");
+  const rows = intro.querySelectorAll(".journey");
+  assert.equal(rows.length, pathways.length);
+  assert.equal(intro.querySelectorAll(".journey svg.journey-icon").length, 0);
+  assert.equal(intro.querySelectorAll("h3").length, 0, "No Topics heading.");
+  const order = intro.querySelectorAll(".intro-title, .journey-list, .intro-lede-block").map((node) => node.className);
+  assert.deepEqual(order, ["intro-title", "journey-list", "intro-lede-block"]);
+  // Each row's topic is the rail button beside it, in the same order.
+  const railOrder = byId("pathway-list")
+    .querySelectorAll("button")
+    .map((button) => button.dataset.path);
+  assert.deepEqual(
+    rows.map((row) => row.dataset.path),
+    railOrder,
+  );
 });
 
 test("goTo reaches every kind of place, and snapshot reports it", () => {
@@ -285,32 +323,62 @@ test("a user navigation stops the walk and reports the pause as the user's", asy
 
 /* ---------- Keyboard focus ---------- */
 
-test('"All regions" re-renders the drawer and puts focus on the region the user came from', async () => {
+test("Back on a region picked in the Regions list returns to the list, with focus on that region", async () => {
   explorer.selectPath("vision");
-  explorer.showRegion("lgn");
-  click(byId("drawer-content").querySelector("[data-region-list]"));
+  click(byId("region-tab"));
+  click(byId("drawer-content").querySelector('[data-open-region="lgn"]'));
+  await settle();
+  assert.deepEqual(place(), { kind: "region", path: "vision", id: "lgn" });
+  assert.equal(byId("back-label").textContent, "Vision / Regions");
+  click(byId("back-link"));
   await settle();
   assert.deepEqual(place(), { kind: "regions", path: "vision" });
+  assert.equal(byId("path-title").textContent, topic("vision").title);
   assert.equal(active(), "<button.region-row.current>");
   assert.equal(dom.document.activeElement.dataset.openRegion, "lgn");
 });
 
-test('"Back to step" switches to the walkthrough and puts focus on that step', async () => {
+test("Back on a region opened from a step returns to that step, with focus on it", async () => {
   const vision = topic("vision");
   explorer.selectPath("vision");
   explorer.setStep(3);
-  explorer.showRegion(vision.steps[3].region);
-  click(byId("drawer-content").querySelector("[data-back-guide]"));
+  click(byId("path-steps").children[3].querySelector(".step-region-link"));
+  await settle();
+  assert.deepEqual(place(), { kind: "region", path: "vision", id: vision.steps[3].region });
+  assert.equal(byId("back-label").textContent, "Vision / Step 4");
+  click(byId("back-link"));
   await settle();
   assert.deepEqual(place(), { kind: "step", path: "vision", index: 3 });
   assert.equal(active(), "<button#step-toggle-3.step-toggle>");
+});
+
+test("a region linked from another region's page opens in its place and keeps the way back", async () => {
+  explorer.selectPath("vision");
+  click(byId("region-tab"));
+  click(byId("drawer-content").querySelector('[data-open-region="lgn"]'));
+  await settle();
+  const link = byId("drawer-content").querySelector("button.region-mention[data-region]");
+  const target = link.dataset.region;
+  click(link);
+  await settle();
+  assert.equal(place().id, target);
+  assert.equal(byId("path-title").textContent, regions[target].label);
+  assert.equal(byId("back-label").textContent, "Vision / Regions");
+});
+
+test("Back on a topic page goes to the overview", async () => {
+  explorer.selectPath("hearing");
+  click(byId("back-link"));
+  await settle();
+  assert.deepEqual(place(), { kind: "overview" });
+  assert.equal(active(), "<button#home-button.rail-button>");
 });
 
 test("opening a region from a step keeps focus on the region's title", async () => {
   explorer.selectPath("hearing");
   click(byId("path-steps").querySelector(".step-region-link"));
   await settle();
-  assert.equal(active(), "<h3#drawer-title>");
+  assert.equal(active(), "<h2#path-title>");
 });
 
 test("a topic switch while a step has focus moves focus to the new topic's first step", async () => {
@@ -337,7 +405,7 @@ test("focus the user moved out of the panel is left alone", async () => {
   byId("about-button").focus();
   explorer.selectPath("speech");
   await settle();
-  assert.equal(active(), "<button#about-button.dock-about>");
+  assert.equal(active(), "<button#about-button.rail-button.rail-tool>");
   // A click on empty space (the 3D view) blurs the control; a later navigation does not pull focus back.
   byId("step-toggle-0").focus();
   dom.document.activeElement.blur();
@@ -348,10 +416,15 @@ test("focus the user moved out of the panel is left alone", async () => {
 
 /* ---------- Page structure ---------- */
 
-test("the topic dock comes before the 3D region labels in tab order", () => {
-  const order = dom.document.querySelectorAll("nav.dock, #region-labels").map((node) => label(node));
-  assert.deepEqual(order, ["<nav.dock.framed-card>", "<div#region-labels>"]);
+test("the rail, the panel and the 3D view come in screen order, so Tab follows the layout", () => {
+  const order = dom.document.querySelectorAll("nav.rail, #inspector, #region-labels").map((node) => label(node));
+  assert.deepEqual(order, ["<nav#rail.rail>", "<aside#inspector.inspector>", "<div#region-labels>"]);
   // The scene takes label clicks and drags through the orbit surface, so the labels stay inside it.
   assert(byId("orbit-surface").contains(byId("region-labels")));
   assert.equal(byId("region-labels").getAttribute("role"), "group", "An aria-label needs a role to be read.");
+  // The rail's buttons are icons; each is named for assistive tech and carries its tooltip text.
+  for (const button of byId("rail").querySelectorAll("button")) {
+    assert(button.getAttribute("aria-label"), label(button));
+    assert.equal(button.dataset.tip, button.getAttribute("aria-label"));
+  }
 });

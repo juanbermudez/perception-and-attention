@@ -21,6 +21,7 @@ import { createNarration } from "./ui/narration";
 import { setupPanelResize } from "./ui/panel-resize";
 import { createPickMode, routeRegionClicks } from "./ui/pick-mode";
 import { createQuizCard, type QuizCard } from "./ui/quiz-card";
+import { setupRailTips } from "./ui/rail-tips";
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const state = createState(reducedMotion.matches);
@@ -35,6 +36,7 @@ const setPlaying = (value: boolean) => {
 let quizCard: QuizCard | undefined;
 setupKeyboard(state, explorer, setPlaying, about.isOpen, () => quizCard?.keyOwner() ?? null);
 setupPanelResize();
+setupRailTips(byId("rail"));
 byId("about-button").addEventListener("click", () => about.open());
 reducedMotion.addEventListener("change", (event) => {
   if (!event.matches) return;

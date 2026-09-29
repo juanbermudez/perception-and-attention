@@ -47,7 +47,7 @@ const CONTROLS: [action: string, input: string][] = [
   ["Previous / next step", "<kbd>←</kbd><kbd>→</kbd>"],
   ["Pause animation", "<kbd>Space</kbd>"],
   ["Switch topic", "<kbd>1</kbd>–<kbd>6</kbd>"],
-  ["Write notes", "Notes in the top bar; type <kbd>/</kbd> for block types"],
+  ["Write notes", "Notes in the rail on the left; type <kbd>/</kbd> for block types"],
   ["Move a note window", "Drag its title, or <kbd>Alt</kbd><kbd>Shift</kbd> + arrows"],
 ];
 

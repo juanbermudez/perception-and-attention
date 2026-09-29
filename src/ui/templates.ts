@@ -1,4 +1,4 @@
-// HTML builders for the side panel and dock. Pure functions of content and state.
+// HTML builders for the side panel and the rail. Pure functions of content and state.
 import { pathways } from "../content/pathways";
 import { guideSources, regionGuides } from "../content/region-guides";
 import { regions } from "../content/regions";
@@ -13,26 +13,31 @@ import { arrowIcon, chevronIcon, topicIcon } from "./icons";
 const sourceLink = (title: string, url: string, note = "") =>
   `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(title)}</a>${note ? `<span>${escapeHtml(note)}</span>` : ""}</li>`;
 
-export function dockButtonsHtml() {
+/** The rail's topic buttons: icons only, named for assistive tech and shown as a tooltip on hover or focus. */
+export function railButtonsHtml() {
   return pathways
     .map(
       (path) =>
-        `<button class="pathway-button" data-path="${path.id}" style="--path-color:${path.color}" aria-pressed="false" title="${escapeHtml(path.title)}">${topicIcon(path.icon)}<span>${escapeHtml(path.short)}</span></button>`,
+        `<button class="rail-button pathway-button" data-path="${path.id}" style="--path-color:${path.color}" aria-pressed="false" aria-label="${escapeHtml(path.title)}" data-tip="${escapeHtml(path.title)}">${topicIcon(path.icon)}</button>`,
     )
     .join("");
 }
 
+/**
+ * The overview. Its title and topic rows sit on the rail's rhythm, so each row lines up with its icon in the
+ * rail (which is why the rows carry no icons of their own); the introduction follows the list.
+ */
 export function introHtml() {
   const topics = pathways
     .map(
       (path, i) =>
-        `<li><button class="journey" data-path="${path.id}" style="--path-color:${path.color}">${topicIcon(path.icon, "journey-icon")}<span class="journey-text"><b>${i + 1}. ${escapeHtml(path.title)}</b><span>${escapeHtml(path.subtitle)}</span></span>${chevronIcon("journey-arrow")}</button></li>`,
+        `<li><button class="journey" data-path="${path.id}" style="--path-color:${path.color}"><span class="journey-text"><b>${i + 1}. ${escapeHtml(path.title)}</b><span>${escapeHtml(path.subtitle)}</span></span>${chevronIcon("journey-arrow")}</button></li>`,
     )
     .join("");
   return `<div class="intro">
-    <h2 id="intro-title">${escapeHtml(overview.title)}</h2>
-    ${overview.lede.map((p) => `<p class="intro-lede">${linkedText(p)}</p>`).join("")}
-    <section class="intro-section"><h3>Topics</h3><ol class="journey-list">${topics}</ol></section>
+    <h2 class="intro-title" id="intro-title">${escapeHtml(overview.title)}</h2>
+    <ol class="journey-list" aria-label="Topics">${topics}</ol>
+    <div class="intro-lede-block">${overview.lede.map((p) => `<p class="intro-lede">${linkedText(p)}</p>`).join("")}</div>
   </div>`;
 }
 
@@ -76,13 +81,13 @@ export function regionListHtml(path: Pathway, selected: RegionId) {
     `<li><button class="region-row${id === selected ? " current" : ""}" data-open-region="${id}"><span class="region-row-name">${escapeHtml(regions[id].label)}</span><span class="region-row-text">${escapeHtml(stripLinks(regionGuides[id].summary))}</span></button></li>`;
   const { inSteps, onRoutes } = topicRegions(path);
   const others = onRoutes.length ? `<h3 class="region-list-heading">Also shown</h3><ul class="region-list">${onRoutes.map(row).join("")}</ul>` : "";
-  return `<p class="panel-lede">Regions in this topic. Select one to learn more.</p><ul class="region-list">${inSteps.map(row).join("")}</ul>${others}`;
+  return `<p class="panel-lede">Regions in this topic. Select one to open its page.</p><ul class="region-list">${inSteps.map(row).join("")}</ul>${others}`;
 }
 
 const stripLinks = (text: string) => text.replace(/\[\[[a-zA-Z0-9]+\|([^\]]+)\]\]/g, "$1");
 
+/** A region's page in the panel. The panel's header carries its name, where it is, and the way back. */
 export function regionHtml(id: RegionId, path: Pathway) {
-  const region = regions[id];
   const guide = regionGuides[id];
   const role = guide.roles[path.id];
   // data-section matches the ref sections (region:v1#mechanism), so `go` can scroll to one.
@@ -93,17 +98,12 @@ export function regionHtml(id: RegionId, path: Pathway) {
     .filter((source) => source !== undefined)
     .map((source) => sourceLink(source.title, source.url))
     .join("");
-  const stepIndex = path.steps.findIndex((step) => step.region === id);
-  return `<button class="back-link" data-region-list>${chevronIcon("back-chevron")}All regions</button>
-    <div class="region-heading"><h3 id="drawer-title" tabindex="-1"><button class="region-title-button" data-region="${id}" aria-label="Focus ${escapeHtml(region.label)}">${escapeHtml(region.label)}</button></h3></div>
-    <p class="region-kind">${escapeHtml(region.where)}</p>
-    <p class="drawer-intro" data-section="summary">${linkedText(guide.summary)}</p>
+  return `<p class="drawer-intro" data-section="summary">${linkedText(guide.summary)}</p>
     ${section("mechanism", "How it works", guide.mechanism)}
     ${role ? section("role", `In ${escapeHtml(path.title.toLowerCase())}`, role) : ""}
     ${section("connections", "Connections", guide.connections)}
     ${section("limit", "Anatomical accuracy", guide.limit)}
-    ${refs ? `<section class="drawer-section" data-section="sources"><h4>Sources</h4><ul class="source-list">${refs}</ul></section>` : ""}
-    <div class="region-nav"><button data-back-guide>${stepIndex >= 0 ? `← Back to step ${stepIndex + 1}` : "← Back to walkthrough"}</button></div>`;
+    ${refs ? `<section class="drawer-section" data-section="sources"><h4>Sources</h4><ul class="source-list">${refs}</ul></section>` : ""}`;
 }
 
 export function streamRowsHtml() {
