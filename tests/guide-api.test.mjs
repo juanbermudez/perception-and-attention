@@ -250,7 +250,7 @@ test("typical results stay under 2 KB", () => {
 /** The real explorer (ui/explorer.ts) on an inert DOM, recording what GuideApi asks of it. */
 function realExplorer() {
   const state = createState(false);
-  const explorer = createExplorer(state, { matches: true }, () => {});
+  const explorer = createExplorer(state, { matches: true });
   explorer.attachScene(inertScene(state));
   const calls = [];
   return Object.assign(Object.create(explorer), {

@@ -29,7 +29,7 @@ const state = createState(reducedMotion.matches);
 
 const agentControl = createAgentControl(browserStorage());
 const about = setupAbout(agentControl);
-const explorer = createExplorer(state, reducedMotion, () => about.open());
+const explorer = createExplorer(state, reducedMotion);
 const setPlaying = (value: boolean) => {
   state.playing = value;
 };

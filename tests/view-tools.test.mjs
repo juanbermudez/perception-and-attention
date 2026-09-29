@@ -72,7 +72,7 @@ function fakeScene() {
 
 /** The real explorer (ui/explorer.ts) on an inert DOM, recording its goTo calls; the scene only clears view focus. */
 function realExplorer(state) {
-  const explorer = createExplorer(state, { matches: true }, () => {});
+  const explorer = createExplorer(state, { matches: true });
   explorer.attachScene(inertScene(state));
   return recordGoTo(explorer);
 }

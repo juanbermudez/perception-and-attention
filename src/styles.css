@@ -248,7 +248,7 @@ kbd {
   border-radius: 0 2px 2px 0;
   background: var(--path-color, var(--accent));
 }
-/* Notes, About and the source link sit together at the bottom of the rail. */
+/* Notes, the source link and About sit together at the bottom of the rail. */
 .rail-foot {
   display: flex;
   flex-direction: column;
@@ -1417,6 +1417,8 @@ kbd {
 .path-step h3 {
   margin: 0;
 }
+/* The dashed line joining the steps: 3 px dashes, 4 px gaps, a little brighter than --line so it still
+   reads with half its length missing. */
 .path-step::before {
   content: "";
   position: absolute;
@@ -1424,7 +1426,7 @@ kbd {
   top: 30px;
   bottom: -6px;
   width: 1px;
-  background: var(--line);
+  background: repeating-linear-gradient(to bottom, #ffffff2e 0 3px, transparent 3px 7px);
 }
 .path-step:last-child::before {
   display: none;
@@ -2296,30 +2298,6 @@ dialog::backdrop {
 .region-row:hover .region-row-text {
   color: var(--muted);
 }
-/* The About link stays pinned under the overview. */
-.intro-footer {
-  flex: none;
-  padding: var(--space-2) var(--space-5);
-  border-top: 1px solid var(--line);
-}
-.about-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 40px;
-  padding: 0;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-.about-link:hover {
-  color: var(--ink);
-}
-.about-link svg {
-  width: 13px;
-  height: 13px;
-}
-
 /* ---------- Docs: floating windows (spec §8) ---------- */
 
 /* A sibling of the orbit surface: the layer ignores the pointer, windows and the tray take it. */

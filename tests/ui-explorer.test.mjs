@@ -32,7 +32,7 @@ let dom, state, explorer, events, sceneCalls;
 function start(url = "http://localhost:8769/") {
   dom = installDom(page, { url });
   state = createState(false);
-  explorer = createExplorer(state, dom.media("(prefers-reduced-motion: reduce)"), () => {});
+  explorer = createExplorer(state, dom.media("(prefers-reduced-motion: reduce)"));
   sceneCalls = [];
   const record =
     (name) =>

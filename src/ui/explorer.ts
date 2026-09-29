@@ -32,7 +32,7 @@ export interface ExplorerEvent {
   auto: boolean;
 }
 
-export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryList, onOpenAbout: () => void) {
+export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryList) {
   const inspector = byId("inspector");
   const stepList = byId("path-steps");
   const stepDots = byId("step-progress");
@@ -534,7 +534,6 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     list.addEventListener("pointerout", endTopicPreview);
     list.addEventListener("focusout", endTopicPreview);
   }
-  byId("intro-about").addEventListener("click", onOpenAbout);
   byId("back-link").addEventListener("click", () => {
     cancelPreview();
     if (panel === "region" && shownRegion !== null) {
