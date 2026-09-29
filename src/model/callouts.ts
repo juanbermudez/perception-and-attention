@@ -188,6 +188,11 @@ export function layoutCallouts(labels: LabelLayout[], count: number, head: Silho
   }
 }
 
+/** Labels in reading order: the left column top to bottom, then the right column. Keyboard focus moves in this order. */
+export function readingOrder<T extends Pick<LabelLayout, "side" | "labelY">>(labels: readonly T[]): T[] {
+  return [...labels].sort((a, b) => a.side - b.side || a.labelY - b.labelY);
+}
+
 /**
  * How close a pointer is to a label: 1 on its centre line, easing to 0 at `radius`
  * pixels. Horizontal distance counts from the label's ends, so wide labels respond

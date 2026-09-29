@@ -19,7 +19,7 @@ import atlas from "../data/atlas-data.json";
 import skullData from "../data/skull-data.json";
 import { ACTIVITY_CUTOFF, type ColorMotion, createColor, createWeight, relax, stepColor, stepPoint, stepWeight, type WeightMotion } from "../model/activity";
 import { isolateKeepsRoute, regionPulse, routeWeight, senseForRegion, sensoryStreams } from "../model/attention";
-import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, type Silhouette } from "../model/callouts";
+import { type CalloutBounds, type LabelLayout, labelProximity, layoutCallouts, leaderPath, readingOrder, type Silhouette } from "../model/callouts";
 import {
   type FrameView,
   highlightWeight,
@@ -187,6 +187,19 @@ interface Marker extends LabelLayout {
   color: ColorMotion;
   colorTarget: Vec3;
   labelColor: string;
+  /** The label's size is measured when it shows, and again after a resize or a pick-mode change. */
+  measured: boolean;
+  dom: LabelDom;
+}
+/** What was last written to a label and its leader, so a frame writes only what changed. */
+interface LabelDom {
+  hidden: boolean;
+  enabled: boolean;
+  selected: boolean;
+  /** Inline style values by property name ("left", "--lift", …). */
+  style: Record<string, string>;
+  leaderOpacity: string;
+  leaderPath: string;
 }
 
 export function createBrainScene(container: HTMLElement, labelContainer: HTMLElement, state: ExplorerState, onRegion: (id: RegionId) => void) {
@@ -842,11 +855,16 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     const label = document.createElement("button");
     label.className = "region-label";
     label.hidden = true;
+    // The accessible name is the visible text; the full name is its description (dropped in pick mode, see pickChanged).
     const [abbr, role] = region.short.split(" · ");
-    label.innerHTML = role ? `<span class="label-abbr">${abbr}</span><span class="label-role"> · ${role}</span>` : `<span class="label-abbr">${abbr}</span>`;
+    label.innerHTML = role
+      ? `<span class="label-abbr">${abbr}</span><span class="label-role"><span aria-hidden="true"> ·</span> ${role}</span>`
+      : `<span class="label-abbr">${abbr}</span>`;
+    if (region.label !== region.short) label.setAttribute("aria-description", region.label);
     label.dataset.region = id;
     label.draggable = false;
-    label.setAttribute("aria-label", `Explore ${region.label}`);
+    // One label at a time is in the tab order (see updateTabStop); arrow keys move between them.
+    label.tabIndex = -1;
     label.addEventListener("click", (e) => {
       if (e.detail === 0) onRegion(id);
     });
@@ -882,6 +900,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       color: createColor(colorTarget),
       colorTarget,
       labelColor: "",
+      measured: false,
+      dom: { hidden: true, enabled: true, selected: false, style: {}, leaderOpacity: "", leaderPath: "" },
     });
   }
   const projection = new THREE.Vector3();
@@ -956,6 +976,8 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   function resize() {
     width = container.clientWidth;
     height = container.clientHeight;
+    // Label text can change size with the stage (a container query hides the roles on narrow stages).
+    for (const marker of markers) marker.measured = false;
     renderer.setSize(width, height, false);
     camera.aspect = width / Math.max(1, height);
     // Below a 1.25 aspect, widen the view so the head keeps side gutters for the
@@ -970,6 +992,75 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
   let frameCount = 0;
   const activeRegionIds = new Set<RegionId>();
   const visibleMarkers: Marker[] = new Array(markers.length);
+  let measuredInPick = false;
+  /** Pick mode hides the label roles, since they would hint at the answer: every label changes size, and loses its full name. */
+  function pickChanged(picking: boolean) {
+    for (const marker of markers) {
+      marker.measured = false;
+      const region = regions[marker.id];
+      if (region.label === region.short) continue;
+      if (picking) marker.label.removeAttribute("aria-description");
+      else marker.label.setAttribute("aria-description", region.label);
+    }
+  }
+  function setLabelStyle(marker: Marker, name: string, value: string) {
+    if (marker.dom.style[name] === value) return;
+    marker.dom.style[name] = value;
+    marker.label.style.setProperty(name, value);
+  }
+  function setLeader(marker: Marker, path: string, opacity: string) {
+    if (marker.dom.leaderPath !== path) {
+      marker.dom.leaderPath = path;
+      marker.leader.setAttribute("d", path);
+    }
+    if (marker.dom.leaderOpacity !== opacity) {
+      marker.dom.leaderOpacity = opacity;
+      marker.leader.style.opacity = opacity;
+    }
+  }
+  // Keyboard: the labels are one tab stop: the focused label, else the selected region's label, else
+  // the last one reached while it shows, else the first in reading order. Arrow keys, Home and End
+  // move between labels in reading order (see readingOrder).
+  const markerById = new Map(markers.map((marker) => [marker.id, marker]));
+  const reachable = (marker: Marker) => !marker.dom.hidden && marker.dom.enabled;
+  let tabStop: Marker | null = null;
+  function setTabStop(next: Marker | null) {
+    if (next === tabStop) return;
+    if (tabStop) tabStop.label.tabIndex = -1;
+    if (next) next.label.tabIndex = 0;
+    tabStop = next;
+  }
+  function updateTabStop(focused: Element | null) {
+    const byFocus = focused?.parentElement === labelContainer ? markerById.get((focused as HTMLElement).dataset.region as RegionId) : undefined;
+    if (byFocus) return setTabStop(byFocus);
+    const selected = markerById.get(shownRegion());
+    if (selected && reachable(selected)) return setTabStop(selected);
+    if (tabStop && reachable(tabStop)) return;
+    setTabStop(readingOrder(markers.filter(reachable))[0] ?? null);
+  }
+  labelContainer.addEventListener("keydown", (e) => {
+    const label = (e.target as Element).closest?.(".region-label");
+    if (!label || e.altKey || e.ctrlKey || e.metaKey) return;
+    const order = readingOrder(markers.filter(reachable));
+    const at = order.findIndex((marker) => marker.label === label);
+    if (at < 0 || !order.length) return;
+    const last = order.length - 1;
+    const next =
+      e.key === "ArrowDown" || e.key === "ArrowRight"
+        ? order[at === last ? 0 : at + 1]
+        : e.key === "ArrowUp" || e.key === "ArrowLeft"
+          ? order[at === 0 ? last : at - 1]
+          : e.key === "Home"
+            ? order[0]
+            : e.key === "End"
+              ? order[last]
+              : undefined;
+    if (!next) return;
+    // Handled here, so the step shortcuts (keyboard.ts) leave these keys alone.
+    e.preventDefault();
+    setTabStop(next);
+    next.label.focus();
+  });
   // A few hundred surface points stand in for the head outline when placing callouts.
   function outlineSample(values: ArrayLike<number>, count: number) {
     const points = values.length / 3,
@@ -1331,12 +1422,20 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       }
     });
     clusterColorAttribute.needsUpdate = true;
-    let visibleCount = 0;
+    // Labels: read the two rects before any write, write only what changed, and measure a label
+    // only when it shows, so a frame forces at most one layout (none once labels settle).
+    const origin = labelContainer.getBoundingClientRect(),
+      dockBottom = dock ? dock.getBoundingClientRect().bottom - origin.top : 0;
     const pick = state.pick;
+    if ((pick !== null) !== measuredInPick) {
+      measuredInPick = pick !== null;
+      pickChanged(measuredInPick);
+    }
+    const focused = document.activeElement;
+    let visibleCount = 0,
+      unmeasured = 0;
     for (const marker of markers) {
       const active = markerActive(marker.id, frameView);
-      marker.label.classList.toggle("selected", active);
-      marker.label.setAttribute("aria-pressed", String(active));
       const targetVisible = markerVisible(marker.id, frameView);
       const presence = stepWeight(marker.presence, targetVisible ? 1 : 0, dt, reduced),
         selection = stepWeight(marker.selection, active ? 1 : 0, dt, reduced);
@@ -1377,31 +1476,55 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
       marker.anchorY = y;
       marker.anchorZ = projection.z;
       const inView = projection.z <= 1 && projection.z >= -1 && x >= 8 && x <= width - 8 && y >= 8 && y <= height - 8;
-      const labelOn = labelTarget(marker.id, frameView, targetVisible, inView);
+      // A label with keyboard focus stays until focus moves on, so focus is never dropped to the page.
+      const hasFocus = marker.label === focused;
+      const labelOn = hasFocus || labelTarget(marker.id, frameView, targetVisible, inView);
       const labelOpacity = stepWeight(marker.labelWeight, labelOn ? 1 : 0, dt, reduced);
-      marker.label.style.opacity = labelOpacity.toFixed(3);
-      marker.label.style.pointerEvents = labelOn ? "auto" : "none";
-      marker.label.disabled = !labelOn;
-      marker.leader.style.opacity = labelOpacity.toFixed(3);
-      marker.leader.classList.toggle("selected", active);
-      marker.label.hidden = !inView || labelOpacity <= ACTIVITY_CUTOFF;
-      if (marker.label.hidden) {
-        marker.side = 0;
-        marker.lift.value = 0;
-        marker.lift.velocity = 0;
+      const dom = marker.dom;
+      if (dom.selected !== active) {
+        dom.selected = active;
+        marker.label.classList.toggle("selected", active);
+        marker.leader.classList.toggle("selected", active);
+        if (active) marker.label.setAttribute("aria-current", "true");
+        else marker.label.removeAttribute("aria-current");
       }
-      marker.labelWidth = marker.label.offsetWidth || marker.labelWidth;
-      marker.labelHeight = marker.label.offsetHeight || marker.labelHeight;
-      if (!marker.label.hidden) visibleMarkers[visibleCount++] = marker;
+      if (dom.enabled !== labelOn) {
+        dom.enabled = labelOn;
+        marker.label.disabled = !labelOn;
+        marker.label.style.pointerEvents = labelOn ? "auto" : "none";
+      }
+      const hidden = !hasFocus && (!inView || labelOpacity <= ACTIVITY_CUTOFF);
+      if (dom.hidden !== hidden) {
+        dom.hidden = hidden;
+        marker.label.hidden = hidden;
+        if (hidden) {
+          // Shown again later, the label is placed afresh and fades in instead of sliding across the head.
+          marker.side = 0;
+          marker.initialized = false;
+          marker.lift.value = 0;
+          marker.lift.velocity = 0;
+          setLeader(marker, "", dom.leaderOpacity);
+        }
+      }
+      if (hidden) continue;
+      if (!marker.measured) unmeasured++;
+      visibleMarkers[visibleCount++] = marker;
     }
+    // Labels that just appeared are measured together, in one layout.
+    if (unmeasured)
+      for (let i = 0; i < visibleCount; i++) {
+        const marker = visibleMarkers[i];
+        if (marker.measured) continue;
+        marker.labelWidth = marker.label.offsetWidth || marker.labelWidth;
+        marker.labelHeight = marker.label.offsetHeight || marker.labelHeight;
+        marker.measured = true;
+      }
     // Callouts: columns just outside the projected head, kept below the dock.
     measureHead();
-    const origin = labelContainer.getBoundingClientRect();
     calloutBounds.width = width;
-    calloutBounds.top = dock ? dock.getBoundingClientRect().bottom - origin.top + 12 : 14;
+    calloutBounds.top = dock ? dockBottom + 12 : 14;
     calloutBounds.bottom = Math.max(calloutBounds.top + 40, height - 14);
     layoutCallouts(visibleMarkers, visibleCount, head, calloutBounds, dt, reduced);
-    for (const marker of markers) if (marker.label.hidden) marker.leader.setAttribute("d", "");
     // Labels near the mouse scale up and come forward. Off while dragging, since
     // labels slide under the pointer, and with reduced motion. A press without
     // movement only eases the lift slightly, as click feedback.
@@ -1414,15 +1537,19 @@ export function createBrainScene(container: HTMLElement, labelContainer: HTMLEle
     for (let i = 0; i < visibleCount; i++) {
       const marker = visibleMarkers[i];
       const lift = stepWeight(marker.lift, proximityOn ? labelProximity(marker, hoverX, hoverY, LABEL_PROXIMITY) * pressScale : 0, dt, reduced, 0.12);
-      marker.label.style.setProperty("--lift", lift.toFixed(3));
-      marker.label.style.zIndex = lift > 0.01 ? String(3 + Math.round(lift * 6)) : "";
-      marker.label.style.left = `${marker.labelX.toFixed(1)}px`;
-      marker.label.style.top = `${marker.labelY.toFixed(1)}px`;
-      marker.leader.setAttribute("d", leaderPath(marker));
-      const opacity = (marker.labelWeight.value * marker.fade * (marker.id === shown ? 1 : lerp(0.45, 1, marker.spot.value)) * labelsPresence).toFixed(3);
-      marker.label.style.opacity = opacity;
-      marker.leader.style.opacity = opacity;
+      setLabelStyle(marker, "--lift", lift.toFixed(3));
+      setLabelStyle(marker, "z-index", lift > 0.01 ? String(3 + Math.round(lift * 6)) : "");
+      setLabelStyle(marker, "left", `${marker.labelX.toFixed(1)}px`);
+      setLabelStyle(marker, "top", `${marker.labelY.toFixed(1)}px`);
+      // Outside the step spotlight a label recedes through its colours (--dim), so its text keeps
+      // its contrast; its leader line fades instead.
+      const inSpot = marker.id === shown ? 1 : marker.spot.value;
+      const opacity = marker.labelWeight.value * marker.fade * labelsPresence;
+      setLabelStyle(marker, "opacity", opacity.toFixed(3));
+      setLabelStyle(marker, "--dim", ((1 - inSpot) / (1 - SPOT_DIM_MARKER)).toFixed(2));
+      setLeader(marker, leaderPath(marker), (opacity * lerp(0.45, 1, inSpot)).toFixed(3));
     }
+    updateTabStop(focused);
     renderer.render(scene, camera);
     frameCount++;
   }

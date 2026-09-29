@@ -164,3 +164,13 @@ test("highlights: shown and isolated regions in full, the topic's others at a st
   assert.equal(highlightWeight(false, false, true, { focusActive: true, overview: true, isolate: null }), 0);
   assert.equal(highlightWeight(true, false, false, { focusActive: false, overview: true, isolate: null }), 0);
 });
+
+test("labels are reached in reading order: the left column top to bottom, then the right", async () => {
+  const { readingOrder } = await bundle(`export { readingOrder } from "./src/model/callouts.ts";`);
+  const label = (id, side, labelY) => ({ id, side, labelY });
+  const order = readingOrder([label("a", 1, 50), label("b", -1, 300), label("c", -1, 20), label("d", 1, 10)]);
+  assert.deepEqual(
+    order.map((l) => l.id),
+    ["c", "b", "d", "a"],
+  );
+});
