@@ -277,6 +277,41 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     setPanel("streams");
   }
 
+  /* ---------- Keyboard focus ---------- */
+
+  // Navigation re-renders parts of the panel (the region drawer, the step list) and hides others (a tab's
+  // panel). When that removes or hides the focused control, focus would fall back to the page body, so
+  // after each change it moves to a stable target in what is now shown.
+  let panelFocus: HTMLElement | null = null;
+  inspector.addEventListener("focusin", (event) => {
+    panelFocus = event.target as HTMLElement;
+  });
+  inspector.addEventListener("focusout", (event) => {
+    // Focus left on purpose (to another control, or a click on empty space) while the control was still shown.
+    if (!inspector.contains(event.relatedTarget as Node | null) && panelFocus && !lostFocus(panelFocus)) panelFocus = null;
+  });
+  const lostFocus = (element: HTMLElement) => !element.isConnected || element.closest("[hidden], [inert]") !== null;
+
+  /** Where focus goes when the focused control in the panel goes away. */
+  function focusTarget(): HTMLElement {
+    if (state.overview) return byId("intro-scroll").querySelector<HTMLElement>(".journey") ?? byId("home-button");
+    if (panel === "guide") return byId(`step-toggle-${state.step}`);
+    if (panel === "streams") return byId("sensory-controls");
+    if (shownRegion) return byId("drawer-title");
+    // The region list: the row of the region just shown, so going back to the list keeps the user's place.
+    const drawer = byId("drawer-content");
+    return drawer.querySelector<HTMLElement>(".region-row.current") ?? drawer.querySelector<HTMLElement>(".region-row") ?? byId("region-drawer");
+  }
+
+  function repairFocus() {
+    const lost = panelFocus;
+    if (!lost || !lostFocus(lost)) return;
+    panelFocus = null;
+    // Only while focus is still on the lost control or has fallen to the body, not after it moved on purpose.
+    const current = document.activeElement;
+    if (current === lost || current === document.body || current === null) focusTarget().focus({ preventScroll: true });
+  }
+
   /* ---------- Places: the hash, agent navigation and the activity log ---------- */
 
   function place(): Place {
@@ -341,6 +376,7 @@ export function createExplorer(state: ExplorerState, reducedMotion: MediaQueryLi
     const auto = routeAuto;
     routeQueued = false;
     routeAuto = true;
+    repairFocus();
     const hash = placeHash(place());
     if (hash === shownHash) return;
     shownHash = hash;

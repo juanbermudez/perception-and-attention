@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import { build } from "esbuild";
-import { installDom, label, StubEvent, settle } from "./dom-stub.mjs";
+import { click, installDom, label, StubEvent, settle } from "./dom-stub.mjs";
 
 async function bundle(source) {
   const result = await build({
@@ -281,4 +281,67 @@ test("a user navigation stops the walk and reports the pause as the user's", asy
   assert.deepEqual(events.shift(), { kind: "paused", ref: `step:vision/${topic("vision").steps[3].key}`, auto: false });
   mock.timers.tick(20_000);
   assert.equal(state.step, 3, "The old timer no longer fires.");
+});
+
+/* ---------- Keyboard focus ---------- */
+
+test('"All regions" re-renders the drawer and puts focus on the region the user came from', async () => {
+  explorer.selectPath("vision");
+  explorer.showRegion("lgn");
+  click(byId("drawer-content").querySelector("[data-region-list]"));
+  await settle();
+  assert.deepEqual(place(), { kind: "regions", path: "vision" });
+  assert.equal(active(), "<button.region-row.current>");
+  assert.equal(dom.document.activeElement.dataset.openRegion, "lgn");
+});
+
+test('"Back to step" switches to the walkthrough and puts focus on that step', async () => {
+  const vision = topic("vision");
+  explorer.selectPath("vision");
+  explorer.setStep(3);
+  explorer.showRegion(vision.steps[3].region);
+  click(byId("drawer-content").querySelector("[data-back-guide]"));
+  await settle();
+  assert.deepEqual(place(), { kind: "step", path: "vision", index: 3 });
+  assert.equal(active(), "<button#step-toggle-3.step-toggle>");
+});
+
+test("opening a region from a step keeps focus on the region's title", async () => {
+  explorer.selectPath("hearing");
+  click(byId("path-steps").querySelector(".step-region-link"));
+  await settle();
+  assert.equal(active(), "<h3#drawer-title>");
+});
+
+test("a topic switch while a step has focus moves focus to the new topic's first step", async () => {
+  explorer.selectPath("vision");
+  explorer.setStep(2);
+  byId("step-toggle-2").focus();
+  explorer.selectPath("touch");
+  await settle();
+  assert.equal(active(), "<button#step-toggle-0.step-toggle>");
+  assert.equal(byId("path-title").textContent, topic("touch").title);
+});
+
+test("a stream's Topic button opens that walkthrough with focus on its first step", async () => {
+  explorer.showStreams();
+  click(byId("sensory-streams").querySelector('[data-study="hearing"]'));
+  await settle();
+  assert.equal(state.path, "hearing");
+  assert.equal(active(), "<button#step-toggle-0.step-toggle>");
+});
+
+test("focus the user moved out of the panel is left alone", async () => {
+  explorer.selectPath("vision");
+  byId("step-toggle-0").focus();
+  byId("about-button").focus();
+  explorer.selectPath("speech");
+  await settle();
+  assert.equal(active(), "<button#about-button.dock-about>");
+  // A click on empty space (the 3D view) blurs the control; a later navigation does not pull focus back.
+  byId("step-toggle-0").focus();
+  dom.document.activeElement.blur();
+  explorer.selectPath("loop");
+  await settle();
+  assert.equal(active(), "<body>");
 });
