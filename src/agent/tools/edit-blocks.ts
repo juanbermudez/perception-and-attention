@@ -55,6 +55,8 @@ export const editBlocksTool = defineTool({
   title: "Edit a doc's blocks",
   description: `Edit one doc or quiz in a single transaction: 1–${LIMITS.opsPerCall} ops applied in order (insert, update, replace, delete, move, set). update, replace and set need the block's rev from outline or read; a stale rev rejects the whole batch with the block's current text. A block the user is typing in returns locked_by_user. insert { view: "current" } saves the live 3D view. The user can undo the batch.`,
   readOnly: false,
+  untrustedContent: true,
+  destructive: true,
   input: z.strictObject({
     ref: refField("doc:<id> or quiz:<id>"),
     ops: z.array(opSchema).min(1).max(LIMITS.opsPerCall),

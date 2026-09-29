@@ -13,6 +13,8 @@ export const docTool = defineTool({
   description:
     "Create a markdown doc for the user (it opens in a floating window), rename it, delete it (restorable for 30 days), restore it, or download it as .md. Markdown becomes blocks: headings, paragraphs, lists, to-dos, quotes, callouts (> [!tip]), code, tables, dividers. Link regions as [text](region:v1). Returns the doc ref and its blocks with ids and revs for edit_blocks.",
   readOnly: false,
+  untrustedContent: true,
+  destructive: true,
   input: z
     .strictObject({
       action: z.enum(ACTIONS),

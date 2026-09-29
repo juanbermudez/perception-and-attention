@@ -1,19 +1,30 @@
-// WebMCP adapter (spec §4, §12). Each call runs: validate → kill switch → presence → run → log → encodeResult.
+// WebMCP adapter (spec §4, §12). Each call runs: validate → kill switch → presence → run → kill switch again → log.
 // Tools are thin: they validate input with zod and call GuideApi, which the UI shares.
 import * as z from "zod";
 import type { ActivityInput } from "../api/activity";
 import type { GuideApi } from "../api/guide-api";
 import { compact, fail, isFailure, type Result, type Undo, type WriteResult } from "../api/result";
 
+/** What a tool call gets besides its input. `signal` aborts when the agent cancels the call. */
+export interface RunOptions {
+  signal?: AbortSignal;
+}
+
 export interface Tool<Input extends z.ZodType = z.ZodType> {
   name: string;
   title: string;
-  /** What the agent sees. Factual, one or two sentences. */
+  /** What the agent sees: what the tool does, when to use it instead of its neighbours, and an example for complex input. */
   description: string;
   input: Input;
   /** Read-only tools carry `readOnlyHint` and keep working when assistant control is off. */
   readOnly: boolean;
-  run(input: z.output<Input>, api: GuideApi): Result<object> | Promise<Result<object>>;
+  /** Results can carry text the user wrote or pasted into docs (WebMCP `untrustedContentHint`). */
+  untrustedContent?: boolean;
+  /** Some calls delete or overwrite the user's content, even if restorably (MCP `destructiveHint`). */
+  destructive?: boolean;
+  /** Repeating a call with the same input changes nothing more (MCP `idempotentHint`). */
+  idempotent?: boolean;
+  run(input: z.output<Input>, api: GuideApi, options: RunOptions): Result<object> | Promise<Result<object>>;
 }
 
 export function defineTool<Input extends z.ZodType>(tool: Tool<Input>): Tool<Input> {
@@ -51,42 +62,74 @@ function describeIssues(issues: z.core.$ZodIssue[]) {
     .join("; ");
 }
 
+/** Presence, toasts and the activity log are bookkeeping: a failure there must not turn a finished call into a thrown error. */
+function quietly(what: string, run: () => void) {
+  try {
+    run();
+  } catch (error) {
+    console.error(`Tool bookkeeping failed (${what})`, error);
+  }
+}
+
 export function createToolRunner({ tools, api, control, presence, activity }: RunnerDeps) {
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   let running = 0;
 
-  async function execute(tool: Tool, input: unknown): Promise<Result<object>> {
+  async function execute(tool: Tool, input: unknown, options: RunOptions): Promise<Result<object>> {
     try {
-      return await tool.run(input, api);
+      return await tool.run(input, api, options);
     } catch (error) {
       console.error(`Tool ${tool.name} failed`, error);
-      return fail("not_available", `${tool.name} failed inside the page: ${error instanceof Error ? error.message : String(error)}`);
+      return fail("internal", `${tool.name} hit a bug in the page: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
+  /**
+   * The user switched control off while an async write was running (a store boot can take seconds).
+   * What already landed is undone, so switching off always wins.
+   */
+  function switchedOff(undo: Undo | undefined) {
+    let undone = false;
+    if (undo)
+      quietly("undo after switch-off", () => {
+        undo.run();
+        undone = true;
+      });
+    return fail(
+      "agent_control_off",
+      `The user switched off assistant control while this call ran, so ${undone ? "its change was undone" : "it stopped; check get_context for what changed"}.`,
+    );
+  }
+
   /** Run one tool call. Always resolves; problems come back as `{ error }`. */
-  async function call(name: string, args: unknown): Promise<object> {
+  async function call(name: string, args: unknown, options: RunOptions = {}): Promise<object> {
     const tool = byName.get(name);
     if (!tool) return fail("bad_input", `Unknown tool "${name}".`, [...byName.keys()]);
     const parsed = tool.input.safeParse(args ?? {});
     if (!parsed.success) return fail("bad_input", describeIssues(parsed.error.issues));
-    if (tool.readOnly) return compact(await execute(tool, parsed.data));
+    if (options.signal?.aborted) return fail("not_available", "The call was cancelled before it ran.");
+    if (tool.readOnly) return compact(await execute(tool, parsed.data, options));
     if (!control.on) return fail("agent_control_off", "The user has switched off assistant control in About. Read tools still work.");
     running++;
-    presence?.begin(tool.name);
+    quietly("presence", () => presence?.begin(tool.name));
     let result: Result<object>;
     try {
-      result = await execute(tool, parsed.data);
+      result = await execute(tool, parsed.data, options);
     } finally {
       running--;
     }
     if (isFailure(result)) {
-      presence?.end();
+      quietly("presence", () => presence?.end());
       return compact(result);
     }
     const { undo, ...data } = result as WriteResult;
-    activity?.append({ by: "agent", kind: tool.name, ref: typeof data.at === "string" ? data.at : undefined, said: data.said });
-    presence?.end(data.said, undo);
+    if (!control.on) {
+      const off = switchedOff(undo);
+      quietly("presence", () => presence?.end());
+      return off;
+    }
+    quietly("activity", () => activity?.append({ by: "agent", kind: tool.name, ref: typeof data.at === "string" ? data.at : undefined, said: data.said }));
+    quietly("presence", () => presence?.end(data.said, undo));
     return compact(data);
   }
 
@@ -102,42 +145,33 @@ export function createToolRunner({ tools, api, control, presence, activity }: Ru
 
 export type ToolRunner = ReturnType<typeof createToolRunner>;
 
-/* ---------- Result encoding ---------- */
+/* ---------- Registration ---------- */
 
 /**
- * "object" returns the plain result, as in ChatGPT's WebMCP example. "content" returns MCP-style
- * `{ content: [{ type: "text", text }] }`, as in the WebMCP README. The ChatGPT spike (spec §2) decides;
- * until then `?agent-result=content` switches without a rebuild.
+ * WebMCP's hints (`readOnlyHint`, `untrustedContentHint`, `consequentialHint`), plus MCP's
+ * (`destructiveHint`, `idempotentHint`, `openWorldHint`) for bridges such as MCP-B. Browsers ignore
+ * members their WebIDL does not define.
  */
-export type ResultFormat = "object" | "content";
-export const DEFAULT_RESULT_FORMAT: ResultFormat = "object";
-
-export function resultFormat(search: string): ResultFormat {
-  return new URLSearchParams(search).get("agent-result") === "content" ? "content" : DEFAULT_RESULT_FORMAT;
+export interface ToolAnnotations {
+  readOnlyHint: boolean;
+  untrustedContentHint: boolean;
+  consequentialHint: boolean;
+  openWorldHint: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
 }
-
-export function encodeResult(result: object, format: ResultFormat = DEFAULT_RESULT_FORMAT): object {
-  if (format === "object") return result;
-  return { content: [{ type: "text", text: JSON.stringify(result) }], ...(isFailure(result) ? { isError: true } : {}) };
-}
-
-export function decodeResult(encoded: unknown): unknown {
-  const content = (encoded as { content?: { type: string; text: string }[] } | null)?.content;
-  return Array.isArray(content) && content[0]?.type === "text" ? JSON.parse(content[0].text) : encoded;
-}
-
-/* ---------- Registration ---------- */
 
 export interface RegisteredTool {
   name: string;
   title: string;
   description: string;
   inputSchema: object;
-  annotations: { readOnlyHint: boolean };
-  execute(input: unknown): Promise<object>;
+  annotations: ToolAnnotations;
+  execute(input: unknown, options?: { signal?: AbortSignal }): Promise<object>;
 }
 
 export interface ModelContextLike {
+  /** Spec: returns a Promise that rejects on a duplicate or invalid name, a denied policy, and so on. Older previews returned nothing. */
   registerTool(tool: RegisteredTool, options?: { signal?: AbortSignal }): unknown;
 }
 
@@ -154,23 +188,45 @@ export function inputSchema(input: z.ZodType): object {
   return schema;
 }
 
-export function toolDefinition(tool: Tool, runner: ToolRunner, format: ResultFormat = DEFAULT_RESULT_FORMAT): RegisteredTool {
+export function annotations(tool: Tool): ToolAnnotations {
+  const hints = { readOnlyHint: tool.readOnly, untrustedContentHint: tool.untrustedContent ?? false, consequentialHint: false, openWorldHint: false };
+  return tool.readOnly ? hints : { ...hints, destructiveHint: tool.destructive ?? false, idempotentHint: tool.idempotent ?? false };
+}
+
+/** The plain result object is the tool's output: the spec serializes any JSON value, and ChatGPT keeps objects as they are. */
+export function toolDefinition(tool: Tool, runner: ToolRunner): RegisteredTool {
   return {
     name: tool.name,
     title: tool.title,
     description: tool.description,
     inputSchema: inputSchema(tool.input),
-    annotations: { readOnlyHint: tool.readOnly },
-    execute: async (input) => encodeResult(await runner.call(tool.name, input), format),
+    annotations: annotations(tool),
+    execute: (input, options) => runner.call(tool.name, input, { signal: options?.signal }),
   };
 }
 
-/** Register every tool once. Aborting `signal` unregisters them. */
-export function registerTools(modelContext: ModelContextLike, runner: ToolRunner, signal: AbortSignal, format: ResultFormat = DEFAULT_RESULT_FORMAT) {
-  for (const tool of runner.tools) {
-    const handle = modelContext.registerTool(toolDefinition(tool, runner, format), { signal });
-    // Some earlier drafts returned a handle instead of taking a signal.
-    const unregister = (handle as { unregister?: () => void } | undefined)?.unregister;
-    if (typeof unregister === "function") signal.addEventListener("abort", () => unregister.call(handle), { once: true });
+/** ChatGPT rejects with an empty plain object, so say what little there is. */
+function describeReason(reason: unknown): string {
+  if (reason instanceof Error) return `${reason.name}: ${reason.message}`;
+  try {
+    return typeof reason === "string" ? reason : (JSON.stringify(reason) ?? String(reason));
+  } catch {
+    return String(reason);
   }
+}
+
+/**
+ * Register every tool; aborting `signal` unregisters them. Resolves with the names of tools the browser
+ * refused (empty when all registered), after logging each refusal. Never rejects.
+ */
+export async function registerTools(modelContext: ModelContextLike, runner: ToolRunner, signal: AbortSignal): Promise<string[]> {
+  // An async wrapper turns a synchronous throw from an older preview into a rejection too.
+  const settled = await Promise.allSettled(runner.tools.map(async (tool) => modelContext.registerTool(toolDefinition(tool, runner), { signal })));
+  const failed: string[] = [];
+  settled.forEach((result, i) => {
+    if (result.status === "fulfilled") return;
+    failed.push(runner.tools[i].name);
+    console.warn(`Could not register the ${runner.tools[i].name} tool: ${describeReason(result.reason)}`);
+  });
+  return failed;
 }

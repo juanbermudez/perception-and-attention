@@ -16,19 +16,20 @@ async function bundle(source) {
 const {
   tools,
   createToolRunner,
-  encodeResult,
-  decodeResult,
-  resultFormat,
   inputSchema,
   toolDefinition,
   registerTools,
   compact,
   createAgentControl,
+  startAgentSurface,
+  installModelContextShim,
   REGION_IDS,
   LAYER_IDS,
 } = await bundle(`
   export { tools } from "./src/agent/tools/index.ts";
   export * from "./src/agent/webmcp.ts";
+  export { startAgentSurface } from "./src/agent/index.ts";
+  export { installModelContextShim } from "./src/agent/shim.ts";
   export { compact } from "./src/api/result.ts";
   export { createAgentControl } from "./src/agent/control.ts";
   export { REGION_IDS } from "./src/model/refs.ts";
@@ -270,7 +271,7 @@ test("errors are returned, never thrown", async (t) => {
   const { runner } = setup({ throws: true });
   for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) {
     const result = await runner.call(name, VALID[name][1] ?? VALID[name][0]);
-    assert.equal(result.error.code, "not_available", name);
+    assert.equal(result.error.code, "internal", `${name}: a bug in the page is not "try elsewhere"`);
     assert.match(result.error.message, /boom/);
   }
   assert.equal(logged.mock.callCount(), READ_TOOLS.length + WRITE_TOOLS.length, "Failures are logged to the console for debugging.");
@@ -286,39 +287,154 @@ test("results are compact: null and undefined fields are dropped", async () => {
   assert.deepEqual(compact({ a: 1, b: undefined, c: null, d: [{ e: undefined, f: 0 }], g: false }), { a: 1, d: [{ f: 0 }], g: false });
 });
 
-test("encodeResult switches between a plain object and MCP-style content", () => {
-  const result = { at: "overview", said: "Opened the overview." };
-  assert.equal(encodeResult(result, "object"), result);
-  const content = encodeResult(result, "content");
-  assert.deepEqual(content, { content: [{ type: "text", text: JSON.stringify(result) }] });
-  assert.deepEqual(decodeResult(content), result);
-  assert.deepEqual(decodeResult(result), result);
-  assert.equal(encodeResult({ error: { code: "bad_input", message: "x" } }, "content").isError, true);
-  assert.equal(resultFormat(""), "object");
-  assert.equal(resultFormat("?agent=shim&agent-result=content"), "content");
+test("a failure in presence, toasts or the activity log never turns a finished write into a thrown error", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const api = fakeApi();
+  const boom = () => {
+    throw new Error("no #toast");
+  };
+  const runner = createToolRunner({ tools, api, control: { on: true }, presence: { begin: boom, end: boom }, activity: { append: boom } });
+  const result = await runner.call("go", { ref: "step:vision/2" });
+  assert.deepEqual(result, { at: "step:vision/optic-chiasm", said: "Opened Vision step 2." });
+  assert.equal(logged.mock.callCount(), 3);
+  assert.equal(runner.running, false);
 });
 
-test("registration gives every tool its schema and readOnlyHint, and aborting unregisters", async () => {
+test("switching control off while a write is running undoes what landed and returns agent_control_off", async () => {
+  const api = fakeApi();
+  const control = { on: true };
+  let finish;
+  api.go = (...args) => {
+    api.calls.push(["go", ...args]);
+    return new Promise((resolve) => {
+      finish = () => resolve({ at: "step:vision/optic-chiasm", said: "Opened Vision step 2.", undo: { label: "Undo", run: () => api.calls.push(["undo"]) } });
+    });
+  };
+  const presence = { events: [], begin: (tool) => presence.events.push(["begin", tool]), end: (said) => presence.events.push(["end", said]) };
+  const logged = [];
+  const runner = createToolRunner({ tools, api, control, presence, activity: { append: (entry) => logged.push(entry) } });
+  const pending = runner.call("go", { ref: "step:vision/2" });
+  await Promise.resolve();
+  control.on = false;
+  finish();
+  const result = await pending;
+  assert.equal(result.error.code, "agent_control_off");
+  assert.match(result.error.message, /its change was undone/);
+  assert.deepEqual(api.calls.at(-1), ["undo"]);
+  assert.deepEqual(logged, [], "Nothing is logged as the agent's.");
+  assert.deepEqual(presence.events.at(-1), ["end", undefined], "No toast for an undone write.");
+});
+
+test("the cancellation signal reaches the tool, and a call cancelled before it runs does nothing", async () => {
+  const seen = [];
+  const probe = {
+    name: "probe",
+    title: "Probe",
+    description: "Test tool",
+    readOnly: true,
+    input: tools[0].input,
+    run: (_input, _api, options) => seen.push(options.signal),
+  };
+  const runner = createToolRunner({ tools: [probe], api: fakeApi(), control: { on: true } });
+  const controller = new AbortController();
+  await toolDefinition(probe, runner).execute({}, { signal: controller.signal });
+  assert.equal(seen[0], controller.signal);
+  await toolDefinition(probe, runner).execute({});
+  assert.equal(seen.length, 2, "ChatGPT passes no options; the call still runs.");
+  controller.abort();
+  const cancelled = await runner.call("probe", {}, { signal: controller.signal });
+  assert.equal(cancelled.error.code, "not_available");
+  assert.equal(seen.length, 2);
+});
+
+/** A model context that behaves as the spec says: registerTool returns a Promise, aborting unregisters. */
+function specModelContext({ refuse = [] } = {}) {
   const registered = new Map();
-  const modelContext = {
-    registerTool(tool, { signal }) {
+  return {
+    registered,
+    async registerTool(tool, { signal }) {
+      if (refuse.includes(tool.name)) throw {}; // ChatGPT rejects with an empty plain object.
+      if (registered.has(tool.name)) throw new Error(`duplicate ${tool.name}`);
       registered.set(tool.name, tool);
       signal.addEventListener("abort", () => registered.delete(tool.name));
     },
   };
+}
+
+test("registration awaits every tool, gives each its schema and annotations, and aborting unregisters", async () => {
+  const modelContext = specModelContext();
   const { runner } = setup();
   const controller = new AbortController();
-  registerTools(modelContext, runner, controller.signal, "content");
+  assert.deepEqual(await registerTools(modelContext, runner, controller.signal), []);
   assert.deepEqual(
-    [...registered.keys()],
+    [...modelContext.registered.keys()],
     tools.map((tool) => tool.name),
   );
-  for (const tool of tools) assert.equal(registered.get(tool.name).annotations.readOnlyHint, tool.readOnly);
-  const encoded = await registered.get("read").execute({ ref: "help" });
-  assert.deepEqual(decodeResult(encoded), { ref: "help" });
+  for (const tool of tools) assert.equal(modelContext.registered.get(tool.name).annotations.readOnlyHint, tool.readOnly);
+  assert.deepEqual(await modelContext.registered.get("read").execute({ ref: "help" }), { ref: "help" }, "Results are plain objects.");
   assert.deepEqual(Object.keys(toolDefinition(tools[0], runner)), ["name", "title", "description", "inputSchema", "annotations", "execute"]);
   controller.abort();
-  assert.equal(registered.size, 0);
+  assert.equal(modelContext.registered.size, 0);
+});
+
+test("a refused registration is logged by tool name, and the surface unregisters everything", async (t) => {
+  const warned = t.mock.method(console, "warn", () => {});
+  const { runner } = setup();
+  const failed = await registerTools(specModelContext({ refuse: ["quiz"] }), runner, new AbortController().signal);
+  assert.deepEqual(failed, ["quiz"]);
+  assert.match(warned.mock.calls[0].arguments[0], /^Could not register the quiz tool: \{\}$/);
+  const sync = {
+    registerTool: () => {
+      throw new TypeError("old preview");
+    },
+  };
+  assert.equal((await registerTools(sync, runner, new AbortController().signal)).length, tools.length, "A synchronous throw counts as a refusal.");
+
+  const modelContext = specModelContext({ refuse: ["window"] });
+  globalThis.document = { modelContext };
+  globalThis.navigator ??= {};
+  t.after(() => delete globalThis.document);
+  const api = fakeApi();
+  const surface = startAgentSurface({ api, control: { on: true }, presence: { begin() {}, end() {} }, activity: { append() {} }, search: "" });
+  assert.equal(await surface.registered, false);
+  assert.equal(modelContext.registered.size, 0, "No partial tool list is left behind.");
+});
+
+test("the dev shim's registerTool is async and refuses what the spec refuses", async (t) => {
+  globalThis.document = {};
+  t.after(() => delete globalThis.document);
+  const registry = installModelContextShim();
+  const modelContext = globalThis.document.modelContext;
+  const tool = { name: "probe", description: "Test tool", inputSchema: { type: "object" } };
+  const controller = new AbortController();
+  const pending = modelContext.registerTool(tool, { signal: controller.signal });
+  assert(pending instanceof Promise);
+  await pending;
+  await assert.rejects(modelContext.registerTool(tool), { name: "InvalidStateError", message: /already registered/ });
+  await assert.rejects(modelContext.registerTool({ ...tool, name: "bad name" }), { name: "InvalidStateError" });
+  await assert.rejects(modelContext.registerTool({ ...tool, name: "x".repeat(129) }), { name: "InvalidStateError" });
+  await assert.rejects(modelContext.registerTool({ ...tool, name: "quiet", description: "" }), { name: "InvalidStateError" });
+  const aborted = AbortSignal.abort();
+  await assert.rejects(modelContext.registerTool({ ...tool, name: "late" }, { signal: aborted }));
+  assert.deepEqual([...registry.keys()], ["probe"]);
+  controller.abort();
+  assert.equal(registry.size, 0, "Aborting the signal unregisters.");
+});
+
+test("annotations: WebMCP hints on every tool, MCP hints set truthfully on write tools", () => {
+  const { runner } = setup();
+  const hints = Object.fromEntries(tools.map((tool) => [tool.name, toolDefinition(tool, runner).annotations]));
+  const untrusted = ["get_context", "outline", "read", "search", "doc", "edit_blocks"];
+  for (const [name, annotation] of Object.entries(hints)) {
+    assert.equal(annotation.untrustedContentHint, untrusted.includes(name), `${name}: returns user doc text`);
+    assert.equal(annotation.consequentialHint, false, name);
+    assert.equal(annotation.openWorldHint, false, name);
+    if (annotation.readOnlyHint) assert(!("destructiveHint" in annotation), name);
+  }
+  const destructive = Object.keys(hints).filter((name) => hints[name].destructiveHint);
+  const idempotent = Object.keys(hints).filter((name) => hints[name].idempotentHint);
+  assert.deepEqual(destructive, ["doc", "edit_blocks"]);
+  assert.deepEqual(idempotent, ["go", "window"]);
 });
 
 /* ---------- Stage 2: set_view and tours ---------- */
