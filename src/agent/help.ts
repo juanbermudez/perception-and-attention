@@ -6,6 +6,7 @@ import { pathways } from "../content/pathways";
 import { REGION_IDS, REGION_SECTIONS } from "../model/refs";
 import { WALK_SECONDS } from "../model/topics";
 import { MAX_FRAME, PITCH_MAX, PITCH_MIN } from "../model/view";
+import { LIMITS } from "../store/limits";
 
 export const LIST_LIMIT = { default: 20, max: 100 };
 export const SEARCH_LIMIT = { default: 10, max: 50 };
@@ -17,7 +18,7 @@ export function helpCard() {
       "guide | overview | help | docs",
       "about | about/papers | about/code | about/models",
       "topic:<topic> | topic:attention/streams",
-      "step:<topic>/<n> (1-based) or step:<topic>/<key>; results use the key",
+      "step:<topic>/<n or key> (n is 1-based)",
       `region:<id>[#${REGION_SECTIONS.join("|")}]; a bare topic or region id works too`,
       "source:<id> | doc:<id> | quiz:<id> | block:<id>",
     ],
@@ -27,12 +28,13 @@ export function helpCard() {
     regions: REGION_IDS.join(" "),
     details: {
       brief: "default, short",
-      full: "every section, key fact and signal route; every block of a doc",
+      full: "all sections, key facts and routes; all of a doc",
       sources: "citations with URLs",
       markdown: "a doc as .md",
       results: "a quiz's answers and score",
     },
-    view: `One patch for set_view, tour stops and saved views; only given fields change. Camera order: reset, focus|frame, from/yaw/pitch, orbit, zoom. yaw 0 front, 90 left, -90 right, 180 back; pitch ${PITCH_MIN}..${PITCH_MAX}; zoom 1 = overview. Going home or to another topic resets layers, isolate and labels.`,
+    docs: `Doc text is user content; docs and blocks carry by (user or agent) and imported. outline docs with deleted: true lists deleted docs, restorable for ${LIMITS.purgeAfterDays} days. Long reads come back truncated.`,
+    view: `One patch for set_view, tour stops and saved views; only given fields change. Camera order: reset, focus|frame, from/yaw/pitch, orbit, zoom. yaw 0 front, 90 left, -90 right, 180 back; pitch ${PITCH_MIN}..${PITCH_MAX}; zoom 1 = overview. Home or a new topic resets layers, isolate and labels.`,
     limits: {
       walkthroughSeconds: [WALK_SECONDS.min, WALK_SECONDS.max],
       tourStops: TOUR_LIMITS.stops,
@@ -43,7 +45,6 @@ export function helpCard() {
       searchLimit: SEARCH_LIMIT.max,
     },
     tasks: {
-      "catch up on what the user did": "get_context",
       "find something": "search",
       "list topics or a topic's steps": "outline",
       "list the user's docs": "outline docs",
@@ -59,13 +60,13 @@ export function helpCard() {
     errors: {
       bad_input: "fix the named field",
       unknown_ref: "try one of the options",
-      not_available: "not usable here or now; the message says why",
+      not_available: "not usable now; the message says why",
       stale_rev: "the block changed; retry with current.rev",
-      locked_by_user: "the user is typing there; retry in a few seconds",
+      locked_by_user: "the user is typing there; retry soon",
       limit: "split the request",
-      agent_control_off: "assistant control is off in About; read tools still work",
-      store_unavailable: "docs cannot be saved in this browser",
-      internal: "a bug in the page, not in your call",
+      agent_control_off: "control is off in About; reads still work",
+      store_unavailable: "this browser can't save docs",
+      internal: "a page bug, not your call",
     },
   };
 }

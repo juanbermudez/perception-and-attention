@@ -450,6 +450,9 @@ test("the help card maps tasks to tools and says what each error code asks for",
   assert.equal(card.details.results, "a quiz's answers and score");
   assert.equal(card.tasks["narrate your own sequence"], "start_tour");
   assert.equal(card.tasks["list the user's docs"], "outline docs");
+  assert.match(card.docs, /by \(user or agent\)/);
+  assert.match(card.docs, /deleted: true/);
+  assert.match(card.docs, /30 days/);
   for (const code of [
     "bad_input",
     "unknown_ref",

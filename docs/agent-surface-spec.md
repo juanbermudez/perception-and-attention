@@ -307,7 +307,7 @@ interface ViewPatch {
 | # | Tool | Read-only | One-line description (what the agent sees) |
 | --- | --- | --- | --- |
 | 1 | `get_context` | ✓ | What the user sees now and what happened since the last call; call it at the start of each turn. Points to `outline()` and `read({ ref: "help" })`. |
-| 2 | `outline` | ✓ | What is inside a ref, one level down: topics, a topic's steps and regions, the user's docs (`docs`, the way to find a doc's ref), a doc's blocks with revs. |
+| 2 | `outline` | ✓ | What is inside a ref, one level down: topics, a topic's steps and regions, the user's docs (`docs`, the way to find a doc's ref; `deleted: true` lists deleted ones), a doc's blocks with revs. Docs and blocks carry `by` (user or agent) and `imported`. |
 | 3 | `read` | ✓ | The text at a ref. `detail` per kind: guide refs brief, full, sources; doc and quiz refs brief, full, markdown, results. |
 | 4 | `search` | ✓ | Find guide content and the user's docs by keyword; a search with no hits returns a hint with the closest refs. |
 | 5 | `go` | | Show a place: the panel and the camera move together. Doc refs open a window; `quiz open` lets the user take a quiz; `set_view` changes only the 3D view. |
@@ -843,7 +843,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ```
 
 - **Ordering:** `ord` is an integer. An insert renumbers the following blocks in the same transaction, which is fine at 500 blocks or fewer. A fractional index is only worth it once sync exists.
-- **Retention:** keep the last 20 history revs per block and the last 500 activity rows. Soft-deleted artifacts are purged 30 days after `deleted_at`, on startup.
+- **Retention:** keep the last 20 history revs per block and the last 500 activity rows. Soft-deleted artifacts are purged 30 days after `deleted_at`, on startup. Until then the Notes list shows them under Recently deleted, with Restore. `read` of a long doc (`full` or `markdown`) returns `truncated: true` with a hint instead of the whole doc.
 - **IDs:** base36 random. Artifacts get 4 characters (`k3f9`) and blocks get 5 (`b7x2k`), with a collision retry. Short ids are cheap in tokens and readable in ChatGPT's review UI.
 - **Migrations:** an ordered list in `store/migrations.ts`, gated on `user_version`.
 
