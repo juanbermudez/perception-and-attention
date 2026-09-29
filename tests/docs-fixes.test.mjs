@@ -590,6 +590,124 @@ test("L12: when the browser will not keep storage, the store says so once", asyn
   assert.equal(asked, 1);
   assert.deepEqual(
     changes.filter((change) => change.kind === "storage"),
-    [{ kind: "storage", persisted: false }],
+    [{ kind: "storage", reason: "not-persisted" }],
   );
+});
+
+/* ---------- M8: the database lock waits, and a memory tab learns when it is free ---------- */
+
+/** A LockManager for one exclusive lock: grants in order, honours abort signals. */
+function fakeLocks() {
+  let held = false;
+  const queue = [];
+  const grant = () => {
+    if (held || !queue.length) return;
+    const next = queue.shift();
+    held = true;
+    Promise.resolve(next.callback({ name: "pa-db" })).then(
+      (value) => {
+        held = false;
+        next.resolve(value);
+        grant();
+      },
+      (error) => {
+        held = false;
+        next.reject(error);
+        grant();
+      },
+    );
+  };
+  return {
+    request(_name, options, callback) {
+      return new Promise((resolve, reject) => {
+        const entry = { callback, resolve, reject };
+        options.signal?.addEventListener("abort", () => {
+          const index = queue.indexOf(entry);
+          if (index < 0) return;
+          queue.splice(index, 1);
+          reject(new DOMException("aborted", "AbortError"));
+        });
+        queue.push(entry);
+        grant();
+      });
+    },
+  };
+}
+
+test("M8: a tab waits for the database lock, and one left in memory hears when it is free", async () => {
+  const lockBuild = await build({
+    stdin: { contents: `export { acquireLock } from "./src/store/lock";`, resolveDir: process.cwd(), loader: "ts" },
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    write: false,
+    logLevel: "silent",
+  });
+  const { acquireLock } = await import(`data:text/javascript;base64,${Buffer.from(lockBuild.outputFiles[0].text).toString("base64")}`);
+  const locks = fakeLocks();
+  assert.deepEqual(await acquireLock(locks, 50), { held: true }, "A free lock is taken.");
+
+  // Another tab holds it and lets go late (a reload): the wait covers it.
+  const late = fakeLocks();
+  let letGo;
+  void late.request(
+    "pa-db",
+    {},
+    () =>
+      new Promise((resolve) => {
+        letGo = resolve;
+      }),
+  );
+  setTimeout(() => letGo(), 20);
+  assert.deepEqual(await acquireLock(late, 200), { held: true });
+
+  // Another tab keeps it: memory mode, with a promise that resolves when that tab closes.
+  const busy = fakeLocks();
+  let close;
+  void busy.request(
+    "pa-db",
+    {},
+    () =>
+      new Promise((resolve) => {
+        close = resolve;
+      }),
+  );
+  const result = await acquireLock(busy, 20);
+  assert.equal(result.held, false);
+  let freed = false;
+  void result.released.then(() => {
+    freed = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(freed, false);
+  close();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(freed, true);
+  assert.deepEqual(await acquireLock(busy, 20), { held: true }, "The memory tab let go at once, so a reload gets the database.");
+});
+
+test("M8: a memory store whose database is freed says so, and its banner offers a reload", async () => {
+  const modeBuild = await build({
+    stdin: { contents: `export { storageBanner } from "./src/store/mode";`, resolveDir: process.cwd(), loader: "ts" },
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    write: false,
+    logLevel: "silent",
+  });
+  const { storageBanner } = await import(`data:text/javascript;base64,${Buffer.from(modeBuild.outputFiles[0].text).toString("base64")}`);
+  const engine = openEngine(new sqlite3.oo1.DB(":memory:"));
+  let free;
+  const released = new Promise((resolve) => {
+    free = resolve;
+  });
+  const store = createStore(directCall(engine), { mode: "memory", reason: "other-tab", released });
+  const changes = [];
+  store.onChange((change) => changes.push(change));
+  assert.equal(store.reason, "other-tab");
+  free();
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.equal(store.reason, "freed");
+  assert.deepEqual(changes, [{ kind: "storage", reason: "freed" }]);
+  assert.match(storageBanner("memory", "freed").detail, /Reload to open your saved docs/);
 });

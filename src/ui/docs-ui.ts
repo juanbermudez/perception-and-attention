@@ -162,6 +162,14 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
     const text = document.createElement("b");
     text.textContent = banner.text;
     element.replaceChildren(text, banner.detail ? ` ${banner.detail}` : "");
+    if ("reason" in status && status.reason === "freed") {
+      const reload = document.createElement("button");
+      reload.type = "button";
+      reload.className = "banner-reload";
+      reload.textContent = "Reload";
+      reload.addEventListener("click", () => location.reload());
+      element.append(" ", reload);
+    }
   }
 
   function statusText(): string {
@@ -383,6 +391,13 @@ export function createDocsUi({ docs, stage, notesButton, view, explorer, activit
 
   docs.onChange((change) => {
     if (change.kind === "storage") {
+      if (change.reason === "freed") {
+        // M8: this tab ran in memory because another had the database; that tab has let go.
+        for (const window of docWindows.values()) renderBanner(window.banner);
+        if (!notesPanel.hidden) renderBanner(notesPanel.querySelector<HTMLElement>(".notes-banner")!);
+        toast("Your saved docs are free now. Reload to open them; notes made in this tab are not kept.", { label: "Reload", run: () => location.reload() });
+        return;
+      }
       if (remembered(PERSIST_WARNED)) return;
       remember(PERSIST_WARNED);
       toast("This browser may clear saved notes when it runs low on space. Download notes you want to keep.");

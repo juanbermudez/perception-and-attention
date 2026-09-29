@@ -2594,6 +2594,17 @@ dialog::backdrop {
   font-weight: 500;
   color: var(--ink);
 }
+.banner-reload {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: 4px;
+  background: var(--hover);
+}
+.banner-reload:hover {
+  background: #ffffff17;
+}
 .doc-ready {
   display: flex;
   align-items: center;

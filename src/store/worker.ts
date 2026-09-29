@@ -13,7 +13,8 @@ import { type MemoryReason, StoreError } from "./types";
 const DB_FILE = "/perception-attention.sqlite3";
 const POOL = "pa-sahpool";
 const POOL_DIRECTORY = ".pa-sahpool";
-const PROBE_ATTEMPTS = 20;
+// Up to 4 s: the worker of a page that was just reloaded can hold its handles for a moment.
+const PROBE_ATTEMPTS = 40;
 const PROBE_WAIT_MS = 100;
 
 interface WorkerScope {

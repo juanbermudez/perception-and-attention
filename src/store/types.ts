@@ -177,8 +177,11 @@ export type StoreChange =
   /** `origin` is the tag the writer passed (the doc editor tags its own saves, so it can skip them). */
   | { kind: "blocks"; artifactId: string; rev: number; actor: Actor; ids: string[]; origin?: string }
   | { kind: "windows" }
-  /** The browser did not grant persistent storage: saved docs may be cleared when space runs low. */
-  | { kind: "storage"; persisted: false };
+  /**
+   * Storage news for the page: the browser did not grant persistent storage (saved docs may be cleared
+   * when space runs low), or, in a memory tab, the tab that had the database let go of it.
+   */
+  | { kind: "storage"; reason: "not-persisted" | "freed" };
 
 export type StoreErrorCode = "bad_input" | "unknown_ref" | "stale_rev" | "limit" | "store_unavailable";
 
@@ -194,8 +197,8 @@ export class StoreError extends Error {
   }
 }
 
-/** Why the store runs in memory; `null` when it saves (spec §11.1). */
-export type MemoryReason = "file" | "insecure" | "no-opfs" | "other-tab" | "failed" | null;
+/** Why the store runs in memory; `null` when it saves (spec §11.1). "freed": another tab had the database and has let go; a reload opens it. */
+export type MemoryReason = "file" | "insecure" | "no-opfs" | "other-tab" | "freed" | "failed" | null;
 
 /** The persistence interface (spec §11.3). Every method is async because the engine runs in a worker. */
 export interface Store {

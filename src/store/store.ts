@@ -35,7 +35,9 @@ export interface StoreOptions {
    * Runs once, after the first artifact is created (the browser asks for persistent storage then).
    * When it resolves false, the store emits a `storage` change so the page can say so.
    */
-  onFirstCreate?: () => Promise<boolean> | void;
+  onFirstCreate?: () => Promise<boolean> | undefined;
+  /** Memory mode because another tab had the database: resolves when it lets go (reason becomes "freed"). */
+  released?: Promise<void>;
 }
 
 /** Calls the engine in this thread. Used by tests, and by anything that already runs inside the worker. */
@@ -49,10 +51,17 @@ export function createStore(call: EngineCall, options: StoreOptions): Store {
     for (const listener of listeners) listener(change);
   };
   let created = false;
+  let reason = options.reason ?? null;
+  void options.released?.then(() => {
+    reason = "freed";
+    emit({ kind: "storage", reason: "freed" });
+  });
 
   return {
     mode: options.mode,
-    reason: options.reason ?? null,
+    get reason() {
+      return reason;
+    },
     listArtifacts: (listOptions = {}) => call("listArtifacts", [listOptions]),
     getArtifact: (id, getOptions = {}) => call("getArtifact", [id, getOptions]),
     async createArtifact(input, actor) {
@@ -61,7 +70,7 @@ export function createStore(call: EngineCall, options: StoreOptions): Store {
       if (!created) {
         created = true;
         void Promise.resolve(options.onFirstCreate?.()).then((persisted) => {
-          if (persisted === false) emit({ kind: "storage", persisted: false });
+          if (persisted === false) emit({ kind: "storage", reason: "not-persisted" });
         });
       }
       return artifact;
