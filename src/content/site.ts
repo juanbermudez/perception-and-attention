@@ -18,16 +18,16 @@ export const about = {
   sections: [
     {
       title: "The guide",
-      paragraphs: ["Perception & Attention is an open-source guide to how sensory signals reach the brain and how the brain decides what to pay attention to."],
+      paragraphs: ["Perception & Attention is an open-source guide to how sensory signals reach the brain and how it decides what to pay attention to."],
     },
     {
       title: "Why I made it",
       paragraphs: [
-        "I made this guide as a refresher on some details of human attention that I wanted to go over again as I worked on a personal project, and when I came across [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)), I thought it would be a great way to create a visual guide.",
-        "Learning about behavioural biology and neuroscience started as a personal interest, but when I started learning about AI and model architecture, I felt like nature is the GOAT at applying the [“bitter lesson”](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) approach. Even with all our technological progress, we still struggle to match nature’s designs; after all, it’s been tweaking and selecting candidates for way longer than we have been around.",
-        "I am in awe of what autoregressive models have enabled, but I believe that we can arrive at more efficient and capable models through composition and specialization.",
-        "It also might be that being GPU poor made me biased. 😅",
-        "Either way, I am really enjoying the process, a lot.",
+        "I made this guide as a refresher on some details of human attention that I wanted to revisit while working on a personal project. When I came across [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)), it seemed like a great way to make it visual.",
+        "Behavioural biology and neuroscience began as a personal interest, but once I got into AI and model architecture, I came to see nature as the GOAT at applying the [“bitter lesson”](http://www.incompleteideas.net/IncIdeas/BitterLesson.html). For all our technological progress, we still struggle to match its designs; after all, it has been tweaking and selecting candidates for far longer than we have been around.",
+        "I am in awe of what autoregressive models have made possible, but I believe composition and specialization can lead to systems that are both more efficient and more capable.",
+        "It might also be that being GPU poor has made me biased. 😅",
+        "Either way, I am enjoying the process a lot.",
       ],
     },
   ],
