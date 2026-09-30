@@ -27,7 +27,7 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
-  --inspector-width: 368px;
+  --inspector-width: 400px;
   --rail-width: 56px;
   /* One rail slot. Each panel's header and the overview's topic rows use the same height, so they line up
      with the icons. */
@@ -1383,12 +1383,12 @@ kbd {
 .heading-slot > * {
   max-width: 100%;
 }
-/* Topic and region pages: the way back, 8 px of air, then the title (56 px in all), still centred on the
-   rail's first icon, so the block starts a little above the slot. */
+/* Topic and region pages: the way back sits level with the rail's first icon (Home), clear of the top
+   edge, and the title follows under it. The back link's line is 24 px, so it starts half a slot minus
+   12 px down. */
 #path-view .heading-slot {
-  --head-block: 56px;
-  min-height: var(--head-block);
-  margin-top: calc((var(--rail-pitch) - var(--head-block)) / 2);
+  min-height: 0;
+  margin-top: calc(var(--rail-pitch) / 2 - 12px);
 }
 /* A region page has no tabs, so the header keeps the line the tabs would draw. */
 .region-page .inspector-heading {

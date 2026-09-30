@@ -37,7 +37,7 @@ function layout() {
     const width = workspace.style.getPropertyValue("--inspector-width");
     const height = workspace.style.getPropertyValue("--drawer-height");
     return {
-      width: narrow.matches ? dom.window.innerWidth : width ? Number.parseFloat(width) : compact.matches ? 332 : 368,
+      width: narrow.matches ? dom.window.innerWidth : width ? Number.parseFloat(width) : compact.matches ? 332 : 400,
       height: narrow.matches ? (height ? Number.parseFloat(height) : 0.46 * dom.window.innerHeight) : dom.window.innerHeight,
     };
   };
@@ -69,13 +69,13 @@ const now = () => handle.getAttribute("aria-valuenow");
 beforeEach(() => start(1400));
 
 test("arrow keys, Home and End resize the panel within its bounds", () => {
-  assert.equal(now(), "368");
+  assert.equal(now(), "400");
   // The handle is on the panel's right edge, toward the 3D view: ArrowRight widens the panel.
   key("ArrowRight");
-  assert.equal(inlineWidth(), "392px");
+  assert.equal(inlineWidth(), "424px");
   key("ArrowLeft");
   key("ArrowLeft");
-  assert.equal(inlineWidth(), "344px");
+  assert.equal(inlineWidth(), "376px");
   key("End");
   assert.equal(inlineWidth(), "560px");
   key("Home");
@@ -93,7 +93,7 @@ test("a width the user set is kept, within the new bounds, when the window cross
 test("the width the user picks is saved and comes back on the next visit, clamped to the window", () => {
   start(1400, 900, memoryStorage());
   key("ArrowRight");
-  assert.equal(stored.map.get(PANEL_SIZE_KEYS.width), "392");
+  assert.equal(stored.map.get(PANEL_SIZE_KEYS.width), "424");
   // Next visit: the saved width applies before any interaction.
   start(1400, 900, memoryStorage({ [PANEL_SIZE_KEYS.width]: "480" }));
   assert.equal(inlineWidth(), "480px");
@@ -112,7 +112,7 @@ test("the narrow layout keeps its own saved drawer height, and bad saved values 
   assert.equal(inlineWidth(), "");
   start(1400, 900, memoryStorage({ [PANEL_SIZE_KEYS.width]: "wide" }));
   assert.equal(inlineWidth(), "");
-  assert.equal(now(), "368");
+  assert.equal(now(), "400");
 });
 
 test("a width the user set is clamped again when the window shrinks", () => {
