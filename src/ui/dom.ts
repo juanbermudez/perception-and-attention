@@ -132,3 +132,23 @@ export function fitOneLine(element: HTMLElement, min = 14) {
     element.style.fontSize = `${size}px`;
   }
 }
+
+/**
+ * Close a dialog the way every dialog in the guide closes: a quick fade (the "closing" class in
+ * styles.css), then close(). At once with reduced motion. Opening it again mid-fade (removing the class)
+ * keeps it open.
+ */
+export function closeDialog(dialog: HTMLDialogElement) {
+  if (!dialog.open || dialog.classList.contains("closing")) return;
+  dialog.classList.add("closing");
+  const stop = new AbortController();
+  const done = () => {
+    stop.abort();
+    if (!dialog.classList.contains("closing")) return;
+    dialog.classList.remove("closing");
+    dialog.close();
+  };
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return done();
+  dialog.addEventListener("animationend", (event) => event.target === dialog && done(), { signal: stop.signal });
+  setTimeout(done, 200);
+}

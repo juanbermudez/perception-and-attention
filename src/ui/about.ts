@@ -5,7 +5,7 @@ import { guideSources } from "../content/region-guides";
 import { about, codeNotes, overview } from "../content/site";
 import { sources } from "../content/sources";
 import type { AboutTab } from "../model/refs";
-import { byId, escapeHtml, externalLink, nextTabIndex, richText } from "./dom";
+import { byId, closeDialog, escapeHtml, externalLink, nextTabIndex, richText } from "./dom";
 import { externalIcon } from "./icons";
 
 const MIT_LICENSE = `The MIT License
@@ -167,6 +167,8 @@ export function setupAbout(control?: AgentControl) {
 
   function open(tab: AboutTab = "about") {
     if (!dialog.open) returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Opening again while it fades out keeps it open.
+    dialog.classList.remove("closing");
     select(tab);
     if (!dialog.open) dialog.showModal();
     tabs.find((button) => button.dataset.about === tab)?.focus({ preventScroll: true });
@@ -184,7 +186,15 @@ export function setupAbout(control?: AgentControl) {
     e.preventDefault();
     select(tabs[next].dataset.about as AboutTab, true);
   });
-  byId("dialog-close").addEventListener("click", () => dialog.close());
+  // It opens at once and fades out on close, like the command palette.
+  const close = () => closeDialog(dialog);
+  byId("dialog-close").addEventListener("click", close);
+  // Escape fades it out too, when the browser lets the page handle it (after a user gesture).
+  dialog.addEventListener("cancel", (event) => {
+    if (!event.cancelable) return;
+    event.preventDefault();
+    close();
+  });
   panel.addEventListener("click", (event) => {
     const toggle = (event.target as HTMLElement).closest<HTMLButtonElement>("#agent-control");
     if (!toggle || !control) return;
@@ -199,12 +209,12 @@ export function setupAbout(control?: AgentControl) {
     if (event.target !== dialog) return;
     const rect = dialog.getBoundingClientRect();
     const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
-    if (outside) dialog.close();
+    if (outside) close();
   });
 
   return {
     open,
-    close: () => dialog.close(),
+    close,
     isOpen: () => dialog.open,
     /** The open tab, or null while the dialog is closed. */
     tab: () => (dialog.open ? shownTab : null),

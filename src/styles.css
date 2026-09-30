@@ -2040,8 +2040,29 @@ dialog[open] {
   display: flex;
   flex-direction: column;
 }
+/* Every dialog (About, the command palette) opens at once and fades out quickly on close (the "closing"
+   class), over the same blurred backdrop. */
 dialog::backdrop {
-  background: #080808c9;
+  background: #0c0c0d73;
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+dialog.closing {
+  animation: dialog-out 120ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+dialog.closing::backdrop {
+  animation: backdrop-out 120ms ease-out forwards;
 }
 .about-head {
   display: flex;
@@ -3392,6 +3413,7 @@ dialog::backdrop {
   inset: 18vh 16px auto;
   width: min(560px, calc(100% - 32px));
   max-width: none;
+  height: auto;
   max-height: min(64vh, 560px);
   margin: 0 auto;
   padding: 0;
@@ -3402,11 +3424,6 @@ dialog::backdrop {
 }
 .palette[open] {
   display: flex;
-}
-.palette::backdrop {
-  background: #0c0c0d73;
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  backdrop-filter: blur(12px) saturate(140%);
 }
 .palette-card {
   display: flex;
@@ -3562,24 +3579,6 @@ dialog::backdrop {
 .palette-foot kbd:last-of-type {
   margin-right: 2px;
 }
-/* It opens at once; closing fades it and its backdrop out quickly. */
-@keyframes palette-out {
-  to {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
-@keyframes palette-fade {
-  to {
-    opacity: 0;
-  }
-}
-.palette.closing {
-  animation: palette-out 120ms cubic-bezier(0.2, 0, 0, 1) forwards;
-}
-.palette.closing::backdrop {
-  animation: palette-fade 120ms ease-out forwards;
-}
 @media (max-width: 740px) {
   .palette {
     inset-block-start: 8vh;
@@ -3684,8 +3683,8 @@ dialog::backdrop {
   .palette-highlight {
     transition: none;
   }
-  .palette.closing,
-  .palette.closing::backdrop {
+  dialog.closing,
+  dialog.closing::backdrop {
     animation: none;
   }
 }

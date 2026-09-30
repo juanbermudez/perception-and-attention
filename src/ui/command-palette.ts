@@ -7,7 +7,7 @@
 import { fuzzySearch, prepare } from "../model/fuzzy";
 import { GROUP_LIMITS, type PaletteGroup, type PaletteItem, paletteItems } from "../model/palette";
 import type { Place } from "../model/refs";
-import { escapeHtml } from "./dom";
+import { closeDialog, escapeHtml } from "./dom";
 
 const GROUP_ORDER: PaletteGroup[] = ["Topics", "Regions", "Steps", "Papers"];
 const SEARCH_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
@@ -130,16 +130,9 @@ export function createCommandPalette({ go, trigger }: { go: (place: Place) => vo
   }
 
   function close() {
-    if (!dialog.open || dialog.classList.contains("closing")) return;
+    if (!dialog.open) return;
     trigger.setAttribute("aria-expanded", "false");
-    const done = () => {
-      dialog.classList.remove("closing");
-      if (dialog.open) dialog.close();
-    };
-    if (reduced.matches) return done();
-    dialog.classList.add("closing");
-    dialog.addEventListener("animationend", done, { once: true });
-    setTimeout(done, 200);
+    closeDialog(dialog);
   }
 
   input.addEventListener("input", render);
@@ -165,7 +158,9 @@ export function createCommandPalette({ go, trigger }: { go: (place: Place) => vo
     if (shown[i]?.url) close();
     else choose(i);
   });
+  // Escape fades it out too, when the browser lets the page handle it (after a user gesture).
   dialog.addEventListener("cancel", (event) => {
+    if (!event.cancelable) return;
     event.preventDefault();
     close();
   });
