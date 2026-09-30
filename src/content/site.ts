@@ -23,10 +23,11 @@ export const about = {
     {
       title: "Why I made it",
       paragraphs: [
-        "Neuroscience is not my field of work. I like reading about human behaviour and performance, and when I came across Robert Sapolsky’s work some years ago, I started going deeper into the topic.",
-        "I made this guide as a refresher on some details of human attention that I wanted to look into. I think learning about behavioural biology and neuroscience can provide a lot of insight into systems design. After all, if we extend the logic of [the bitter lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html), human intelligence is the result of a multi-billion-year research effort that produced all kinds of adaptations. Sharing attention with others and planning far ahead are among the capabilities often proposed to have given us a leg up on other Old World primates; the basic machinery of attention described here is shared with monkeys.",
-        "I am not building neuromorphic agents, but a lot seems to point to composition as another axis for developing more capable AI systems. I share my thoughts on the topic on [my website](https://zeph.computer), and I have now started sharing a bit more on [X](https://x.com/jbermudez5).",
-        "I also wanted to try [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)) that looked very promising, and it is good.",
+        "I made this guide as a refresher on some details of human attention that I wanted to go over again as I worked on a personal project, and when I came across [math](https://github.com/pmndrs/math), a library by Isaac Mason ([X](https://x.com/isaac_mason_), [GitHub](https://github.com/isaac-mason)), I thought it would be a great way to create a visual guide.",
+        "Learning about behavioural biology and neuroscience started as a personal interest, but when I started learning about AI and model architecture, I felt like nature is the GOAT at applying the [“bitter lesson”](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) approach. Even with all our technological progress, we still struggle to match nature’s designs; after all, it’s been tweaking and selecting candidates for way longer than we have been around.",
+        "I am in awe of what autoregressive models have enabled, but I believe that we can arrive at more efficient and capable models through composition and specialization.",
+        "It also might be that being GPU poor made me biased. 😅",
+        "Either way, I am really enjoying the process, a lot.",
       ],
     },
   ],
