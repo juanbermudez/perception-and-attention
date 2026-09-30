@@ -20,7 +20,9 @@ async function bundle(source) {
 const page = await readFile("src/index.html", "utf8");
 // Some code reads the media queries when it is loaded, so a DOM is installed before importing it.
 installDom(page);
-const { setupPanelResize, PANEL_SIZE_KEYS } = await bundle(`export { setupPanelResize, PANEL_SIZE_KEYS } from "./src/ui/panel-resize.ts";`);
+const { setupPanelResize, PANEL_SIZE_KEYS, RUBBER_LIMIT, rubberBand } = await bundle(
+  `export { setupPanelResize, PANEL_SIZE_KEYS, RUBBER_LIMIT, rubberBand } from "./src/ui/panel-resize.ts";`,
+);
 
 let dom, workspace, handle, narrow, compact, stored;
 /** localStorage, reduced to a Map. */
@@ -49,7 +51,18 @@ function resizeTo(width, height = dom.window.innerHeight) {
   compact.set(width <= 1000);
   dom.window.dispatchEvent(new StubEvent("resize"));
 }
-function start(width, height = 900, storage = null) {
+/** Frames the test runs by hand, 1/60 s apart. */
+let frames = [],
+  clock = 0;
+function runFrames(count) {
+  for (let i = 0; i < count && frames.length; i++) {
+    clock += 1000 / 60;
+    const due = frames;
+    frames = [];
+    for (const callback of due) callback(clock);
+  }
+}
+function start(width, height = 900, storage = null, animate = false) {
   stored = storage;
   dom = installDom(page, { width, height });
   workspace = dom.document.querySelector(".workspace");
@@ -59,7 +72,8 @@ function start(width, height = 900, storage = null) {
   narrow.matches = width <= 740;
   compact.matches = width <= 1000;
   layout();
-  setupPanelResize(storage);
+  frames = [];
+  setupPanelResize(storage, { animate, requestFrame: (callback) => frames.push(callback) });
 }
 const key = (name) => handle.dispatchEvent(new StubEvent("keydown", { key: name, bubbles: true }));
 const inlineWidth = () => workspace.style.getPropertyValue("--inspector-width");
@@ -139,4 +153,26 @@ test("without a size set by the user, a resize leaves the stylesheet in charge",
   resizeTo(900);
   assert.equal(inlineWidth(), "");
   assert.equal(now(), "332");
+});
+
+test("the rubber band follows the pointer past a bound with growing resistance, never beyond its limit", () => {
+  assert.equal(rubberBand(400, 300, 560), 400, "Inside the bounds, the value itself.");
+  const near = rubberBand(580, 300, 560) - 560,
+    far = rubberBand(760, 300, 560) - 560;
+  assert(near > 0 && near < 20, `20 px past the max stretches ${near.toFixed(1)} px.`);
+  assert(far > near && far < RUBBER_LIMIT, `200 px past stretches ${far.toFixed(1)} px, under the limit.`);
+  assert(rubberBand(100000, 300, 560) - 560 < RUBBER_LIMIT);
+  assert(rubberBand(280, 300, 560) < 300 && rubberBand(280, 300, 560) > 300 - 20);
+});
+
+test("with animation, a key sets a target and the panel eases to it over a few frames", () => {
+  start(1400, 900, null, true);
+  key("End");
+  assert.equal(now(), "560", "The handle reports the target at once.");
+  runFrames(1);
+  const first = Number.parseFloat(inlineWidth());
+  assert(first > 400 && first < 560, `After one frame the panel is on its way (${first} px).`);
+  runFrames(120);
+  assert.equal(inlineWidth(), "560px", "It settles on the target.");
+  assert.equal(frames.length, 0, "And stops asking for frames.");
 });
